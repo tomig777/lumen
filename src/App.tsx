@@ -13,6 +13,7 @@ import {
   ChevronsRight,
   Circle,
   Compass,
+  Download,
   FileText,
   Folder,
   FolderPlus,
@@ -41,6 +42,8 @@ import type { CSSProperties, FormEvent } from 'react'
 import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction, type MapNode } from './components/VisualComponents'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { createDemoState, createPinterestSample } from './data/demoData'
+import { createBackup, currentDataSummary, readBackup, STORAGE_KEY } from './backup'
+import type { BackupSummary } from './backup'
 import { useLocalStorage } from './hooks/useLocalStorage'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
@@ -139,7 +142,7 @@ function weekOffsetForDate(iso: string) {
 }
 
 function App() {
-  const [data, setData] = useLocalStorage<AppState>('personal-os-demo-v1', createDemoState())
+  const [data, setData] = useLocalStorage<AppState>(STORAGE_KEY, createDemoState())
   const [screen, setScreen] = useState<Screen>('welcome')
   const [selectedProjectId, setSelectedProjectId] = useState('project-os')
   const [selectedPersonId, setSelectedPersonId] = useState('person-anna')
@@ -206,7 +209,7 @@ function App() {
   const selectedImage = data.imageAssets.find((asset) => asset.id === selectedImageId)
   const currentTrack = data.tracks[data.currentTrackIndex] ?? data.tracks[0]
   const activeTab = activeTabFor(screen)
-  const hideNav = screen === 'welcome' || screen === 'login' || screen === 'workout' || screen === 'people' || screen === 'focus'
+  const hideNav = screen === 'welcome' || screen === 'login' || screen === 'backup' || screen === 'workout' || screen === 'people' || screen === 'focus'
 
   const notify = (message: string) => {
     setToast(message)
@@ -617,6 +620,15 @@ function App() {
     notify('Demo data reset')
   }
 
+  const restoreBackup = (restored: AppState) => {
+    // Write first: never show restored data in memory if the browser rejected the save.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
+    setData(restored)
+    setSelectedProjectId(restored.projects[0]?.id ?? '')
+    setSelectedPersonId(restored.people[0]?.id ?? '')
+    setSelectedImageId(null)
+  }
+
   const openThought = (thought: Thought) => openSheet('thought-actions', thought.id)
 
   const quickActions: BottomNavAction[] = [
@@ -633,7 +645,8 @@ function App() {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} onToggleTask={toggleTask} />
+      case 'home': return <HomeScreen data={data} onToggleTask={toggleTask} onOpenBackup={() => navigate('backup')} />
+      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} />
       case 'projects': return <ProjectsScreen data={data} onOpenProject={(project) => { setSelectedProjectId(project.id); navigate('project-detail') }} onNewProject={() => openSheet('project')} />
       case 'project-detail': return <ProjectDetailScreen data={data} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
@@ -795,7 +808,7 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, onToggleTask }: { data: AppState; onToggleTask: (id: string) => void }) {
+function HomeScreen({ data, onToggleTask, onOpenBackup }: { data: AppState; onToggleTask: (id: string) => void; onOpenBackup: () => void }) {
   const openTasks = data.tasks.filter((task) => !task.completed)
   const completedTaskItems = data.tasks.filter((task) => task.completed)
   const tasks = [...openTasks, ...completedTaskItems]
@@ -845,7 +858,7 @@ function HomeScreen({ data, onToggleTask }: { data: AppState; onToggleTask: (id:
   }
   return (
     <div className="screen-scroll home-screen home-minimal-screen home-theme-preview">
-      <div className="minimal-home-top" aria-hidden="true" />
+      <div className="minimal-home-top"><button className="home-backup-link" type="button" onClick={onOpenBackup}><Download size={14} /> Data & backup</button></div>
 
       <section className="home-liquid-focus" style={liquidStyle}>
         <div className="home-liquid-heading">
@@ -872,6 +885,129 @@ function HomeScreen({ data, onToggleTask }: { data: AppState; onToggleTask: (id:
       </section>
     </div>
   )
+}
+
+function BackupCounts({ summary }: { summary: BackupSummary }) {
+  return <div className="backup-counts">
+    <span><strong>{summary.counts.notes}</strong> notes</span>
+    <span><strong>{summary.counts.journalEntries}</strong> journal entries</span>
+    <span><strong>{summary.counts.projects}</strong> projects</span>
+    <span><strong>{summary.counts.tasks}</strong> tasks</span>
+    <span><strong>{summary.embeddedImages}</strong> embedded images</span>
+  </div>
+}
+
+function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () => void; onRestore: (restored: AppState) => void }) {
+  const [prepared, setPrepared] = useState<{ file: File; summary: BackupSummary } | null>(null)
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof readBackup>> | null>(null)
+  const [replaceSelected, setReplaceSelected] = useState(false)
+  const [currentCopySaved, setCurrentCopySaved] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentSummary = currentDataSummary(data)
+
+  useEffect(() => {
+    let cancelled = false
+    setPrepared(null)
+    createBackup(data).then(({ fileName, text, summary }) => {
+      if (!cancelled) setPrepared({ file: new File([text], fileName, { type: 'application/json' }), summary })
+    }).catch((failure: unknown) => {
+      if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not prepare the backup.')
+    })
+    return () => { cancelled = true }
+  }, [data])
+
+  const canShareFile = !!prepared && typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [prepared.file] }))
+
+  const shareBackup = async () => {
+    if (!prepared || !canShareFile) return
+    setError('')
+    setMessage('')
+    try {
+      await navigator.share({ files: [prepared.file], title: 'Lumen data backup' })
+      setMessage('Check that the file was saved to Files. Sharing alone does not confirm a backup.')
+    } catch (failure) {
+      if (failure instanceof DOMException && failure.name === 'AbortError') return
+      setError('Could not open the share sheet. Try Download backup instead.')
+    }
+  }
+
+  const downloadBackup = () => {
+    if (!prepared) return
+    const url = URL.createObjectURL(prepared.file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = prepared.file.name
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    setError('')
+    setMessage('Confirm the downloaded file appears in Files or on your computer before relying on it.')
+  }
+
+  const chooseImport = async (file?: File) => {
+    setPreview(null)
+    setReplaceSelected(false)
+    setCurrentCopySaved(false)
+    setMessage('')
+    setError('')
+    if (!file) return
+    try {
+      setPreview(await readBackup(await file.text()))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not read this backup. Nothing was changed.')
+    }
+  }
+
+  const restore = () => {
+    if (!preview || !replaceSelected || !currentCopySaved) return
+    try {
+      onRestore(preview.data)
+      setPreview(null)
+      setReplaceSelected(false)
+      setCurrentCopySaved(false)
+      setError('')
+      setMessage('Backup restored on this device. Open your notes and images to check them.')
+    } catch {
+      setError('This device could not save the restored data. Nothing was replaced. Free storage and try again.')
+    }
+  }
+
+  return <main className="screen-scroll backup-screen">
+    <PageHeader title="Data & backup" subtitle="Keep a copy you control." onBack={onBack} />
+    <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.</div>
+
+    <section className="backup-panel">
+      <span className="eyebrow">CURRENT DATA</span>
+      <h2>Make a copy</h2>
+      <BackupCounts summary={currentSummary} />
+      <p>The archive contains all app records and the full image data currently stored here. It is not encrypted, so keep it private.</p>
+      {canShareFile && <button className="backup-primary" type="button" onClick={shareBackup}><Download size={16} /> Save or share backup</button>}
+      <button className={canShareFile ? 'backup-secondary' : 'backup-primary'} type="button" onClick={downloadBackup} disabled={!prepared}><Download size={16} /> {prepared ? 'Download backup file' : 'Preparing backup…'}</button>
+    </section>
+
+    <section className="backup-panel backup-restore-panel">
+      <span className="eyebrow">RESTORE</span>
+      <h2>Use an existing copy</h2>
+      <p>Choose a Lumen backup. We will check it and show what is inside before anything changes.</p>
+      <input ref={fileInputRef} type="file" accept=".json,application/json" hidden onChange={(event) => { void chooseImport(event.target.files?.[0]); event.target.value = '' }} />
+      <button className="backup-secondary" type="button" onClick={() => fileInputRef.current?.click()}>Choose backup file</button>
+      {preview && <div className="backup-preview">
+        <span className="eyebrow">VALID BACKUP · INTEGRITY CHECK PASSED</span>
+        <strong>{new Date(preview.createdAt).toLocaleString()}</strong>
+        <BackupCounts summary={preview.summary} />
+        <p>Restoring will replace the data currently on this device. It will not merge records.</p>
+        <label><input type="radio" name="backup-mode" checked={replaceSelected} onChange={() => setReplaceSelected(true)} /> Replace this device's data</label>
+        <label><input type="checkbox" checked={currentCopySaved} onChange={(event) => setCurrentCopySaved(event.target.checked)} /> I have saved a separate copy of my current data</label>
+        <button className="backup-danger" type="button" disabled={!replaceSelected || !currentCopySaved} onClick={restore}>Replace with this backup</button>
+      </div>}
+    </section>
+    {error && <p className="backup-feedback is-error" role="alert">{error}</p>}
+    {message && <p className="backup-feedback" role="status">{message}</p>}
+  </main>
 }
 
 function BrainCategoryGlyph({ icon, size = 17 }: { icon: BrainCategoryIcon; size?: number }) {

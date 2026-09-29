@@ -4,6 +4,7 @@ export type Screen =
   | Tab
   | 'welcome'
   | 'login'
+  | 'backup'
   | 'project-detail'
   | 'people'
   | 'person-detail'

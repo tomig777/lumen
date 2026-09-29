@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:backup": "node --test tests/backup.test.mjs"
   },
   "dependencies": {
     "@bryllim/workout-guide": "^1.0.0",
