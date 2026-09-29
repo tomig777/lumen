@@ -1,0 +1,18 @@
+{
+  "name": "Lumen — Your personal space",
+  "short_name": "Lumen",
+  "description": "A little space for a clearer day.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#24211e",
+  "theme_color": "#24211e",
+  "icons": [
+    {
+      "src": "./lumen-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
