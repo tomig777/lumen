@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phases 0–2 have implementation releases. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
+Status: phases 0–2 have implementation releases. Phase 3's Brain optimization has a browser-tested implementation; real-iPhone performance and wider-screen profiling remain. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -49,13 +49,13 @@ Implementation checks: production build and simulated browser layouts. Device ac
 ## 3. Performance pass, starting with Brain
 
 - [ ] Measure Brain opening time, long frames, memory use, and tap/drag response on the iPhone before changing its renderer. Record a baseline for comparison.
-- [ ] Stop rebuilding graph nodes and deduplicating links with repeated full-array scans on each render. Memoize stable graph data and use indexed lookup for links.
-- [ ] Keep one dot for each note, but render the dense lines/dots with a lighter drawing approach and show detailed connections only when useful (for example, on selection or zoom). Retain a searchable, accessible note list.
-- [ ] Avoid React state updates that redraw the entire graph for every pointer movement. Pause work when the graph is not visible and respect reduced-motion settings.
+- [x] Build graph nodes once per note/search change; deduplicate links with indexed sets rather than repeated full-array scans.
+- [x] Keep one dot per note while drawing the 450-dot/3,475-link demo constellation on a single canvas. Tap a dot to open its note; the searchable All notes tab remains the accessible text route.
+- [x] Move dot dragging out of React state. Redraw at most once per animation frame, cap canvas pixel density, stop drawing when offscreen or the app is hidden, and use no inertial motion that would conflict with Reduce Motion.
 - [ ] Profile the other screens for oversized images, unnecessary rerenders, and animation work; optimize only where the device measurements show a problem.
-- [ ] Keep demo graph notes separate from personal notes. Do not remove seeded notes from an existing installation as an automatic cleanup.
+- [x] Keep legacy demo graph notes in storage and in the constellation, but collapse them behind a separate, searchable group in All notes. Render long lists in batches; never remove seeded notes as an automatic cleanup.
 
-Done when: Brain opens and responds smoothly on the target iPhone without a noticeable multi-second freeze, and its dots still correspond to notes. Record before/after measurements.
+Browser baseline: 450 dot buttons, 450 SVG circles, 3,475 SVG lines, 4,829 graph descendants at 390 × 844. Browser implementation check: one canvas descendant, 450 modeled dots, tap-to-open and drag verified. This is structural evidence, not an iPhone speed claim. Done when Brain opens and responds smoothly on the target iPhone without a noticeable multi-second freeze; record actual before/after measurements there.
 
 ## 4. Real dates, daily tasks, and workouts
 

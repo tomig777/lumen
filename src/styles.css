@@ -7274,6 +7274,16 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
+.brain-screen .brain-map-render {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.brain-screen .brain-map-render:active { cursor: grabbing; }
+
 .brain-screen .map-node::before {
   top: 50%;
   left: 50%;

@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "test:backup": "node --test tests/backup.test.mjs",
-    "test:storage": "node --test tests/storage.test.mjs"
+    "test:storage": "node --test tests/storage.test.mjs",
+    "test:brain": "node --test tests/brainGraph.test.mjs"
   },
   "dependencies": {
     "@bryllim/workout-guide": "^1.0.0",

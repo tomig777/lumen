@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BookOpen, Brain, ChevronRight, Clock3, Folder, Heart, House, Image as ImageIcon, Layers3, Pause, Play, Plus, Sparkles, SkipBack, SkipForward, Users } from 'lucide-react'
 import type { ImageAsset, Person, Tab, Track } from '../types'
+import type { MapNode } from '../brainGraph'
 import { StoredImage } from './StoredImage'
 import peoplePortraits from '../people-portraits-collage.png'
 
@@ -172,161 +173,149 @@ export function TreeVisual({ growth, compact = false }: { growth: number; compac
   )
 }
 
-export interface MapNode {
-  id: string
-  label: string
-  kind: 'note' | 'thought'
-  x: number
-  y: number
-  size: number
-  accent?: string
-}
-
-export function BrainMap({ nodes, links }: { nodes: MapNode[]; links: Array<[string, string]> }) {
+export function BrainMap({ nodes, links, onOpenNode }: { nodes: MapNode[]; links: Array<[string, string]>; onOpenNode: (id: string) => void }) {
   const mapRef = useRef<HTMLDivElement>(null)
-  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({})
-  const drag = useRef<{ id: string; pointerId: number; clientX: number; clientY: number; lastClientX: number; lastClientY: number; lastTime: number; x: number; y: number; currentX: number; currentY: number; velocityX: number; velocityY: number; moved: boolean } | null>(null)
-  const driftFrames = useRef<Map<string, number>>(new Map())
-  const positionFor = (node: MapNode) => positions[node.id] ?? { x: node.x, y: node.y }
-  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const positionsRef = useRef(new Map<string, { x: number; y: number }>())
+  const graphRef = useRef({ nodes, links, byId: new Map(nodes.map((node) => [node.id, node])) })
+  const openRef = useRef(onOpenNode)
+  const frameRef = useRef<number | null>(null)
+  const visibleRef = useRef(true)
+  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; x: number; y: number; moved: boolean } | null>(null)
+  openRef.current = onOpenNode
 
-  useEffect(() => () => {
-    driftFrames.current.forEach((frame) => window.cancelAnimationFrame(frame))
-    driftFrames.current.clear()
+  const point = (node: MapNode) => positionsRef.current.get(node.id) ?? node
+
+  const draw = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !visibleRef.current || document.visibilityState === 'hidden') return
+    const bounds = canvas.getBoundingClientRect()
+    if (!bounds.width || !bounds.height) return
+    const ratio = Math.min(window.devicePixelRatio || 1, 2)
+    const width = Math.round(bounds.width * ratio)
+    const height = Math.round(bounds.height * ratio)
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height }
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.setTransform(ratio, 0, 0, ratio, 0, 0)
+    context.clearRect(0, 0, bounds.width, bounds.height)
+    const { nodes: currentNodes, links: currentLinks, byId } = graphRef.current
+    context.beginPath()
+    for (const [from, to] of currentLinks) {
+      const a = byId.get(from)
+      const b = byId.get(to)
+      if (!a || !b) continue
+      const start = point(a)
+      const end = point(b)
+      context.moveTo(start.x * bounds.width / 100, start.y * bounds.height / 100)
+      context.lineTo(end.x * bounds.width / 100, end.y * bounds.height / 100)
+    }
+    context.strokeStyle = 'rgba(255,255,255,.14)'
+    context.lineWidth = .55
+    context.stroke()
+    context.fillStyle = '#fff'
+    for (const node of currentNodes) {
+      const at = point(node)
+      context.beginPath()
+      context.arc(at.x * bounds.width / 100, at.y * bounds.height / 100, Math.max(.45, node.size * bounds.width / 1200), 0, Math.PI * 2)
+      context.fill()
+    }
+    const selected = dragRef.current && byId.get(dragRef.current.id)
+    if (selected) {
+      const at = point(selected)
+      context.beginPath()
+      context.arc(at.x * bounds.width / 100, at.y * bounds.height / 100, 8, 0, Math.PI * 2)
+      context.strokeStyle = 'rgba(255,255,255,.75)'
+      context.lineWidth = 1
+      context.stroke()
+    }
+  }
+
+  const scheduleDraw = () => {
+    if (frameRef.current !== null) return
+    frameRef.current = window.requestAnimationFrame(() => { frameRef.current = null; draw() })
+  }
+
+  useEffect(() => {
+    graphRef.current = { nodes, links, byId: new Map(nodes.map((node) => [node.id, node])) }
+    const ids = new Set(nodes.map((node) => node.id))
+    for (const id of positionsRef.current.keys()) if (!ids.has(id)) positionsRef.current.delete(id)
+    scheduleDraw()
+  }, [nodes, links])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const resize = new ResizeObserver(scheduleDraw)
+    resize.observe(map)
+    const intersection = new IntersectionObserver(([entry]) => {
+      visibleRef.current = entry.isIntersecting
+      if (entry.isIntersecting) scheduleDraw()
+    })
+    intersection.observe(map)
+    const onVisibility = () => { if (document.visibilityState === 'visible') scheduleDraw() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      resize.disconnect()
+      intersection.disconnect()
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
+    }
   }, [])
 
-  const cancelNodeDrift = (nodeId: string) => {
-    const frame = driftFrames.current.get(nodeId)
-    if (frame !== undefined) window.cancelAnimationFrame(frame)
-    driftFrames.current.delete(nodeId)
-  }
-
-  const driftNode = (node: MapNode, start: { x: number; y: number }, velocityX: number, velocityY: number, bounds: DOMRect) => {
-    cancelNodeDrift(node.id)
-    const weight = .72 + node.size / 34
-    let x = start.x
-    let y = start.y
-    let speedX = Math.max(-.026, Math.min(.026, (velocityX / bounds.width) * 100 * weight))
-    let speedY = Math.max(-.026, Math.min(.026, (velocityY / bounds.height) * 100 * weight))
-    const edgePaddingX = Math.max(3, (node.size / 2 / bounds.width) * 100)
-    const edgePaddingY = Math.max(3, (node.size / 2 / bounds.height) * 100)
-    let previousTime = window.performance.now()
-    const startedAt = previousTime
-
-    const tick = (time: number) => {
-      const elapsed = time - startedAt
-      const delta = Math.min(32, Math.max(8, time - previousTime))
-      previousTime = time
-      x += speedX * delta
-      y += speedY * delta
-      if (x <= edgePaddingX || x >= 100 - edgePaddingX) speedX *= -.24
-      if (y <= edgePaddingY || y >= 100 - edgePaddingY) speedY *= -.24
-      x = Math.max(edgePaddingX, Math.min(100 - edgePaddingX, x))
-      y = Math.max(edgePaddingY, Math.min(100 - edgePaddingY, y))
-      const dragFactor = Math.pow(.885, delta / 16.67)
-      speedX *= dragFactor
-      speedY *= dragFactor
-      setPositions((current) => ({ ...current, [node.id]: { x, y } }))
-      if (elapsed < 820 && Math.hypot(speedX, speedY) > .00032) {
-        driftFrames.current.set(node.id, window.requestAnimationFrame(tick))
-      } else {
-        driftFrames.current.delete(node.id)
-      }
+  const nearest = (clientX: number, clientY: number) => {
+    const bounds = canvasRef.current?.getBoundingClientRect()
+    if (!bounds) return null
+    const x = clientX - bounds.left
+    const y = clientY - bounds.top
+    let found: MapNode | null = null
+    let best = 14 * 14
+    for (const node of graphRef.current.nodes) {
+      const at = point(node)
+      const dx = at.x * bounds.width / 100 - x
+      const dy = at.y * bounds.height / 100 - y
+      const distance = dx * dx + dy * dy
+      if (distance < best) { best = distance; found = node }
     }
-
-    if (Math.hypot(speedX, speedY) > .00032) driftFrames.current.set(node.id, window.requestAnimationFrame(tick))
+    return found
   }
 
-  const startNodeDrag = (event: React.PointerEvent<HTMLButtonElement>, node: MapNode) => {
-    cancelNodeDrift(node.id)
-    const position = positionFor(node)
-    drag.current = { id: node.id, pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, lastTime: event.timeStamp, x: position.x, y: position.y, currentX: position.x, currentY: position.y, velocityX: 0, velocityY: 0, moved: false }
+  const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const node = nearest(event.clientX, event.clientY)
+    if (!node) return
+    const at = point(node)
+    dragRef.current = { id: node.id, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: at.x, y: at.y, moved: false }
     event.currentTarget.setPointerCapture(event.pointerId)
-    event.stopPropagation()
+    scheduleDraw()
   }
 
-  const moveNode = (event: React.PointerEvent<HTMLButtonElement>, node: MapNode) => {
-    const activeDrag = drag.current
-    const bounds = mapRef.current?.getBoundingClientRect()
-    if (!activeDrag || activeDrag.id !== node.id || !bounds) return
-    const deltaX = event.clientX - activeDrag.clientX
-    const deltaY = event.clientY - activeDrag.clientY
-    const sampleTime = event.timeStamp
-    const sampleDelta = Math.max(8, sampleTime - activeDrag.lastTime)
-    const sampledVelocityX = (event.clientX - activeDrag.lastClientX) / sampleDelta
-    const sampledVelocityY = (event.clientY - activeDrag.lastClientY) / sampleDelta
-    activeDrag.velocityX = activeDrag.velocityX * .38 + sampledVelocityX * .62
-    activeDrag.velocityY = activeDrag.velocityY * .38 + sampledVelocityY * .62
-    activeDrag.lastClientX = event.clientX
-    activeDrag.lastClientY = event.clientY
-    activeDrag.lastTime = sampleTime
-    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) activeDrag.moved = true
-    const edgePaddingX = Math.max(3, (node.size / 2 / bounds.width) * 100)
-    const edgePaddingY = Math.max(3, (node.size / 2 / bounds.height) * 100)
-    const nextPosition = {
-      x: Math.max(edgePaddingX, Math.min(100 - edgePaddingX, activeDrag.x + (deltaX / bounds.width) * 100)),
-      y: Math.max(edgePaddingY, Math.min(100 - edgePaddingY, activeDrag.y + (deltaY / bounds.height) * 100)),
-    }
-    activeDrag.currentX = nextPosition.x
-    activeDrag.currentY = nextPosition.y
-    setPositions((current) => ({
-      ...current,
-      [node.id]: nextPosition,
-    }))
-    event.stopPropagation()
+  const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const drag = dragRef.current
+    const bounds = canvasRef.current?.getBoundingClientRect()
+    if (!drag || drag.pointerId !== event.pointerId || !bounds) return
+    const dx = event.clientX - drag.startX
+    const dy = event.clientY - drag.startY
+    if (Math.hypot(dx, dy) > 4) drag.moved = true
+    if (!drag.moved) return
+    positionsRef.current.set(drag.id, {
+      x: Math.max(3, Math.min(97, drag.x + dx / bounds.width * 100)),
+      y: Math.max(3, Math.min(97, drag.y + dy / bounds.height * 100)),
+    })
+    scheduleDraw()
   }
 
-  const finishNodeDrag = (event: React.PointerEvent<HTMLButtonElement>, node: MapNode) => {
-    const activeDrag = drag.current
-    const bounds = mapRef.current?.getBoundingClientRect()
-    if (activeDrag?.id === node.id && activeDrag.moved) {
-      if (bounds) driftNode(node, { x: activeDrag.currentX, y: activeDrag.currentY }, activeDrag.velocityX, activeDrag.velocityY, bounds)
-    }
+  const finishPointer = (event: React.PointerEvent<HTMLCanvasElement>, cancelled = false) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    drag.current = null
-    event.stopPropagation()
+    dragRef.current = null
+    scheduleDraw()
+    if (!cancelled && !drag.moved) openRef.current(drag.id)
   }
 
-  return (
-    <div className="brain-map" ref={mapRef} role="group" aria-label="Connected note graph">
-      <div className="map-canvas">
-        <svg className="map-links" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-          <g className="map-connections">{links.map(([from, to]) => {
-            const a = nodeById.get(from)
-            const b = nodeById.get(to)
-            if (!a || !b) return null
-            const aPosition = positionFor(a)
-            const bPosition = positionFor(b)
-            return <line className="map-note-link" key={`${from}-${to}`} x1={aPosition.x} y1={aPosition.y} x2={bPosition.x} y2={bPosition.y} />
-          })}</g>
-          <g className="map-note-points">
-            {nodes.map((node) => {
-              const position = positionFor(node)
-              return <circle key={`point-${node.id}`} cx={position.x} cy={position.y} r={node.size / 12} />
-            })}
-          </g>
-        </svg>
-        {nodes.map((node) => {
-          const position = positionFor(node)
-          const hitSize = Math.max(6, node.size + 3)
-          return <button
-            type="button"
-            className={`map-node ${node.kind === 'thought' ? 'is-thought' : ''}`}
-            key={node.id}
-            aria-label={node.label}
-            title={node.label}
-            style={{ left: `calc(${position.x}% - ${hitSize / 2}px)`, top: `calc(${position.y}% - ${hitSize / 2}px)`, width: hitSize, height: hitSize, '--node-diameter': `${node.size}px` } as React.CSSProperties}
-            onPointerDown={(event) => startNodeDrag(event, node)}
-            onPointerMove={(event) => moveNode(event, node)}
-            onPointerUp={(event) => finishNodeDrag(event, node)}
-            onPointerCancel={(event) => finishNodeDrag(event, node)}
-          >
-            <span aria-hidden="true">{node.label}</span>
-          </button>
-        })}
-      </div>
-    </div>
-  )
+  return <div className="brain-map" ref={mapRef} role="group" aria-label={`Connected graph of ${nodes.length} notes. Tap a dot to open it, or use All notes for an accessible list.`}>
+    <canvas ref={canvasRef} className="brain-map-render" aria-hidden="true" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={finishPointer} onPointerCancel={(event) => finishPointer(event, true)} />
+  </div>
 }
 
 const peoplePositions = [

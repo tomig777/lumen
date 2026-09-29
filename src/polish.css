@@ -346,6 +346,25 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brain-screen .section-count { color: #b2a392; }
 .brain-screen input { color: #f5ede3; background: #37312b; }
 .brain-screen input::placeholder { color: #b2a392; }
+.brain-screen .brain-sample-toggle,
+.brain-screen .brain-library-more {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #453c33;
+  border-radius: 13px;
+  color: #e8d9c7;
+  background: #302b26;
+  font-size: 11px;
+  font-weight: 600;
+}
+.brain-screen .brain-sample-toggle { margin-bottom: 12px; }
+.brain-screen .brain-library-more { margin-top: 12px; }
+.brain-screen .brain-sample-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
 .phone-app:has(.brain-screen) { background: #24211e; }
 .phone-app:has(.brain-screen) .bottom-nav {
   background: #302b26;

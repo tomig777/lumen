@@ -39,7 +39,8 @@ import {
   Zap,
 } from 'lucide-react'
 import type { CSSProperties, FormEvent } from 'react'
-import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction, type MapNode } from './components/VisualComponents'
+import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction } from './components/VisualComponents'
+import { buildBrainGraph, isSampleGraphNote } from './brainGraph'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
 import { createDemoState, createPinterestSample } from './data/demoData'
@@ -992,27 +993,6 @@ function BrainCategoryGlyph({ icon, size = 17 }: { icon: BrainCategoryIcon; size
   return <Sparkles size={size} />
 }
 
-const brainGraphNoise = (seed: number) => {
-  const value = Math.sin(seed * 12.9898) * 43758.5453
-  return value - Math.floor(value)
-}
-
-function brainGraphPosition(index: number, total: number): [number, number] {
-  if (total <= 0) return [50, 50]
-  const cluster = index % 12
-  const hubAngle = cluster * Math.PI * 2 / 12 + .2
-  const hubRadius = 23 + brainGraphNoise(cluster + 40) * 12
-  const angle = index * 2.399963 + brainGraphNoise(index + 17) * .5
-  const radius = index < 12 ? 0 : Math.sqrt(brainGraphNoise(index + 71)) * 17
-  let x = Math.cos(hubAngle) * hubRadius + Math.cos(angle) * radius
-  let y = Math.sin(hubAngle) * hubRadius + Math.sin(angle) * radius
-  const distance = Math.hypot(x, y)
-  if (distance > 46) { x *= 46 / distance; y *= 46 / distance }
-  x += 50
-  y += 50
-  return [Math.max(3, Math.min(97, x)), Math.max(3, Math.min(97, y))]
-}
-
 type BrainSearchItem = {
   id: string
   label: string
@@ -1148,6 +1128,8 @@ function BrainActionSearch({ value, onChange, items }: { value: string; onChange
 function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCategorizeThought, onSaveCategory, onStageImage }: { data: AppState; onCapture: () => void; onNewNote: (categoryId?: string) => void; onOpenNote: (note: Note) => void; onThought: (thought: Thought) => void; onCategorizeThought: (thoughtId: string, categoryId: string) => void; onSaveCategory: (category: BrainCategory) => void; onStageImage: (file: File) => string }) {
   const [categoryDraft, setCategoryDraft] = useState<BrainCategory | null>(null)
   const [activeSection, setActiveSection] = useState('home')
+  const [showSampleNotes, setShowSampleNotes] = useState(false)
+  const [notePageSize, setNotePageSize] = useState(40)
   const [brainSearchOpen, setBrainSearchOpen] = useState(false)
   const [brainSearch, setBrainSearch] = useState('')
   const brainScreenRef = useRef<HTMLDivElement>(null)
@@ -1160,30 +1142,15 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
   const pinnedNotes = data.notes.filter((note) => note.pinned && matchesNote(note))
   const quickNotes = data.thoughts.filter((thought) => !thought.projectId && matchesThought(thought))
   const activeCategory = categories.find((category) => category.id === activeSection)
-  const activeSectionNotes = activeSection === 'all' ? data.notes.filter(matchesNote) : activeCategory ? data.notes.filter((note) => activeCategory.noteIds.includes(note.id) && matchesNote(note)) : []
+  const sampleNoteCount = data.notes.filter(isSampleGraphNote).length
+  const allSectionNotes = activeSection === 'all'
+    ? data.notes.filter((note) => matchesNote(note) && (!isSampleGraphNote(note) || showSampleNotes || !!searchQuery))
+    : activeCategory ? data.notes.filter((note) => activeCategory.noteIds.includes(note.id) && matchesNote(note)) : []
+  const activeSectionNotes = allSectionNotes.slice(0, notePageSize)
   const activeSectionTitle = activeSection === 'all' ? 'All notes' : activeCategory?.name ?? 'Home'
   const categoryForNote = (noteId: string) => categories.find((category) => category.noteIds.includes(noteId))
-  const graphNotes = data.notes.filter(matchesNote)
-  const graphNodeCount = graphNotes.length
-  const mapNodes: MapNode[] = graphNotes.map((note, index) => {
-      const graphIndex = note.id.startsWith('graph-note-') ? Number(note.id.slice(11)) - 1 : index + 432
-      const [x, y] = brainGraphPosition(graphIndex, graphNodeCount)
-      return {
-      id: note.id,
-      label: note.title,
-      kind: 'note' as const,
-      x,
-      y,
-      size: graphIndex < 12 ? 7 : 1.5 + brainGraphNoise(graphIndex + 9) * 3,
-    }
-  })
-  const visibleNodeIds = new Set(mapNodes.map((node) => node.id))
-  const mapLinks: Array<[string, string]> = []
-  const addMapLink = (from?: string, to?: string) => {
-    if (!from || !to || from === to || !visibleNodeIds.has(from) || !visibleNodeIds.has(to)) return
-    if (!mapLinks.some(([a, b]) => (a === from && b === to) || (a === to && b === from))) mapLinks.push([from, to])
-  }
-  graphNotes.forEach((note) => note.relatedNoteIds.forEach((relatedId) => addMapLink(note.id, relatedId)))
+  const graph = useMemo(() => buildBrainGraph(data.notes, brainSearch), [data.notes, brainSearch])
+  const categorySelectableNotes = data.notes.filter((note) => !isSampleGraphNote(note) || categoryDraft?.noteIds.includes(note.id))
   const openCategoryEditor = (category: BrainCategory) => {
     if (brainScreenRef.current) brainScreenRef.current.scrollTop = 0
     setCategoryDraft({ ...category })
@@ -1215,6 +1182,8 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
     return () => window.cancelAnimationFrame(frame)
   }, [brainSearchOpen])
 
+  useEffect(() => setNotePageSize(40), [activeSection, brainSearch, showSampleNotes])
+
   return (
     <div className="screen-scroll brain-screen" ref={brainScreenRef}>
       <div className="brain-page-heading" aria-label="Brain page"><span className="eyebrow">PERSONAL OS</span><strong>Brain</strong></div>
@@ -1237,7 +1206,10 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
 
       {activeSection === 'home' && <>
         <section className="brain-graph-section" aria-label="Connected notes map">
-          <BrainMap nodes={mapNodes} links={mapLinks} />
+          <BrainMap nodes={graph.nodes} links={graph.links} onOpenNode={(id) => {
+            const note = data.notes.find((entry) => entry.id === id)
+            if (note) onOpenNote(note)
+          }} />
         </section>
 
         <section className="brain-content-section brain-home-pinned">
@@ -1261,12 +1233,14 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
       </section>}
 
       {(activeSection === 'all' || activeCategory) && <section className="brain-note-library">
-        <div className="brain-collection-heading"><div><SectionLabel>{activeSection === 'all' ? 'ALL NOTES' : 'CATEGORY'}</SectionLabel><h2>{activeSectionTitle}</h2><p>{activeSection === 'all' ? 'Every note, gathered in one quiet shelf.' : `Notes filed under ${activeSectionTitle}.`}</p></div><div className="brain-collection-tools"><span className="brain-collection-count"><strong>{activeSectionNotes.length}</strong><small>{activeSectionNotes.length === 1 ? 'note' : 'notes'}</small></span>{activeCategory && <button className="brain-collection-edit" aria-label={`Edit ${activeCategory.name} category`} onClick={() => openCategoryEditor(activeCategory)}><Pencil size={13} /></button>}</div></div>
+        <div className="brain-collection-heading"><div><SectionLabel>{activeSection === 'all' ? 'ALL NOTES' : 'CATEGORY'}</SectionLabel><h2>{activeSectionTitle}</h2><p>{activeSection === 'all' ? 'Your notes up front; sample graph notes kept separately.' : `Notes filed under ${activeSectionTitle}.`}</p></div><div className="brain-collection-tools"><span className="brain-collection-count"><strong>{allSectionNotes.length}</strong><small>{allSectionNotes.length === 1 ? 'note' : 'notes'}</small></span>{activeCategory && <button className="brain-collection-edit" aria-label={`Edit ${activeCategory.name} category`} onClick={() => openCategoryEditor(activeCategory)}><Pencil size={13} /></button>}</div></div>
+        {activeSection === 'all' && sampleNoteCount > 0 && !searchQuery && <button className="brain-sample-toggle" type="button" aria-expanded={showSampleNotes} onClick={() => setShowSampleNotes((visible) => !visible)}>{showSampleNotes ? 'Hide' : 'Show'} {sampleNoteCount} sample graph notes <ChevronDown size={14} /></button>}
         <div className="brain-library-grid">
-          {activeSectionNotes.map((note, index) => { const category = categoryForNote(note.id); return <motion.button className="brain-library-card" style={{ '--brain-card-accent': category?.color ?? '#a9a9a3' } as CSSProperties} key={note.id} onClick={() => onOpenNote(note)} whileTap={{ scale: .985 }} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .035 }}><span className="brain-library-card-top"><span className="brain-library-card-icon"><FileText size={15} /></span><small>{String(index + 1).padStart(2, '0')}</small></span><span className="brain-library-card-copy"><strong>{note.title}</strong><span>{note.body || 'A note waiting for its first line.'}</span></span><span className="brain-library-card-foot"><small>{category?.name ?? 'Unsorted'}</small><ChevronRight size={13} /></span></motion.button> })}
+          {activeSectionNotes.map((note, index) => { const category = categoryForNote(note.id); return <motion.button className="brain-library-card" style={{ '--brain-card-accent': category?.color ?? '#a9a9a3' } as CSSProperties} key={note.id} onClick={() => onOpenNote(note)} whileTap={{ scale: .985 }} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 12) * .025 }}><span className="brain-library-card-top"><span className="brain-library-card-icon"><FileText size={15} /></span><small>{String(index + 1).padStart(2, '0')}</small></span><span className="brain-library-card-copy"><strong>{note.title}</strong><span>{note.body || 'A note waiting for its first line.'}</span></span><span className="brain-library-card-foot"><small>{category?.name ?? 'Unsorted'}</small><ChevronRight size={13} /></span></motion.button> })}
           <button className="brain-library-add-card" onClick={() => onNewNote(activeCategory?.id)}><span><Plus size={22} /></span><strong>New note</strong><small>{activeCategory ? `Add to ${activeCategory.name}` : 'Start a note'}</small></button>
         </div>
-        {!activeSectionNotes.length && <div className="brain-library-empty"><FileText size={17} /><strong>This shelf is empty</strong><span>Create the first note here.</span></div>}
+        {allSectionNotes.length > activeSectionNotes.length && <button className="brain-library-more" type="button" onClick={() => setNotePageSize((size) => size + 40)}>Show more notes · {allSectionNotes.length - activeSectionNotes.length} remaining</button>}
+        {!allSectionNotes.length && <div className="brain-library-empty"><FileText size={17} /><strong>This shelf is empty</strong><span>Create the first note here.</span></div>}
       </section>}
 
       <AnimatePresence>
@@ -1278,7 +1252,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
             <div className="brain-category-option"><span>Color</span><div className="brain-color-options">{brainCategoryColors.map((color) => <button type="button" aria-label={`Use ${color}`} aria-pressed={categoryDraft.color === color} className={categoryDraft.color === color ? 'is-selected' : ''} style={{ background: color }} key={color} onClick={() => setCategoryDraft({ ...categoryDraft, color })}>{categoryDraft.color === color && <Check size={12} />}</button>)}</div></div>
             <div className="brain-category-option"><span>Icon</span><div className="brain-icon-options">{brainCategoryIcons.map((icon) => <button type="button" aria-label={`Use ${icon} icon`} aria-pressed={categoryDraft.icon === icon} className={categoryDraft.icon === icon ? 'is-selected' : ''} key={icon} onClick={() => setCategoryDraft({ ...categoryDraft, icon })}><BrainCategoryGlyph icon={icon} size={17} /></button>)}</div></div>
             <div className="brain-category-option"><span>Cover image</span><div className="brain-cover-actions"><button type="button" onClick={() => categoryImageInputRef.current?.click()}><ImageIcon size={15} /> {categoryDraft.image ? 'Change image' : 'Add image'}</button>{categoryDraft.image && <button type="button" onClick={() => setCategoryDraft({ ...categoryDraft, image: undefined })}>Remove</button>}</div><input ref={categoryImageInputRef} type="file" accept="image/*" hidden onChange={(event) => { loadCategoryImage(event.target.files?.[0]); event.target.value = '' }} /></div>
-            <div className="brain-category-option"><span>Add notes</span><div className="brain-note-options">{data.notes.map((note) => { const selected = categoryDraft.noteIds.includes(note.id); return <button type="button" className={selected ? 'is-selected' : ''} aria-pressed={selected} key={note.id} onClick={() => toggleDraftNote(note.id)}>{selected ? <Check size={11} /> : <FileText size={11} />}<span>{note.title}</span></button> })}</div></div>
+            <div className="brain-category-option"><span>Add notes</span><div className="brain-note-options">{categorySelectableNotes.map((note) => { const selected = categoryDraft.noteIds.includes(note.id); return <button type="button" className={selected ? 'is-selected' : ''} aria-pressed={selected} key={note.id} onClick={() => toggleDraftNote(note.id)}>{selected ? <Check size={11} /> : <FileText size={11} />}<span>{note.title}</span></button> })}</div></div>
             <button className="dark-button wide brain-category-save" type="submit" disabled={!categoryDraft.name.trim()}><Check size={14} /> Save category</button>
           </motion.form>
         </motion.div>}
