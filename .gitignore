@@ -1,0 +1,11 @@
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+src/people-portraits.jpg
+src/people-portraits-dark.png
+src/people-portraits-cartoon.png
