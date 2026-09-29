@@ -5,7 +5,7 @@ const BACKUP_FORMAT = 'lumen-data-backup'
 const BACKUP_VERSION = 1
 const SUPPORTED_DATA_VERSION = 6
 
-const collectionNames = [
+export const collectionNames = [
   'tasks', 'habits', 'thoughts', 'notes', 'brainCategories', 'projects',
   'people', 'journalEntries', 'healthEntries', 'exercises', 'workouts',
   'healthPlans', 'wellnessLogs', 'skinPhotos', 'focusSessions',
@@ -32,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function assertState(value: unknown): asserts value is AppState {
+export function assertState(value: unknown): asserts value is AppState {
   if (!isRecord(value) || !Number.isInteger(value.version) || Number(value.version) < 1) {
     throw new Error('This file does not contain valid Lumen data.')
   }
@@ -75,14 +75,30 @@ function assertState(value: unknown): asserts value is AppState {
   }
 }
 
+function isImageReference(src: string) {
+  return src.startsWith('data:image/') || src.startsWith('lumen-media:') || src.startsWith('blob:')
+}
+
+function assertPortableMedia(data: AppState) {
+  const sources = [
+    ...data.imageAssets.map((asset) => asset.src),
+    ...data.skinPhotos.map((photo) => photo.src),
+    ...data.wellnessLogs.map((log) => log.skinPhoto),
+    ...data.brainCategories.map((category) => category.image),
+  ]
+  if (sources.some((src) => src?.startsWith('lumen-media:') || src?.startsWith('blob:'))) {
+    throw new Error('An image is not embedded in this backup. Nothing was restored.')
+  }
+}
+
 function summaryFor(data: AppState): BackupSummary {
   const counts = {} as BackupSummary['counts']
   for (const name of collectionNames) counts[name] = data[name].length
   const imageSources = new Set<string>()
-  for (const asset of data.imageAssets) if (asset.src?.startsWith('data:image/')) imageSources.add(asset.src)
-  for (const photo of data.skinPhotos) if (photo.src.startsWith('data:image/')) imageSources.add(photo.src)
-  for (const log of data.wellnessLogs) if (log.skinPhoto?.startsWith('data:image/')) imageSources.add(log.skinPhoto)
-  for (const category of data.brainCategories) if (category.image?.startsWith('data:image/')) imageSources.add(category.image)
+  for (const asset of data.imageAssets) if (asset.src && isImageReference(asset.src)) imageSources.add(asset.src)
+  for (const photo of data.skinPhotos) if (isImageReference(photo.src)) imageSources.add(photo.src)
+  for (const log of data.wellnessLogs) if (log.skinPhoto && isImageReference(log.skinPhoto)) imageSources.add(log.skinPhoto)
+  for (const category of data.brainCategories) if (category.image && isImageReference(category.image)) imageSources.add(category.image)
   return { counts, embeddedImages: imageSources.size }
 }
 
@@ -93,6 +109,7 @@ async function checksumFor(serialized: string): Promise<string> {
 
 export async function createBackup(data: AppState) {
   assertState(data)
+  assertPortableMedia(data)
   const createdAt = new Date().toISOString()
   const archive: BackupArchive = {
     format: BACKUP_FORMAT,
@@ -117,6 +134,7 @@ export async function readBackup(text: string): Promise<BackupArchive> {
     throw new Error('This is not a supported Lumen backup file.')
   }
   assertState(parsed.data)
+  assertPortableMedia(parsed.data)
   if (typeof parsed.createdAt !== 'string' || Number.isNaN(Date.parse(parsed.createdAt)) ||
       typeof parsed.checksum !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.checksum) || !isRecord(parsed.summary)) {
     throw new Error('The backup header is incomplete.')

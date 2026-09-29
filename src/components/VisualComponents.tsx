@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BookOpen, Brain, ChevronRight, Clock3, Folder, Heart, House, Image as ImageIcon, Layers3, Pause, Play, Plus, Sparkles, SkipBack, SkipForward, Users } from 'lucide-react'
 import type { ImageAsset, Person, Tab, Track } from '../types'
+import { StoredImage } from './StoredImage'
 import peoplePortraits from '../people-portraits-collage.png'
 
 interface PhoneFrameProps {
@@ -385,7 +386,7 @@ export function VisualArt({ asset, onClick, showLabel = false }: { asset: ImageA
     '--art-two': asset.palette[1],
     '--art-three': asset.palette[2],
   } as React.CSSProperties
-  const content = asset.src ? <img src={asset.src} alt={asset.title} /> : (
+  const content = asset.src ? <StoredImage src={asset.src} alt={asset.title} original={showLabel} /> : (
     <>
       <span className="art-orb orb-a" />
       <span className="art-orb orb-b" />

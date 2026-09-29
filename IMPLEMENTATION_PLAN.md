@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phase 0 recovery path implemented locally; real-iPhone verification is still required.
+Status: phase 0 recovery path is live. Phase 1 storage changes are implemented and tested locally on `codex/indexeddb-storage`, but are not published. The iPhone backup and real-device verification are still required.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -23,6 +23,8 @@ Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep
 Done when: a note, journal entry, project, and uploaded image from the phone can all be restored from the exported file, and the original phone data is still intact.
 
 ## 1. Reliable on-device storage
+
+Local implementation: the repository, per-record transactions, image blobs/thumbnails, save-status/retry UI, and copy-then-verify migration are in the feature branch. Automated tests cover migration, reload, failure rollback, image bytes, and export/restore. The old `localStorage` record is intentionally left untouched. Do not publish this migration until a real iPhone archive has been saved, passed Lumen's integrity check, and copied off the phone. Then run the remaining iPhone checks below before calling this milestone done.
 
 - [ ] Replace the single large `localStorage` JSON record with an IndexedDB repository. Store records separately and image originals as blobs; keep small UI preferences separate.
 - [ ] Save changed records transactionally. Report storage and quota failures instead of silently showing success. Show a quiet save indicator and an explicit error/retry path.

@@ -41,10 +41,11 @@ import {
 import type { CSSProperties, FormEvent } from 'react'
 import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction, type MapNode } from './components/VisualComponents'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
+import { StoredImage } from './components/StoredImage'
 import { createDemoState, createPinterestSample } from './data/demoData'
-import { createBackup, currentDataSummary, readBackup, STORAGE_KEY } from './backup'
+import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
-import { useLocalStorage } from './hooks/useLocalStorage'
+import { useAppStorage, type SaveState } from './hooks/useAppStorage'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
 
@@ -142,7 +143,7 @@ function weekOffsetForDate(iso: string) {
 }
 
 function App() {
-  const [data, setData] = useLocalStorage<AppState>(STORAGE_KEY, createDemoState())
+  const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState } = useAppStorage()
   const [screen, setScreen] = useState<Screen>('welcome')
   const [selectedProjectId, setSelectedProjectId] = useState('project-os')
   const [selectedPersonId, setSelectedPersonId] = useState('person-anna')
@@ -169,40 +170,6 @@ function App() {
   const [resting, setResting] = useState(false)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const lastPrimaryScreen = useRef<Tab>('home')
-
-  useEffect(() => {
-    const defaults = createDemoState()
-    setData((current) => {
-      const needsBaseMigration = !current.healthPlans || !current.wellnessLogs || !current.skincareRoutine || !current.skinPhotos || !current.brainCategories
-      const needsBrainDemoMigration = current.version < 6
-      if (!needsBaseMigration && !needsBrainDemoMigration) return current
-      const defaultNotesById = new Map(defaults.notes.map((note) => [note.id, note]))
-      const refreshedCurrentNotes = needsBrainDemoMigration ? current.notes.map((note) => {
-        const demo = defaultNotesById.get(note.id)
-        return note.id.startsWith('graph-note-') && demo
-          ? { ...note, relatedNoteIds: Array.from(new Set([...note.relatedNoteIds, ...demo.relatedNoteIds])) }
-          : note
-      }) : current.notes
-      const demoNetworkNotes = needsBrainDemoMigration ? defaults.notes.filter((note) => !refreshedCurrentNotes.some((item) => item.id === note.id)) : []
-      const nextNotes = [...refreshedCurrentNotes, ...demoNetworkNotes]
-      const nextNoteIds = new Set(nextNotes.map((note) => note.id))
-      const currentCategories = current.brainCategories ?? defaults.brainCategories
-      const nextCategories = needsBrainDemoMigration ? currentCategories.map((category) => {
-        const demoCategory = defaults.brainCategories.find((item) => item.id === category.id)
-        return demoCategory ? { ...category, noteIds: Array.from(new Set([...category.noteIds, ...demoCategory.noteIds.filter((id) => nextNoteIds.has(id))])) } : category
-      }) : currentCategories
-      return {
-        ...current,
-        version: Math.max(current.version, 6),
-        notes: nextNotes,
-        brainCategories: nextCategories,
-        healthPlans: current.healthPlans ?? defaults.healthPlans,
-        wellnessLogs: current.wellnessLogs ?? defaults.wellnessLogs,
-        skincareRoutine: current.skincareRoutine ?? defaults.skincareRoutine,
-        skinPhotos: current.skinPhotos ?? defaults.skinPhotos,
-      }
-    })
-  }, [setData])
 
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId) ?? data.projects[0]
   const selectedPerson = data.people.find((person) => person.id === selectedPersonId) ?? data.people[0]
@@ -238,7 +205,7 @@ function App() {
     setData((current) => ({ ...current, thoughts: [thought, ...current.thoughts] }))
     setCaptureText('')
     setSheet({ kind: null })
-    notify('Saved to Brain')
+    notify('Added to Brain')
   }
 
   const categorizeThought = (thoughtId: string, categoryId: string) => {
@@ -262,7 +229,7 @@ function App() {
       const exists = categories.some((item) => item.id === category.id)
       return { ...current, brainCategories: exists ? categories.map((item) => item.id === category.id ? category : item) : [category, ...categories] }
     })
-    notify('Category saved')
+    notify('Category updated')
   }
 
   const toggleTask = (taskId: string) => {
@@ -406,7 +373,7 @@ function App() {
     const entry = { id: existing?.id ?? `health-${Date.now()}`, date: entryDate, energy: healthDraft.energy, sleep: healthDraft.sleep, workout: existing?.workout ?? 'Rest day', notes: healthDraft.notes }
     setData((current) => ({ ...current, healthEntries: [entry, ...current.healthEntries.filter((item) => item.id !== entry.id)] }))
     setSheet({ kind: null })
-    notify('Health log saved')
+    notify('Health log updated')
   }
 
   const openHealthEditor = (date = previewDate.iso) => {
@@ -421,7 +388,7 @@ function App() {
       ...current,
       healthPlans: [plan, ...(current.healthPlans ?? []).filter((item) => item.date !== plan.date)],
     }))
-    notify('Day plan saved')
+    notify('Day plan updated')
   }
 
   const addExerciseToPlan = (date: string, workoutGuideId: string, defaults: { sets: number; reps: number; unit: PlannedExerciseUnit }) => {
@@ -465,9 +432,8 @@ function App() {
 
   const saveSkinPhoto = (date: string, file?: File) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const src = String(reader.result)
+    try {
+      const src = stageImage(file)
       setData((current) => {
         const existing = current.wellnessLogs?.find((item) => item.date === date)
         const log: WellnessLog = existing ?? { id: `wellness-${date}`, date, water: 0, meals: 0, skincare: false }
@@ -478,9 +444,8 @@ function App() {
           skinPhotos: [photo, ...(current.skinPhotos ?? [])],
         }
       })
-      notify('Skin photo saved')
-    }
-    reader.readAsDataURL(file)
+      notify('Skin photo added')
+    } catch { notify('Could not add this photo') }
   }
 
   const saveJournal = (event: FormEvent) => {
@@ -489,18 +454,16 @@ function App() {
     setData((current) => ({ ...current, journalEntries: [entry, ...current.journalEntries] }))
     setJournalDraft(blankJournalDraft)
     setSheet({ kind: null })
-    notify('Journal entry saved')
+    notify('Journal entry added')
   }
 
   const handleUpload = (file?: File) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const asset: ImageAsset = { id: `image-${Date.now()}`, title: file.name.replace(/\.[^.]+$/, ''), src: String(reader.result), palette: ['#d7d0c3', '#8c8b81', '#272b2a'], tags: ['uploaded'], projectIds: [], collectionIds: [], origin: 'upload', height: 'medium', createdAt: previewDate.iso }
+    try {
+      const asset: ImageAsset = { id: `image-${Date.now()}`, title: file.name.replace(/\.[^.]+$/, ''), src: stageImage(file), palette: ['#d7d0c3', '#8c8b81', '#272b2a'], tags: ['uploaded'], projectIds: [], collectionIds: [], origin: 'upload', height: 'medium', createdAt: previewDate.iso }
       setData((current) => ({ ...current, imageAssets: [asset, ...current.imageAssets] }))
       notify('Added to Inspiration')
-    }
-    reader.readAsDataURL(file)
+    } catch { notify('Could not add this image') }
   }
 
   const deleteImage = (id: string) => {
@@ -617,13 +580,11 @@ function App() {
     setSelectedPersonId('person-anna')
     setSelectedImageId(null)
     navigate('home')
-    notify('Demo data reset')
+    notify('Demo reset queued')
   }
 
-  const restoreBackup = (restored: AppState) => {
-    // Write first: never show restored data in memory if the browser rejected the save.
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
-    setData(restored)
+  const restoreBackup = async (restored: AppState) => {
+    await replaceData(restored)
     setSelectedProjectId(restored.projects[0]?.id ?? '')
     setSelectedPersonId(restored.people[0]?.id ?? '')
     setSelectedImageId(null)
@@ -645,9 +606,9 @@ function App() {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} onToggleTask={toggleTask} onOpenBackup={() => navigate('backup')} />
-      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} />
-      case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} />
+      case 'home': return <HomeScreen data={data} onToggleTask={toggleTask} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
+      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} />
+      case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
       case 'projects': return <ProjectsScreen data={data} onOpenProject={(project) => { setSelectedProjectId(project.id); navigate('project-detail') }} onNewProject={() => openSheet('project')} />
       case 'project-detail': return <ProjectDetailScreen data={data} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
       case 'health': return <HealthScreen data={data} onStartWorkout={startWorkout} onSaveDayPlan={saveDayPlan} onAddExercise={addExerciseToPlan} onUpdateWellness={updateWellnessLog} onSaveSkinPhoto={saveSkinPhoto} onOpenHealthJournal={openHealthEditor} skincareRoutine={data.skincareRoutine} skinPhotos={data.skinPhotos} onUpdateSkincareRoutine={updateSkincareRoutine} />
@@ -660,7 +621,7 @@ function App() {
       case 'workout': return <WorkoutScreen data={data} exerciseIndex={workoutExerciseIndex} resting={resting} restSeconds={restSeconds} onCompleteSet={completeSet} onNextExercise={nextExercise} onSkipRest={() => setResting(false)} />
       case 'spotify': return <SpotifyScreen data={data} onBack={returnToPrimaryScreen} onToggle={() => setData((current) => ({ ...current, isPlaying: !current.isPlaying }))} onNext={() => cycleTrack(1)} onPrevious={() => cycleTrack(-1)} />
       case 'mail': return <MailScreen onBack={returnToPrimaryScreen} />
-      case 'pinterest': return <PinterestScreen onBack={returnToPrimaryScreen} onSave={() => { setData((current) => ({ ...current, imageAssets: [createPinterestSample(), ...current.imageAssets] })); notify('Saved to Inspiration') }} />
+      case 'pinterest': return <PinterestScreen onBack={returnToPrimaryScreen} onSave={() => { setData((current) => ({ ...current, imageAssets: [createPinterestSample(), ...current.imageAssets] })); notify('Added to Inspiration') }} />
       default: return null
     }
   }
@@ -674,11 +635,16 @@ function App() {
         </motion.div>
       </AnimatePresence>
       {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId={motionId} />}
+      {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
       {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
       {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
       {toast && <motion.div className="toast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}><Check size={14} />{toast}</motion.div>}
     </div>
   )
+
+  if (!ready) {
+    return <div className="storage-loading-screen"><LumenMark /><strong>{saveState.kind === 'error' ? 'Could not open device data' : 'Opening Lumen…'}</strong><p>{saveState.kind === 'error' ? `${saveState.error} Do not clear this app’s storage.` : 'Checking your data on this device.'}</p>{saveState.kind === 'error' && <button type="button" onClick={retrySave}>Retry opening data</button>}</div>
+  }
 
   if (import.meta.env.PROD) {
     return (
@@ -706,6 +672,7 @@ function App() {
               </motion.div>
             </AnimatePresence>
             {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId="phone" />}
+            {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
             {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
             {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
             {toast && <motion.div className="toast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}><Check size={14} />{toast}</motion.div>}
@@ -808,7 +775,7 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, onToggleTask, onOpenBackup }: { data: AppState; onToggleTask: (id: string) => void; onOpenBackup: () => void }) {
+function HomeScreen({ data, onToggleTask, onOpenBackup, saveState, onRetrySave }: { data: AppState; onToggleTask: (id: string) => void; onOpenBackup: () => void; saveState: SaveState; onRetrySave: () => void }) {
   const openTasks = data.tasks.filter((task) => !task.completed)
   const completedTaskItems = data.tasks.filter((task) => task.completed)
   const tasks = [...openTasks, ...completedTaskItems]
@@ -858,7 +825,7 @@ function HomeScreen({ data, onToggleTask, onOpenBackup }: { data: AppState; onTo
   }
   return (
     <div className="screen-scroll home-screen home-minimal-screen home-theme-preview">
-      <div className="minimal-home-top"><button className="home-backup-link" type="button" onClick={onOpenBackup}><Download size={14} /> Data & backup</button></div>
+      <div className="minimal-home-top"><span className={`home-save-state is-${saveState.kind}`} role="status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : 'Not saved'}</span>{saveState.kind === 'error' && <button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button>}<button className="home-backup-link" type="button" onClick={onOpenBackup}><Download size={14} /> Data & backup</button></div>
 
       <section className="home-liquid-focus" style={liquidStyle}>
         <div className="home-liquid-heading">
@@ -897,11 +864,12 @@ function BackupCounts({ summary }: { summary: BackupSummary }) {
   </div>
 }
 
-function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () => void; onRestore: (restored: AppState) => void }) {
+function BackupScreen({ data, onBack, onRestore, onPortableState, saveState }: { data: AppState; onBack: () => void; onRestore: (restored: AppState) => Promise<void>; onPortableState: (data: AppState) => Promise<AppState>; saveState: SaveState }) {
   const [prepared, setPrepared] = useState<{ file: File; summary: BackupSummary } | null>(null)
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof readBackup>> | null>(null)
   const [replaceSelected, setReplaceSelected] = useState(false)
   const [currentCopySaved, setCurrentCopySaved] = useState(false)
+  const [restoring, setRestoring] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -910,13 +878,13 @@ function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () 
   useEffect(() => {
     let cancelled = false
     setPrepared(null)
-    createBackup(data).then(({ fileName, text, summary }) => {
+    onPortableState(data).then(createBackup).then(({ fileName, text, summary }) => {
       if (!cancelled) setPrepared({ file: new File([text], fileName, { type: 'application/json' }), summary })
     }).catch((failure: unknown) => {
       if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not prepare the backup.')
     })
     return () => { cancelled = true }
-  }, [data])
+  }, [data, onPortableState])
 
   const canShareFile = !!prepared && typeof navigator.share === 'function' &&
     (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [prepared.file] }))
@@ -962,10 +930,11 @@ function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () 
     }
   }
 
-  const restore = () => {
+  const restore = async () => {
     if (!preview || !replaceSelected || !currentCopySaved) return
+    setRestoring(true)
     try {
-      onRestore(preview.data)
+      await onRestore(preview.data)
       setPreview(null)
       setReplaceSelected(false)
       setCurrentCopySaved(false)
@@ -973,12 +942,14 @@ function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () 
       setMessage('Backup restored on this device. Open your notes and images to check them.')
     } catch {
       setError('This device could not save the restored data. Nothing was replaced. Free storage and try again.')
+    } finally {
+      setRestoring(false)
     }
   }
 
   return <main className="screen-scroll backup-screen">
     <PageHeader title="Data & backup" subtitle="Keep a copy you control." onBack={onBack} />
-    <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.</div>
+    <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.<span className="backup-local-status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving changes…' : 'Some changes are not saved'}</span></div>
 
     <section className="backup-panel">
       <span className="eyebrow">CURRENT DATA</span>
@@ -1002,7 +973,7 @@ function BackupScreen({ data, onBack, onRestore }: { data: AppState; onBack: () 
         <p>Restoring will replace the data currently on this device. It will not merge records.</p>
         <label><input type="radio" name="backup-mode" checked={replaceSelected} onChange={() => setReplaceSelected(true)} /> Replace this device's data</label>
         <label><input type="checkbox" checked={currentCopySaved} onChange={(event) => setCurrentCopySaved(event.target.checked)} /> I have saved a separate copy of my current data</label>
-        <button className="backup-danger" type="button" disabled={!replaceSelected || !currentCopySaved} onClick={restore}>Replace with this backup</button>
+        <button className="backup-danger" type="button" disabled={!replaceSelected || !currentCopySaved || restoring} onClick={() => void restore()}>{restoring ? 'Restoring…' : 'Replace with this backup'}</button>
       </div>}
     </section>
     {error && <p className="backup-feedback is-error" role="alert">{error}</p>}
@@ -1170,7 +1141,7 @@ function BrainActionSearch({ value, onChange, items }: { value: string; onChange
   )
 }
 
-function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCategorizeThought, onSaveCategory }: { data: AppState; onCapture: () => void; onNewNote: (categoryId?: string) => void; onOpenNote: (note: Note) => void; onThought: (thought: Thought) => void; onCategorizeThought: (thoughtId: string, categoryId: string) => void; onSaveCategory: (category: BrainCategory) => void }) {
+function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCategorizeThought, onSaveCategory, onStageImage }: { data: AppState; onCapture: () => void; onNewNote: (categoryId?: string) => void; onOpenNote: (note: Note) => void; onThought: (thought: Thought) => void; onCategorizeThought: (thoughtId: string, categoryId: string) => void; onSaveCategory: (category: BrainCategory) => void; onStageImage: (file: File) => string }) {
   const [categoryDraft, setCategoryDraft] = useState<BrainCategory | null>(null)
   const [activeSection, setActiveSection] = useState('home')
   const [brainSearchOpen, setBrainSearchOpen] = useState(false)
@@ -1217,9 +1188,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
   const toggleDraftNote = (noteId: string) => setCategoryDraft((current) => current ? { ...current, noteIds: current.noteIds.includes(noteId) ? current.noteIds.filter((id) => id !== noteId) : [...current.noteIds, noteId] } : current)
   const loadCategoryImage = (file?: File) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setCategoryDraft((current) => current ? { ...current, image: String(reader.result) } : current)
-    reader.readAsDataURL(file)
+    setCategoryDraft((current) => current ? { ...current, image: onStageImage(file) } : current)
   }
   const saveCategory = (event: FormEvent) => {
     event.preventDefault()
@@ -1300,7 +1269,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
         {categoryDraft && <motion.div className="brain-category-layer" role="dialog" aria-modal="true" aria-label={categoryDraft.id ? 'Edit category' : 'New category'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCategoryDraft(null)}>
           <motion.form className="brain-category-editor" onSubmit={saveCategory} onClick={(event) => event.stopPropagation()} initial={{ y: 24 }} animate={{ y: 0 }} exit={{ y: 24 }} transition={{ type: 'spring', damping: 27, stiffness: 285 }}>
             <div className="brain-category-editor-head"><div><span className="eyebrow">BRAIN LIBRARY</span><h2>{categoryDraft.id ? 'Edit category' : 'New category'}</h2></div><button type="button" aria-label="Close category editor" onClick={() => setCategoryDraft(null)}><X size={16} /></button></div>
-            <div className="brain-category-preview" style={{ '--category-color': categoryDraft.color } as CSSProperties}><span>{categoryDraft.image ? <img src={categoryDraft.image} alt="Category cover preview" /> : <BrainCategoryGlyph icon={categoryDraft.icon} size={26} />}</span><div><small>PREVIEW</small><strong>{categoryDraft.name || 'Category name'}</strong><em>{categoryDraft.noteIds.length} notes selected</em></div></div>
+            <div className="brain-category-preview" style={{ '--category-color': categoryDraft.color } as CSSProperties}><span>{categoryDraft.image ? <StoredImage src={categoryDraft.image} alt="Category cover preview" /> : <BrainCategoryGlyph icon={categoryDraft.icon} size={26} />}</span><div><small>PREVIEW</small><strong>{categoryDraft.name || 'Category name'}</strong><em>{categoryDraft.noteIds.length} notes selected</em></div></div>
             <label className="brain-category-field"><span>Name</span><input autoFocus value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} placeholder="e.g. Reading list" /></label>
             <div className="brain-category-option"><span>Color</span><div className="brain-color-options">{brainCategoryColors.map((color) => <button type="button" aria-label={`Use ${color}`} aria-pressed={categoryDraft.color === color} className={categoryDraft.color === color ? 'is-selected' : ''} style={{ background: color }} key={color} onClick={() => setCategoryDraft({ ...categoryDraft, color })}>{categoryDraft.color === color && <Check size={12} />}</button>)}</div></div>
             <div className="brain-category-option"><span>Icon</span><div className="brain-icon-options">{brainCategoryIcons.map((icon) => <button type="button" aria-label={`Use ${icon} icon`} aria-pressed={categoryDraft.icon === icon} className={categoryDraft.icon === icon ? 'is-selected' : ''} key={icon} onClick={() => setCategoryDraft({ ...categoryDraft, icon })}><BrainCategoryGlyph icon={icon} size={17} /></button>)}</div></div>
@@ -1777,7 +1746,7 @@ function SkincareScreen({ date, log, routine, photos, onBack, onSavePhoto, onUpd
           <span><strong>Add skin photo</strong><small>Keep a visual record over time</small></span>
           <Plus size={15} />
         </label>
-        {displayedPhotos.length ? <div className="skincare-photo-list">{displayedPhotos.map((photo) => <article key={photo.id}><img src={photo.src} alt={`Skin check-in from ${formatLongDate(photo.date)}`} /><div><strong>{formatLongDate(photo.date)}</strong><small>{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(photo.createdAt))}</small></div></article>)}</div> : <div className="skincare-empty">No photos yet. Add one to start the timeline.</div>}
+        {displayedPhotos.length ? <div className="skincare-photo-list">{displayedPhotos.map((photo) => <article key={photo.id}><StoredImage src={photo.src} alt={`Skin check-in from ${formatLongDate(photo.date)}`} /><div><strong>{formatLongDate(photo.date)}</strong><small>{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(photo.createdAt))}</small></div></article>)}</div> : <div className="skincare-empty">No photos yet. Add one to start the timeline.</div>}
       </section>
     </div>
   )
