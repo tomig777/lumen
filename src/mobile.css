@@ -1,0 +1,124 @@
+/* Installed app only. The desktop handset preview keeps its own frame rules. */
+body:has(.deployed-app-root) { overflow: hidden; background: var(--lumen-paper); }
+
+.deployed-app-root {
+  position: fixed;
+  top: var(--lumen-viewport-top, 0px);
+  right: 0;
+  left: 0;
+  width: 100%;
+  height: var(--lumen-viewport-height, 100dvh);
+  overflow: hidden;
+  background: var(--lumen-paper);
+}
+
+.phone-app.deployed-app-screen {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--lumen-paper);
+}
+
+.deployed-app-screen > .status-bar { display: none; }
+.deployed-app-screen .screen-layer { min-width: 0; }
+
+.deployed-app-screen .screen-scroll:not(.external-screen) {
+  padding-top: max(56px, calc(env(safe-area-inset-top) + 12px));
+  padding-right: max(20px, calc(env(safe-area-inset-right) + 12px));
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  padding-left: max(20px, calc(env(safe-area-inset-left) + 12px));
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.deployed-app-screen .screen-scroll.home-screen {
+  padding-top: max(52px, calc(env(safe-area-inset-top) + 8px));
+}
+
+.deployed-app-screen .bottom-nav {
+  right: calc(64px + env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left));
+  height: 56px;
+  padding: 5px 7px;
+}
+.deployed-app-screen .nav-item { min-height: 44px; }
+.deployed-app-screen .nav-capture { top: 3px; }
+.deployed-app-screen .nav-action-menu { max-height: min(320px, 65vh); overflow-y: auto; }
+.deployed-app-screen .nav-action-item { min-height: 44px; }
+.deployed-app-screen .brain-section-nav button { min-height: 44px; }
+
+.deployed-app-screen .lumen-enter-button {
+  bottom: calc(29px + env(safe-area-inset-bottom));
+}
+
+.deployed-app-screen .back-button,
+.deployed-app-screen .page-header .icon-button { min-width: 44px; min-height: 44px; }
+
+.deployed-app-screen .sheet-layer {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+.deployed-app-screen .bottom-sheet {
+  max-height: 100%;
+  padding-bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px));
+  overscroll-behavior-y: contain;
+  scroll-padding-bottom: 24px;
+  -webkit-overflow-scrolling: touch;
+}
+.deployed-app-screen .bottom-sheet button { min-height: 44px; }
+.deployed-app-screen .quick-capture-layer {
+  padding: max(14px, env(safe-area-inset-top)) 20px max(14px, env(safe-area-inset-bottom));
+}
+.deployed-app-screen .quick-capture-sheet { max-height: 100%; overflow-y: auto; padding-bottom: 20px; }
+
+/* 16px prevents iOS from zooming the whole interface when a field receives focus. */
+.deployed-app-screen input:not([type='checkbox']):not([type='radio']),
+.deployed-app-screen textarea,
+.deployed-app-screen select { font-size: 16px; }
+
+.deployed-app-screen .image-viewer {
+  overflow-y: auto;
+  padding-top: max(55px, calc(env(safe-area-inset-top) + 12px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.deployed-app-screen .viewer-art { min-height: 0; }
+
+.deployed-app-screen .people-home-indicator { display: none; }
+.deployed-app-screen .close-friends-header { top: max(68px, calc(env(safe-area-inset-top) + 18px)); }
+.deployed-app-screen .people-bottom-switch {
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  min-height: 44px;
+}
+
+.deployed-app-screen .focus-player-screen {
+  padding-top: max(12px, calc(env(safe-area-inset-top) + 8px));
+  padding-bottom: max(16px, calc(env(safe-area-inset-bottom) + 10px));
+}
+.deployed-app-screen .focus-player-back,
+.deployed-app-screen .focus-player-controls button:not(.focus-player-play) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .deployed-app-screen .focus-player-heading { margin-top: 4px; }
+  .deployed-app-screen .focus-player-heading h1 { font-size: 20px; }
+  .deployed-app-screen .focus-orbit { top: 51%; width: 120px; height: 120px; }
+  .deployed-app-screen .focus-orbit-ring-middle { inset: 14px; }
+  .deployed-app-screen .focus-orbit-ring-inner { inset: 28px; }
+  .deployed-app-screen .focus-orbit-core { width: 56px; height: 56px; font-size: 14px; }
+  .deployed-app-screen .focus-player-progress { bottom: 24%; }
+  .deployed-app-screen .focus-player-controls { bottom: 2%; }
+  .deployed-app-screen .focus-player-controls .focus-player-play { width: 52px; height: 52px; }
+
+  .deployed-app-screen .people-screen { overflow-y: auto; }
+  .deployed-app-screen .people-screen .people-cloud { position: relative; height: 650px; min-height: 650px; }
+  .deployed-app-screen .people-bottom-switch {
+    right: max(20px, calc(env(safe-area-inset-right) + 12px));
+    left: auto;
+    transform: none;
+  }
+}

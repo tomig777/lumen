@@ -17,6 +17,8 @@ Pushing to `main` runs the workflow in `.github/workflows/deploy-pages.yml`, whi
 
 On iPhone, open the published site in Safari and use **Share → Add to Home Screen** for an app-like full-screen launch.
 
+The welcome page enters the app only through **Enter Lumen**. The installed build uses the full visible viewport, iPhone safe-area insets, and scrollable forms so the keyboard should not hide their controls. Desktop's phone frame is a preview, not a substitute for checking the installed app.
+
 The app stores records and full-size uploaded photos in this device's IndexedDB, with a visible save status. Existing local-storage data is copied and verified on first launch; the old record is not deleted. There is no sign-in or cloud sync, so data does not automatically transfer between devices or browsers. A verified backup copied off the phone remains essential once you have personal data; browser storage can be lost or cleared.
 
 ## Back up and restore your data
@@ -31,4 +33,8 @@ This is a recovery file, not automatic sync. The app cannot confirm that the iPh
 
 The app copies the old local-storage record into IndexedDB, verifies record and image integrity, then activates the new store. It does not delete the old record. On the actual installed iPhone app, confirm that existing content and photos open, a newly created note and photo survive closing and reopening the app, and an exported backup passes its integrity check. Once you start adding personal data, keep a verified backup off the phone.
 
-Local checks: `npm run test:storage`, `npm run test:backup`, and `npm run build`. These do not replace the iPhone checks.
+Local checks: `pnpm test:storage`, `pnpm test:backup`, and `pnpm build`. These do not replace the iPhone checks.
+
+## iPhone layout acceptance (when ready to test)
+
+Open Home, Brain, Projects (including a project), Health, Journal, Inspiration, People, and Focus in the installed Home Screen app. Check the four-tab navigation, + menu, welcome button, and each editing sheet. With the keyboard open, confirm the active field and Save/Close controls remain reachable; then rotate the phone and try larger text and Reduce Motion. Check Safari separately, since its browser chrome changes the visible height. Report any cropped screen or hard-to-tap control with a screenshot; `IMPLEMENTATION_PLAN.md` keeps these device checks open until then.

@@ -4,6 +4,7 @@ import App from './App'
 import { MotionConfig } from 'framer-motion'
 import './styles.css'
 import './polish.css'
+import './mobile.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

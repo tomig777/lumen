@@ -6641,25 +6641,39 @@ textarea:focus-visible {
   font-size: 11px;
 }
 
-.lumen-start-hint {
+.lumen-enter-button {
   position: absolute;
-  bottom: 25px;
+  z-index: 2;
+  bottom: 29px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
+  min-width: 190px;
+  min-height: 54px;
+  display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 15px;
-  border-radius: 30px;
-  background: rgba(247, 245, 240, .9);
-  color: #555b50;
-  font-size: 10px;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 22px;
+  border: 1px solid #5a4b3c;
+  border-radius: 999px;
+  color: #faf4ec;
+  background: #2b251f;
+  box-shadow: 0 5px 0 #97775c, 0 15px 26px rgba(56, 39, 25, .22), inset 0 1px 0 rgba(255,255,255,.18);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -.02em;
   white-space: nowrap;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
 }
 
-.lumen-start:focus-visible {
-  outline: 2px solid #839780;
-  outline-offset: -6px;
+.lumen-enter-button:hover { background: #44372c; }
+.lumen-enter-button:active {
+  transform: translate(-50%, 4px);
+  box-shadow: 0 1px 0 #97775c, 0 5px 10px rgba(56, 39, 25, .18), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.lumen-enter-button:focus-visible {
+  outline: 3px solid #a17c58;
+  outline-offset: 5px;
 }
 
 .onboarding-welcome {

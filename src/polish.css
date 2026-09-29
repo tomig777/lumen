@@ -430,53 +430,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .phone-app:has(.health-screen) .nav-capture { color: #24211e; background: #e8d9c7; }
 .phone-app:has(.health-screen) .nav-capture:hover { background: #f6ecdf; }
 
-/* Installed/hosted build: render the app itself, not the desktop device mockup. */
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  min-width: 320px;
-  min-height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background: #24211e;
-}
-
-.deployed-app-root {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 100svh;
-  min-height: 100dvh;
-  overflow: hidden;
-  background: var(--lumen-paper);
-}
-
-.phone-app.deployed-app-screen {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  overflow: hidden;
-  border-radius: 0;
-  box-shadow: none;
-  background: var(--lumen-paper);
-}
-
-.deployed-app-screen > .status-bar {
-  display: none;
-}
-
-.deployed-app-screen .screen-scroll:not(.external-screen) {
-  padding-top: calc(56px + env(safe-area-inset-top));
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
-}
-
-.deployed-app-screen .screen-scroll.home-screen {
-  padding-top: calc(52px + env(safe-area-inset-top));
-}
-
 .home-backup-link {
   display: inline-flex;
   align-items: center;
@@ -563,8 +516,3 @@ body,
 .backup-preview input { flex: 0 0 auto; width: 17px; height: 17px; margin: -1px 0 0; accent-color: #694b3b; }
 .backup-feedback { padding: 12px 14px; border-radius: 14px; background: #e8d9c7; color: #392f26; font-size: 11px; line-height: 1.4; }
 .backup-feedback.is-error { background: #f2ddd7; color: #713b32; }
-
-.deployed-app-screen .bottom-nav {
-  height: calc(72px + env(safe-area-inset-bottom));
-  padding-bottom: calc(13px + env(safe-area-inset-bottom));
-}

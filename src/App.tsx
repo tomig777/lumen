@@ -46,6 +46,7 @@ import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
 import { useAppStorage, type SaveState } from './hooks/useAppStorage'
+import { useMobileViewport } from './hooks/useMobileViewport'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
 
@@ -143,6 +144,7 @@ function weekOffsetForDate(iso: string) {
 }
 
 function App() {
+  useMobileViewport()
   const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState } = useAppStorage()
   const [screen, setScreen] = useState<Screen>('welcome')
   const [selectedProjectId, setSelectedProjectId] = useState('project-os')
@@ -716,7 +718,7 @@ function LumenMark({ compact = false }: { compact?: boolean }) {
 
 function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
   return (
-    <button className="lumen-start" type="button" aria-label="Continue to Lumen" onClick={onContinue}>
+    <main className="lumen-start">
       <svg className="lumen-start-art" viewBox="0 0 360 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <path d="M60 -20 C-15 70 30 118 89 155" fill="none" stroke="#92b4a4" strokeWidth="2" />
         <g transform="translate(100 162) rotate(-14)">
@@ -742,8 +744,10 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
         <strong>Lumen</strong>
         <span className="lumen-start-subtitle">A little space for a clearer day.</span>
       </span>
-      <span className="lumen-start-hint">Tap anywhere to begin <ArrowUpRight size={14} /></span>
-    </button>
+      <button className="lumen-enter-button" type="button" onClick={onContinue}>
+        <span>Enter Lumen</span><ArrowUpRight size={17} aria-hidden="true" />
+      </button>
+    </main>
   )
 }
 
@@ -1895,15 +1899,35 @@ type RenderSheetProps = {
 }
 
 function SheetFrame({ eyebrow, title, onClose, centered = false, children }: { eyebrow: string; title: string; onClose: () => void; centered?: boolean; children: React.ReactNode }) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
-    const dismiss = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
-    window.addEventListener('keydown', dismiss)
-    return () => window.removeEventListener('keydown', dismiss)
-  }, [onClose])
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { closeRef.current(); return }
+      if (event.key !== 'Tab' || !import.meta.env.PROD) return
+      const controls = Array.from(sheetRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])
+        .filter((control) => control.getClientRects().length > 0)
+      if (!controls.length) { event.preventDefault(); return }
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (event.shiftKey && (document.activeElement === first || !sheetRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !sheetRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
+    }
+  }, [])
   const enterAnimation = centered ? { opacity: 0, scale: .94, y: 12 } : { y: '100%' as const }
   const showAnimation = centered ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }
   const exitAnimation = centered ? { opacity: 0, scale: .96, y: 8 } : { y: '100%' as const }
-  return <div className={`sheet-layer${centered ? ' quick-capture-layer' : ''}`} onClick={onClose}><motion.div className={`bottom-sheet${centered ? ' quick-capture-sheet' : ''}`} onClick={(event) => event.stopPropagation()} initial={enterAnimation} animate={showAnimation} exit={exitAnimation} transition={centered ? { type: 'spring', damping: 26, stiffness: 300 } : { type: 'spring', damping: 28, stiffness: 290 }}><div className="sheet-handle" /><div className="sheet-head"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div><IconButton label="Close" onClick={onClose}><X size={17} /></IconButton></div>{children}</motion.div></div>
+  return <div className={`sheet-layer${centered ? ' quick-capture-layer' : ''}`} onClick={onClose}><motion.div ref={sheetRef} role="dialog" aria-modal="true" aria-label={title} className={`bottom-sheet${centered ? ' quick-capture-sheet' : ''}`} onClick={(event) => event.stopPropagation()} initial={enterAnimation} animate={showAnimation} exit={exitAnimation} transition={centered ? { type: 'spring', damping: 26, stiffness: 300 } : { type: 'spring', damping: 28, stiffness: 290 }}><div className="sheet-handle" /><div className="sheet-head"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div><IconButton label="Close" onClick={onClose}><X size={17} /></IconButton></div>{children}</motion.div></div>
 }
 
 function RenderSheet({ sheet, setSheet, captureText, setCaptureText, saveCapture, noteDraft, setNoteDraft, saveNote, taskDraft, setTaskDraft, saveTask, onDeleteTask, projectDraft, setProjectDraft, saveProject, personDraft, setPersonDraft, savePerson, healthDraft, setHealthDraft, saveHealth, journalDraft, setJournalDraft, journalMode, setJournalMode, saveJournal, data, onConvertThoughtToTask, onConvertThoughtToNote, onDeleteThought, onPinThought }: RenderSheetProps) {

@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phase 0 recovery path is live. Phase 1 storage implementation is being published; real-iPhone validation remains. The user confirmed the current phone has disposable demo data only, so the pre-migration archive is waived for this release. Make an off-phone backup before relying on future personal data.
+Status: phases 0–2 have implementation releases. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -37,13 +37,14 @@ Done when: every create, edit, delete, and upload survives a reload; failed save
 
 ## 2. iPhone layout and interaction pass
 
-- [ ] Separate production full-screen layout rules from the simulated phone-frame styles. Consolidate shared colors, spacing, typography, safe-area, and viewport rules instead of stacking more page-specific overrides.
-- [ ] Audit Home, Brain, Projects and project detail, Health, Journal, Inspiration, People, Focus, every popup, and the bottom navigation in the installed app.
-- [ ] Fix clipped or stretched cards, horizontal overflow, awkward scroll containers, notch and home-indicator overlap, keyboard-covered fields, modal sizing, and touch targets.
-- [ ] Check portrait layout first, then rotation, larger text, reduced motion, and Safari versus Home Screen mode where behavior differs.
-- [ ] Replace the full-screen welcome tap target with a real **Enter Lumen** button. Tapping outside the button must do nothing. Add a short press animation and keyboard/focus behavior.
+- [x] Move production full-screen viewport, safe-area, keyboard, and touch-target rules into `src/mobile.css`, separate from the simulated phone frame. Shared colors remain in `src/polish.css`.
+- [x] Audit Home, Brain, Projects and project detail, Health, Journal, Inspiration, People, Focus, popups, and the bottom navigation in a browser at phone sizes. Check 390 × 844 portrait, 320 × 568 narrow portrait, 390 × 500 short/keyboard-like height, and 844 × 390 landscape.
+- [x] Fix the layout issues found in the simulation: double top spacing, fixed-height bottom bar in safe areas, dialog reachability at short heights, form focus zoom, small sheet/menu targets, and the duplicate People home indicator. Keep scrolling content above the navigation.
+- [x] Replace the full-screen welcome tap target with a real **Enter Lumen** button. Tapping outside the button does nothing; it has a press animation and native keyboard focus/activation.
+- [ ] Verify every page, popup, keyboard interaction, and safe-area inset on the installed iPhone 13 Pro. Correct any differences from browser simulation.
+- [ ] Check larger text, reduced motion, and Safari versus Home Screen mode on the actual phone. Consolidate any legacy page-specific overrides exposed by those checks.
 
-Done when: every control and text field is reachable on the target phone; no screen is cropped or unexpectedly stretched; the welcome button is the only entry action.
+Implementation checks: production build and simulated browser layouts. Device acceptance is intentionally pending; the phase is not fully done until every control and text field is reachable on the target phone, no screen is cropped or unexpectedly stretched, and the welcome button is the only entry action.
 
 ## 3. Performance pass, starting with Brain
 
