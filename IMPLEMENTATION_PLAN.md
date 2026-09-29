@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phase 0 recovery path is live. Phase 1 storage changes are implemented and tested locally on `codex/indexeddb-storage`, but are not published. The iPhone backup and real-device verification are still required.
+Status: phase 0 recovery path is live. Phase 1 storage implementation is being published; real-iPhone validation remains. The user confirmed the current phone has disposable demo data only, so the pre-migration archive is waived for this release. Make an off-phone backup before relying on future personal data.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -24,14 +24,14 @@ Done when: a note, journal entry, project, and uploaded image from the phone can
 
 ## 1. Reliable on-device storage
 
-Local implementation: the repository, per-record transactions, image blobs/thumbnails, save-status/retry UI, and copy-then-verify migration are in the feature branch. Automated tests cover migration, reload, failure rollback, image bytes, and export/restore. The old `localStorage` record is intentionally left untouched. Do not publish this migration until a real iPhone archive has been saved, passed Lumen's integrity check, and copied off the phone. Then run the remaining iPhone checks below before calling this milestone done.
+Implementation: the repository, per-record transactions, image blobs/thumbnails, save-status/retry UI, and copy-then-verify migration are in the release. Automated tests cover migration, reload, failure rollback, image bytes, and export/restore. The old `localStorage` record is intentionally left untouched. This milestone is not done until the installed iPhone app passes the remaining checks below.
 
-- [ ] Replace the single large `localStorage` JSON record with an IndexedDB repository. Store records separately and image originals as blobs; keep small UI preferences separate.
-- [ ] Save changed records transactionally. Report storage and quota failures instead of silently showing success. Show a quiet save indicator and an explicit error/retry path.
-- [ ] Add versioned, idempotent migration from `personal-os-demo-v1`. Compare record counts and image integrity after migration. Preserve the old record until the new store and export have been verified.
-- [ ] Generate thumbnails for display without replacing original uploaded images. Load media only where needed so photos do not slow every screen.
+- [x] Replace the single large `localStorage` JSON record with an IndexedDB repository. Store records separately and image originals as blobs; keep small UI preferences separate.
+- [x] Save changed records transactionally. Report storage and quota failures instead of silently showing success. Show a quiet save indicator and an explicit error/retry path.
+- [x] Add versioned, idempotent migration from `personal-os-demo-v1`. Compare record counts and image integrity after migration. Preserve the old record; a verified off-phone export remains the user's responsibility once personal data exists.
+- [x] Generate thumbnails for display without replacing original uploaded images. Load media only where needed so photos do not slow every screen.
 - [ ] Test reload, app termination, storage-full failure, interrupted writes, export, import, and an app update with real user-created records.
-- [ ] Keep data access behind a small repository interface so a future home-server sync option can be added without rewriting screens. Do not build that server now.
+- [x] Keep data access behind a small repository interface so a future home-server sync option can be added without rewriting screens. Do not build that server now.
 
 Done when: every create, edit, delete, and upload survives a reload; failed saves are visible; a verified export restores the same content on a clean installation.
 
