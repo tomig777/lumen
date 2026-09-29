@@ -4,9 +4,10 @@ import { readFile, readdir } from 'node:fs/promises'
 import { runInNewContext } from 'node:vm'
 
 const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
+const currentIndex = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8')
 const scope = 'https://example.test/lumen/'
 
-function harness() {
+function harness(indexHtml = currentIndex) {
   const listeners = new Map()
   const stores = new Map()
   let online = true
@@ -16,7 +17,8 @@ function harness() {
   const fetch = async (request) => {
     fetches++
     if (!online) throw new Error('Network unavailable')
-    return `network:${typeof request === 'string' ? request : request.url}`
+    const url = typeof request === 'string' ? request : request.url
+    return { label: `network:${url}`, async text() { return url.endsWith('/index.html') ? indexHtml : '' } }
   }
   const caches = {
     async open(name) {
@@ -75,9 +77,9 @@ test('release precaches every output asset and serves the matching shell offline
   assert.equal(app.claims, 1)
   app.setOffline()
   const navigation = await app.dispatch('fetch', { request: { url: scope, method: 'GET', mode: 'navigate' } })
-  assert.equal(navigation, `network:${scope}index.html`)
+  assert.equal(navigation.label, `network:${scope}index.html`)
   const asset = new URL(app.files.find((name) => name.startsWith('assets/')), scope).href
-  assert.equal(await app.dispatch('fetch', { request: { url: asset, method: 'GET', mode: 'no-cors' } }), `network:${asset}`)
+  assert.equal((await app.dispatch('fetch', { request: { url: asset, method: 'GET', mode: 'no-cors' } })).label, `network:${asset}`)
   assert.equal(app.fetches, app.files.length)
 })
 
@@ -97,7 +99,15 @@ test('an evicted shell falls back to network when online', async () => {
   const cache = [...app.stores.values()][0]
   cache.delete(`${scope}index.html`)
   const loaded = await app.dispatch('fetch', { request: { url: scope, method: 'GET', mode: 'navigate' } })
-  assert.equal(loaded, `network:${scope}`)
+  assert.equal(loaded.label, `network:${scope}`)
+})
+
+test('a stale HTML entry point cannot install over the previous offline release', async () => {
+  const app = harness('<script src="./assets/index-from-an-old-release.js"></script>')
+  app.stores.set('lumen-shell-previous', new Map([['old-asset', 'old-content']]))
+  await assert.rejects(app.dispatch('install'), /mixed release/)
+  assert.equal(app.stores.has('lumen-shell-previous'), true)
+  assert.equal(app.claims, 0)
 })
 
 test('new worker waits for user action and retains the previous shell for open tabs', async () => {

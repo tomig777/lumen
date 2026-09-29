@@ -19,6 +19,11 @@ const paths = files.map((path) => relative(root, path).split(sep).join('/'))
 if (!paths.includes('index.html') || !paths.some((path) => path.startsWith('assets/'))) {
   throw new Error('Refusing to generate an incomplete offline shell.')
 }
+const indexHtml = await readFile(join(root, 'index.html'), 'utf8')
+const entryAssets = [...indexHtml.matchAll(/(?:src|href)="\.\/(assets\/[^\"]+)"/g)].map((match) => match[1])
+if (!entryAssets.length || entryAssets.some((path) => !paths.includes(path))) {
+  throw new Error('The HTML entry point does not match the generated assets.')
+}
 const hash = createHash('sha256')
 for (const path of files) {
   hash.update(relative(root, path))
@@ -30,12 +35,20 @@ const cacheName = `lumen-shell-${hash.digest('hex').slice(0, 16)}`
 // backup files, cross-origin requests, or arbitrary runtime responses.
 const worker = `const CACHE_NAME = ${JSON.stringify(cacheName)}
 const FILES = ${JSON.stringify(paths)}
+const ENTRY_ASSETS = ${JSON.stringify(entryAssets)}
 const SCOPE = self.registration.scope
 const INDEX = new URL('index.html', SCOPE).href
 const URLS = new Set(FILES.map((path) => new URL(path, SCOPE).href))
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll([...URLS])))
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME)
+    await cache.addAll([...URLS])
+    const html = await (await cache.match(INDEX))?.text()
+    if (!html || !ENTRY_ASSETS.every((path) => html.includes('./' + path))) {
+      throw new Error('The deployment served a mixed release; keep the previous offline shell.')
+    }
+  })())
 })
 
 self.addEventListener('activate', (event) => {
