@@ -535,6 +535,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .backup-preview input { flex: 0 0 auto; width: 17px; height: 17px; margin: -1px 0 0; accent-color: #694b3b; }
 .backup-feedback { padding: 12px 14px; border-radius: 14px; background: #e8d9c7; color: #392f26; font-size: 11px; line-height: 1.4; }
 .backup-feedback.is-error { background: #f2ddd7; color: #713b32; }
+.backup-status-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(72, 54, 39, .12); font-size: 11px; }
+.backup-status-row span { color: #716356; }
+.backup-status-row strong { color: #2a241f; text-align: right; font-weight: 650; }
 
 .daily-task-group { margin: 18px 0 0; padding: 14px; border: 1px solid #e1d5c7; border-radius: 18px; background: #f6efe6; }
 .daily-task-group > .eyebrow { display: block; margin-bottom: 9px; color: #765f4d; }

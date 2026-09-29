@@ -29,11 +29,26 @@ To verify the file without changing anything, return to **Data & backup**, tap *
 
 This is a recovery file, not automatic sync. The app cannot confirm that the iPhone actually saved or copied it; check the file yourself before relying on it. Do not clear Safari/Home Screen app data before you have a tested backup.
 
+### Practice a restore without risking your phone data
+
+1. In the installed app, create a recognizable test note, journal entry, project, and uploaded photo. Wait until **Data & backup → Last successful local save** updates.
+2. Export a backup and confirm the JSON file exists in Files. Copy it to your Mac or another place outside the phone.
+3. Back in **Data & backup**, choose that exact file under **Use an existing copy**. Check that Lumen says **Integrity check passed** and that the counts look right. This does not replace anything.
+4. On a separate clean browser/profile or device, open Lumen, choose the same file, select **Replace this device's data**, confirm a separate copy of the clean profile's current data, then restore. Open the test note, journal, project, and full-size photo there. Do not clear or restore over your original phone app just to practice.
+
+**Last successful local save** means IndexedDB accepted a write on this device; it is not a backup. **Last verified export file** appears only after you reselect a backup file and it passes validation. Lumen cannot verify that the file was copied off your phone. Downloading or opening the iOS share sheet alone never marks a backup verified.
+
+## Offline use and releases
+
+After one complete online visit to the published app, Lumen caches the app shell and bundled assets for offline launch. Notes, tasks, journals, workouts, and uploaded photos remain in local IndexedDB and can be edited offline while device storage is available. A storage failure is shown as **Changes not saved** with a Retry action; do not clear app data when you see it. Backup sharing and external links may need connectivity or another app.
+
+New releases download as a complete shell. The current app stays on its existing version until a later launch or you choose **Update Lumen now** in **Data & backup** after all changes are saved. Updating the interface does not delete IndexedDB records. Do not clear website data to force an update. On the iPhone, verify Airplane Mode launch, a new note, task completion, photo attachment, and close/reopen before relying on offline use.
+
 ## Storage migration checks
 
 The app copies the old local-storage record into IndexedDB, verifies record and image integrity, then activates the new store. It does not delete the old record. On the actual installed iPhone app, confirm that existing content and photos open, a newly created note and photo survive closing and reopening the app, and an exported backup passes its integrity check. Once you start adding personal data, keep a verified backup off the phone.
 
-Local checks: `pnpm test:storage`, `pnpm test:backup`, and `pnpm build`. These do not replace the iPhone checks.
+Local checks: `pnpm build`, then `pnpm test:storage`, `pnpm test:backup`, `pnpm test:daily`, `pnpm test:brain`, and `pnpm test:offline`. The Pages workflow runs these checks before publishing. They do not replace the iPhone checks.
 
 ## iPhone layout acceptance (when ready to test)
 

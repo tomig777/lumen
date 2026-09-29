@@ -10,6 +10,7 @@ type StoredRow = { key: string; generation: string; id: string; position: number
 type Preferences = Pick<AppState, 'version' | 'treeGrowth' | 'skincareRoutine' | 'currentTrackIndex' | 'isPlaying'>
 type Snapshot = { key: string; value: Preferences; verified: boolean; updatedAt: string }
 type Active = { key: 'active'; generation: string }
+export type BackupVerification = { checkedAt: string; archiveCreatedAt: string; checksum: string }
 type StoredMedia = { id: string; original: Blob; thumbnail?: Blob; checksum: string }
 
 function requestValue<T>(request: IDBRequest<T>): Promise<T> {
@@ -204,6 +205,31 @@ export class IndexedDbRepository {
     return record?.generation ?? null
   }
 
+  async getLastLocalSaveAt(): Promise<string | null> {
+    const db = await this.open()
+    const transaction = db.transaction('settings', 'readonly')
+    const done = transactionDone(transaction)
+    const record = await requestValue(transaction.objectStore('settings').get('lastLocalSaveAt')) as { value?: string } | undefined
+    await done
+    return record?.value ?? null
+  }
+
+  async getBackupVerification(): Promise<BackupVerification | null> {
+    const db = await this.open()
+    const transaction = db.transaction('settings', 'readonly')
+    const done = transactionDone(transaction)
+    const record = await requestValue(transaction.objectStore('settings').get('lastBackupVerification')) as { value?: BackupVerification } | undefined
+    await done
+    return record?.value ?? null
+  }
+
+  async recordBackupVerification(value: BackupVerification): Promise<void> {
+    const transaction = readWrite(await this.open(), ['settings'])
+    const done = transactionDone(transaction)
+    transaction.objectStore('settings').put({ key: 'lastBackupVerification', value })
+    await done
+  }
+
   private async readGeneration(generation: string): Promise<AppState> {
     const db = await this.open()
     const transaction = db.transaction([...collectionNames, 'settings'], 'readonly')
@@ -271,6 +297,7 @@ export class IndexedDbRepository {
     const switched = transactionDone(switchTransaction)
     switchTransaction.objectStore('settings').put({ key: `snapshot:${generation}`, value: preferencesFor(normalized), verified: true, updatedAt: new Date().toISOString() } satisfies Snapshot)
     switchTransaction.objectStore('settings').put({ key: 'active', generation } satisfies Active)
+    switchTransaction.objectStore('settings').put({ key: 'lastLocalSaveAt', value: new Date().toISOString() })
     await switched
     this.activeGeneration = generation
     for (const item of media) { this.staged.delete(item.id); this.preparedMedia.delete(item.id) }
@@ -321,8 +348,8 @@ export class IndexedDbRepository {
     const media = (await Promise.all([...mediaIds].map((id) => this.prepareMedia(id)))).filter((item): item is StoredMedia => item !== null)
     const settingsChanged = previous.version !== next.version || previous.treeGrowth !== next.treeGrowth ||
       previous.skincareRoutine !== next.skincareRoutine || previous.currentTrackIndex !== next.currentTrackIndex || previous.isPlaying !== next.isPlaying
-    const scope = [...changes.keys(), ...(media.length ? ['media'] : []), ...(settingsChanged ? ['settings'] : [])]
-    if (!scope.length) return
+    if (!changes.size && !media.length && !settingsChanged) return
+    const scope = [...changes.keys(), ...(media.length ? ['media'] : []), 'settings']
     const transaction = readWrite(await this.open(), scope)
     const done = transactionDone(transaction)
     try {
@@ -333,6 +360,7 @@ export class IndexedDbRepository {
       }
       for (const item of media) transaction.objectStore('media').put(item)
       if (settingsChanged) transaction.objectStore('settings').put({ key: `snapshot:${generation}`, value: preferencesFor(next), verified: true, updatedAt: new Date().toISOString() } satisfies Snapshot)
+      transaction.objectStore('settings').put({ key: 'lastLocalSaveAt', value: new Date().toISOString() })
     } catch (error) {
       transaction.abort()
       await done.catch(() => undefined)

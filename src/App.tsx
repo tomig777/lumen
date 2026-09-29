@@ -49,6 +49,8 @@ import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
 import { useAppStorage, type SaveState } from './hooks/useAppStorage'
+import { useOfflineShell, type OfflineShell } from './hooks/useOfflineShell'
+import type { BackupVerification } from './storage/indexedDbRepository'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
@@ -152,7 +154,8 @@ function weekOffsetForDate(iso: string, today: string) {
 
 function App() {
   useMobileViewport()
-  const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState } = useAppStorage()
+  const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState, backupVerification, recordBackupVerification } = useAppStorage()
+  const offlineShell = useOfflineShell()
   const [screen, setScreen] = useState<Screen>('welcome')
   const [selectedProjectId, setSelectedProjectId] = useState('project-os')
   const [selectedPersonId, setSelectedPersonId] = useState('person-anna')
@@ -659,7 +662,7 @@ function App() {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
       case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
-      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} />
+      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
       case 'projects': return <ProjectsScreen data={data} onOpenProject={(project) => { setSelectedProjectId(project.id); navigate('project-detail') }} onNewProject={() => openSheet('project')} />
       case 'project-detail': return <ProjectDetailScreen data={data} today={today} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId, dueDate: today, recurrence: 'once' }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
@@ -929,7 +932,7 @@ function BackupCounts({ summary }: { summary: BackupSummary }) {
   </div>
 }
 
-function BackupScreen({ data, onBack, onRestore, onPortableState, saveState }: { data: AppState; onBack: () => void; onRestore: (restored: AppState) => Promise<void>; onPortableState: (data: AppState) => Promise<AppState>; saveState: SaveState }) {
+function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, verification, onRecordVerification, offlineShell }: { data: AppState; onBack: () => void; onRestore: (restored: AppState) => Promise<void>; onPortableState: (data: AppState) => Promise<AppState>; saveState: SaveState; verification: BackupVerification | null; onRecordVerification: (value: BackupVerification) => Promise<void>; offlineShell: OfflineShell }) {
   const [prepared, setPrepared] = useState<{ file: File; summary: BackupSummary } | null>(null)
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof readBackup>> | null>(null)
   const [replaceSelected, setReplaceSelected] = useState(false)
@@ -989,7 +992,13 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState }: {
     setError('')
     if (!file) return
     try {
-      setPreview(await readBackup(await file.text()))
+      const validated = await readBackup(await file.text())
+      setPreview(validated)
+      try {
+        await onRecordVerification({ checkedAt: new Date().toISOString(), archiveCreatedAt: validated.createdAt, checksum: validated.checksum })
+      } catch {
+        setMessage('This file passed the integrity check, but the verification date could not be saved on this device.')
+      }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not read this backup. Nothing was changed.')
     }
@@ -1015,6 +1024,17 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState }: {
   return <main className="screen-scroll backup-screen">
     <PageHeader title="Data & backup" subtitle="Keep a copy you control." onBack={onBack} />
     <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.<span className="backup-local-status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving changes…' : 'Some changes are not saved'}</span></div>
+
+    <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">
+      <span className="eyebrow">STORAGE STATUS</span>
+      <h2>On this device</h2>
+      <div className="backup-status-row"><span>Last successful local save</span><strong>{saveState.savedAt ? new Date(saveState.savedAt).toLocaleString() : 'Not recorded yet'}</strong></div>
+      <div className="backup-status-row"><span>Last verified export file</span><strong>{verification ? new Date(verification.checkedAt).toLocaleString() : 'None checked yet'}</strong></div>
+      <div className="backup-status-row"><span>Offline app shell</span><strong>{offlineShell.ready ? 'Ready' : offlineShell.online ? 'Not ready · try again online' : 'Unavailable offline'}</strong></div>
+      <p>{offlineShell.online ? 'Online now.' : 'Offline now. Notes, tasks, and photos still save on this device.'} A checked file is not proof it was copied off this phone. No off-device backup is confirmed by Lumen.</p>
+      {offlineShell.updateAvailable && <button className="backup-secondary" type="button" disabled={saveState.kind !== 'saved'} onClick={offlineShell.applyUpdate}>Update Lumen now</button>}
+      {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
+    </section>
 
     <section className="backup-panel">
       <span className="eyebrow">CURRENT DATA</span>

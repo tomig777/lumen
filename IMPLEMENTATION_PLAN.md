@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phases 0–2 have implementation releases. Phase 3's Brain optimization and phase 4's date/task/workout behavior have browser-tested implementations; real-iPhone performance, date/timezone acceptance, and wider-screen profiling remain. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
+Status: phases 0–5 have implementation releases. Phase 5 adds a versioned offline app shell, explicit update action, release tests, recovery drill, and truthful save/export status. Real-iPhone performance, layout, date/timezone, Airplane Mode, and wider-screen acceptance remain. Real-iPhone validation is deferred at the user's request until all implementation steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for these releases. Make an off-phone backup before relying on future personal data.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -71,11 +71,13 @@ Browser checks: production build; daily/task/workout unit tests; IndexedDB reloa
 
 ## 5. Offline launch, release checks, and recovery practice
 
-- [ ] Add an app-shell cache for reliable offline launch, with a deliberate update strategy so new deployments do not leave an old interface paired with a new data schema.
+- [x] Add an app-shell cache for reliable offline launch, with a deliberate update strategy so new deployments do not leave an old interface paired with a new data schema. A new shell is installed atomically; existing sessions remain on their release until a user-initiated update or later launch, and the previous shell is retained for open tabs.
 - [ ] Test in Airplane Mode: launch, write a note, complete a task, attach a photo within available storage, close, and reopen. Show a clear error if a requested action cannot be completed offline.
-- [ ] Run focused automated tests for date logic, storage migration, archive validation, and workout-session state. Run the production build and a manual iPhone smoke test for each milestone.
-- [ ] Perform a restore drill from an exported archive and document the steps in plain language inside the app or README.
-- [ ] Make Settings show the last successful local save and last verified export. Never label unexported phone-only data as "backed up."
+- [x] Run focused automated tests for date logic, storage migration, archive validation, workout-session state, and offline shell as a pre-deployment gate. Production build passes. Manual iPhone smoke tests remain deferred.
+- [x] Perform an automated restore drill from an exported archive into a clean IndexedDB repository and document the separate-device steps in README. A real second-browser/profile drill remains for device acceptance.
+- [x] Make Data & backup show the last successful local save and last integrity-verified export file. Never label unexported phone-only data as "backed up."
+
+Implementation checks: build and focused tests, including an offline worker harness and isolated-database recovery of a note, journal, project, and original photo bytes. Real iPhone Airplane Mode and separate-device recovery acceptance remain open.
 
 Done when: the app starts and core local actions work without a connection; a deployment preserves existing data; a backup can be restored on a clean installation.
 

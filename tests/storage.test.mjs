@@ -56,6 +56,26 @@ test('incremental transaction saves changed records and ordering across reloads'
   await reopened.close()
 })
 
+test('last local save and backup-file verification survive reload without claiming a download', async () => {
+  const repo = repository()
+  const name = repo.name
+  const before = await repo.loadOrMigrate(null, createDemoState())
+  const initialSave = await repo.getLastLocalSaveAt()
+  assert.ok(Date.parse(initialSave))
+  assert.equal(await repo.getBackupVerification(), null)
+  const next = { ...before, notes: [{ id: 'saved-note', title: 'Saved', body: 'Body', tags: [], relatedNoteIds: [], pinned: false }, ...before.notes] }
+  await repo.saveChanged(before, next)
+  assert.ok(Date.parse(await repo.getLastLocalSaveAt()) >= Date.parse(initialSave))
+  const checked = { checkedAt: new Date().toISOString(), archiveCreatedAt: '2026-09-29T11:00:00.000Z', checksum: 'checked-checksum' }
+  await repo.recordBackupVerification(checked)
+  await repo.close()
+  const reopened = new IndexedDbRepository(name)
+  await reopened.loadOrMigrate(null, createDemoState())
+  assert.deepEqual(await reopened.getBackupVerification(), checked)
+  assert.ok(await reopened.getLastLocalSaveAt())
+  await reopened.close()
+})
+
 test('daily completion events and a dated workout session survive reload', async () => {
   const repo = repository()
   const name = repo.name
@@ -134,6 +154,34 @@ test('new image uploads keep the original bytes through save, reload, and export
   const restoredPortable = await clean.portableState(restored)
   assert.equal(restoredPortable.imageAssets[0].src, portable.imageAssets[0].src)
   await clean.close()
+})
+
+test('restore drill: clean installation recovers a personal note, journal, project, and photo', async () => {
+  const source = repository()
+  const before = await source.loadOrMigrate(null, createDemoState())
+  const src = source.stageImage(new Blob([Uint8Array.from([5, 10, 20, 30])], { type: 'image/png' }))
+  const personal = {
+    ...before,
+    notes: [...before.notes, { id: 'restore-note', title: 'Important', body: 'Private words', tags: [], relatedNoteIds: [], pinned: false }],
+    journalEntries: [...before.journalEntries, { id: 'restore-journal', date: '2026-09-29', title: 'Today', mode: 'free', mood: 3, onMind: 'Remember this' }],
+    projects: [...before.projects, { id: 'restore-project', title: 'My work', status: 'Active', progress: 10, description: 'Description', color: '#c4b3a0', nextTaskIds: [], noteIds: ['restore-note'], imageIds: ['restore-image'], activity: [] }],
+    imageAssets: [...before.imageAssets, { id: 'restore-image', title: 'My photo', src, tags: [], projectIds: ['restore-project'], collectionIds: [], origin: 'upload', height: 'medium', createdAt: '2026-09-29' }],
+  }
+  await source.saveChanged(before, personal)
+  const stored = await source.loadOrMigrate(null, createDemoState())
+  const originalBytes = (await source.portableState(stored)).imageAssets.at(-1).src
+  const archive = await createBackup(await source.portableState(stored))
+  const checked = await readBackup(archive.text)
+  const clean = repository()
+  const restored = await clean.replaceAll(checked.data)
+  const reread = await clean.loadOrMigrate(null, createDemoState())
+  assert.equal(restored.notes.find((note) => note.id === 'restore-note').body, 'Private words')
+  assert.equal(reread.journalEntries.find((entry) => entry.id === 'restore-journal').onMind, 'Remember this')
+  assert.equal(reread.projects.find((project) => project.id === 'restore-project').imageIds[0], 'restore-image')
+  assert.equal((await clean.portableState(reread)).imageAssets.find((image) => image.id === 'restore-image').src, originalBytes)
+  assert.equal((await source.loadOrMigrate(null, createDemoState())).notes.some((note) => note.id === 'restore-note'), true)
+  await clean.close()
+  await source.close()
 })
 
 test('older localStorage migration is repeatable and preserves personal records', async () => {
