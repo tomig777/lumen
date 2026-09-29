@@ -535,3 +535,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .backup-preview input { flex: 0 0 auto; width: 17px; height: 17px; margin: -1px 0 0; accent-color: #694b3b; }
 .backup-feedback { padding: 12px 14px; border-radius: 14px; background: #e8d9c7; color: #392f26; font-size: 11px; line-height: 1.4; }
 .backup-feedback.is-error { background: #f2ddd7; color: #713b32; }
+
+.daily-task-group { margin: 18px 0 0; padding: 14px; border: 1px solid #e1d5c7; border-radius: 18px; background: #f6efe6; }
+.daily-task-group > .eyebrow { display: block; margin-bottom: 9px; color: #765f4d; }
+.daily-task-group > button, .daily-task-group > div { width: 100%; min-height: 39px; display: flex; align-items: center; gap: 10px; padding: 7px 2px; border: 0; border-top: 1px solid #e7dcd0; background: transparent; color: #2c2723; text-align: left; font-size: 11px; }
+.daily-task-group > button span, .daily-task-group > div span { flex: 1; }
+.daily-task-group > button svg { color: #957c64; }
+.daily-task-group > button small { color: #8c7969; font-size: 9px; }
+.daily-task-group.is-history { background: #eee5da; }
+.daily-task-group.is-history > div { color: #807163; }
+.daily-task-group .daily-task-row { gap: 4px; }
+.daily-task-row > button { min-height: 40px; border: 0; background: transparent; color: inherit; }
+.daily-task-row > button:first-child { flex: 0 0 40px; display: grid; place-items: center; color: #957c64; }
+.daily-task-row > button:nth-child(2) { flex: 1; min-width: 0; text-align: left; font-size: 11px; }
+.daily-task-row > small { margin-right: 3px; color: #8c7969; font-size: 9px; }
+.home-task-carousel .home-task-card-wrap { position: relative; flex: 0 0 68%; min-height: 178px; scroll-snap-align: start; }
+.home-task-carousel .home-task-card-wrap .home-task-card { width: 100%; height: 100%; min-height: 178px; }
+.home-task-card-edit { position: absolute; z-index: 2; right: 8px; bottom: 6px; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(239, 227, 216, .8); color: #534538; }
+.task-schedule-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 8px 0; }
+.task-schedule-fields label { display: flex; flex-direction: column; gap: 5px; color: #806b58; font-size: 10px; }
+.bottom-sheet .task-schedule-fields select, .bottom-sheet .task-schedule-fields input { width: 100%; min-height: 43px; padding: 9px; border: 1px solid #ded2c4; border-radius: 12px; background: #eee6dc; color: #32291f; font-size: 13px; }
+.health-daily-actions button:disabled, .workout-screen button:disabled { opacity: .55; cursor: not-allowed; }
+.health-daily-card .health-day-picker { display: flex; align-items: center; gap: 5px; width: 100%; min-height: 37px; }
+.health-day-picker > button { flex: 0 0 35px; width: 35px; height: 35px; display: grid; place-items: center; padding: 0; border: 1px solid #584c40; border-radius: 50%; background: #362f29; color: #ead8c2; }
+.health-day-picker > label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; color: #d8bea0; font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+.health-day-picker input[type="date"] { width: 119px; min-width: 0; padding: 5px 3px; border: 0; border-radius: 7px; background: #362f29; color: #ead8c2; font: inherit; color-scheme: dark; }
+.health-day-picker > .health-day-today { flex-basis: auto; width: auto; padding: 0 8px; border-radius: 18px; font: 9px var(--mono); }

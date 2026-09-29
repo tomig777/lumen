@@ -56,6 +56,24 @@ test('incremental transaction saves changed records and ordering across reloads'
   await reopened.close()
 })
 
+test('daily completion events and a dated workout session survive reload', async () => {
+  const repo = repository()
+  const name = repo.name
+  const before = await repo.loadOrMigrate(null, createDemoState())
+  const next = {
+    ...before,
+    tasks: before.tasks.map((task) => task.id === 'task-1' ? { ...task, completedOn: [{ date: '2026-09-29', at: '2026-09-29T08:00:00Z' }] } : task),
+    healthPlans: [...before.healthPlans, { id: 'plan-2026-09-29', date: '2026-09-29', title: 'Strength', focus: 'Upper', warmupMinutes: 5, notes: '', exercises: [{ id: 'press', exerciseId: 'exercise-shoulder', sets: 2, reps: 10, unit: 'reps', phase: 'main' }], session: { startedAt: '2026-09-29T09:00:00Z', activeIndex: 0, completedSets: { press: 1 } } }],
+  }
+  await repo.saveChanged(before, next)
+  await repo.close()
+  const reopened = new IndexedDbRepository(name)
+  const loaded = await reopened.loadOrMigrate(null, createDemoState())
+  assert.deepEqual(loaded.tasks.find((task) => task.id === 'task-1').completedOn, next.tasks[0].completedOn)
+  assert.deepEqual(loaded.healthPlans.find((plan) => plan.date === '2026-09-29').session, next.healthPlans.at(-1).session)
+  await reopened.close()
+})
+
 test('failed multi-record write aborts atomically and can be retried', async () => {
   const repo = repository()
   const before = await repo.loadOrMigrate(null, createDemoState())

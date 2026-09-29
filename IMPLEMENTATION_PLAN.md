@@ -1,6 +1,6 @@
 # Lumen: iPhone implementation plan
 
-Status: phases 0–2 have implementation releases. Phase 3's Brain optimization has a browser-tested implementation; real-iPhone performance and wider-screen profiling remain. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
+Status: phases 0–2 have implementation releases. Phase 3's Brain optimization and phase 4's date/task/workout behavior have browser-tested implementations; real-iPhone performance, date/timezone acceptance, and wider-screen profiling remain. Real-iPhone validation is deferred at the user's request until the remaining steps are implemented. The current phone contains disposable demo data only, so the pre-migration archive was waived for this release. Make an off-phone backup before relying on future personal data.
 
 Target: the installed Home Screen app on an iPhone 13 Pro running iOS 17.3. Keep GitHub Pages for the app. Keep personal data on the phone for now; do not add a cloud account or home server in this phase.
 
@@ -59,15 +59,15 @@ Browser baseline: 450 dot buttons, 450 SVG circles, 3,475 SVG lines, 4,829 graph
 
 ## 4. Real dates, daily tasks, and workouts
 
-- [ ] Replace the fixed August 25, 2026 preview date throughout the app with the device's local date. Refresh "today" after midnight and when returning to the app. Store event timestamps and local calendar dates separately.
-- [ ] Model one-off tasks separately from recurring tasks. Record completion events by day so the Today view, history, and progress percentage use that day's work rather than a permanent boolean over all tasks.
-- [ ] Decide explicitly which existing demo tasks or habits recur. Do not infer recurrence from their titles during migration.
-- [ ] Show today's scheduled tasks and overdue open tasks clearly, with a separate place for unscheduled tasks. Preserve yesterday's completed list when a new day begins.
-- [ ] Connect Start exercise to the selected day's saved plan. Track sets and workout completion in a dated session, support resuming an interrupted session, and handle rest days.
-- [ ] Date journal entries, focus sessions, wellness logs, and uploaded images from the real clock. Preserve old demo dates as historical demo records rather than relabeling them as today.
+- [x] Replace the fixed August 25, 2026 preview date with the device's local date. Refresh "today" after midnight and when returning to the app. Store event timestamps and local calendar dates separately.
+- [x] Model one-off tasks separately from daily/weekday tasks. Record completion events by day so the Today view, history, and progress percentage use that day's work rather than a permanent boolean over all tasks.
+- [x] Decide explicitly which demo tasks recur: new demo tasks 1 and 6 daily, task 2 weekdays. Existing stored tasks are not silently reclassified; they remain unscheduled until edited. Demo habits do not infer recurrence and are not currently surfaced as actionable daily tasks.
+- [x] Show today's scheduled tasks and overdue open tasks clearly, with a separate place for unscheduled tasks. Preserve yesterday's completed list when a new day begins.
+- [x] Connect Start exercise to the selected day's saved plan via a compact visible date picker. Track sets and workout completion in a dated session, support resuming an interrupted session, and handle rest days.
+- [x] Date journal entries, focus sessions, wellness logs, and uploaded images from the real clock. Preserve old demo dates as historical demo records rather than relabeling them as today.
 - [ ] Test month and year changes, a midnight rollover while the app is open, daylight-saving changes, and a changed device time zone.
 
-Done when: opening the app on a new day shows the correct day, previous completions remain in history, and the workout started is the workout planned for the selected date.
+Browser checks: production build; daily/task/workout unit tests; IndexedDB reload tests for completion events and partial workout sessions; local UI check of the date picker, historical plan selection, set completion, and Resume exercise. iPhone rollover, time-zone changes, and installed-app acceptance are still pending. Done when: opening the app on a new day shows the correct day, previous completions remain in history, and the workout started is the workout planned for the selected date on the actual iPhone.
 
 ## 5. Offline launch, release checks, and recovery practice
 

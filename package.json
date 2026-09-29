@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:backup": "node --test tests/backup.test.mjs",
     "test:storage": "node --test tests/storage.test.mjs",
-    "test:brain": "node --test tests/brainGraph.test.mjs"
+    "test:brain": "node --test tests/brainGraph.test.mjs",
+    "test:daily": "node --test tests/daily.test.mjs tests/workoutSession.test.mjs"
   },
   "dependencies": {
     "@bryllim/workout-guide": "^1.0.0",

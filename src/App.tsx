@@ -41,6 +41,8 @@ import {
 import type { CSSProperties, FormEvent } from 'react'
 import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction } from './components/VisualComponents'
 import { buildBrainGraph, isSampleGraphNote } from './brainGraph'
+import { classifyTasks, localDateKey, selectedDateAfterRollover, taskIsComplete, toggleTaskForDate } from './daily'
+import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
 import { createDemoState, createPinterestSample } from './data/demoData'
@@ -51,12 +53,6 @@ import { useMobileViewport } from './hooks/useMobileViewport'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
 
-const previewDate = {
-  weekday: 'Tuesday',
-  date: 'August 25',
-  iso: '2026-08-25',
-}
-
 const modeMinutes: Record<string, number> = {
   '25 / 5': 25,
   '50 / 10': 50,
@@ -66,6 +62,7 @@ const modeMinutes: Record<string, number> = {
 
 const blankPersonDraft = { birthday: '', likes: '', dislikes: '', remember: '', gifts: '', notes: '' }
 const blankJournalDraft = { title: '', mood: 3, howWasToday: '', whatHappened: '', whatWasGood: '', onMind: '' }
+type TaskDraft = { title: string; projectId: string; dueDate: string; recurrence: 'once' | 'daily' | 'weekdays' }
 const wellnessGoals = { waterDl: 40, mealKcal: 2000 }
 const brainCategoryColors = ['#c9b6f4', '#efb18f', '#a8d4c9', '#d9c58f', '#9fb8e8', '#d9a8cd']
 const brainCategoryIcons: BrainCategoryIcon[] = ['sparkles', 'book', 'image', 'compass']
@@ -115,6 +112,15 @@ function formatLongDate(iso: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(dateFromIso(iso))
 }
 
+function displayStoredDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(dateFromIso(value)) : value
+}
+
+function displayCaptureTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date)
+}
+
 function parseSleepHours(value?: string) {
   if (!value) return 0
   const hours = Number(value.match(/(\d+(?:\.\d+)?)\s*h/i)?.[1] ?? 0)
@@ -138,8 +144,8 @@ function shiftMonthIso(iso: string, months: number) {
   return isoFromDate(date)
 }
 
-function weekOffsetForDate(iso: string) {
-  const current = dateFromIso(weekStartFor(previewDate.iso))
+function weekOffsetForDate(iso: string, today: string) {
+  const current = dateFromIso(weekStartFor(today))
   const target = dateFromIso(weekStartFor(iso))
   return Math.round((target.getTime() - current.getTime()) / (7 * 24 * 60 * 60 * 1000))
 }
@@ -154,14 +160,17 @@ function App() {
   const [sheet, setSheet] = useState<SheetState>({ kind: null })
   const [toast, setToast] = useState('')
   const [previewScale, setPreviewScale] = useState(1)
+  const [today, setToday] = useState(localDateKey)
 
   const [captureText, setCaptureText] = useState('')
   const [noteDraft, setNoteDraft] = useState({ title: '', body: '' })
-  const [taskDraft, setTaskDraft] = useState({ title: '', projectId: '' })
+  const [taskDraft, setTaskDraft] = useState<TaskDraft>({ title: '', projectId: '', dueDate: localDateKey(), recurrence: 'once' })
   const [projectDraft, setProjectDraft] = useState({ title: '', description: '' })
   const [personDraft, setPersonDraft] = useState(blankPersonDraft)
   const [healthDraft, setHealthDraft] = useState({ energy: 4, sleep: '7h 12m', notes: '' })
-  const [healthDraftDate, setHealthDraftDate] = useState(previewDate.iso)
+  const [healthDraftDate, setHealthDraftDate] = useState(localDateKey)
+  const [healthSelectedDate, setHealthSelectedDate] = useState(localDateKey)
+  const [workoutDate, setWorkoutDate] = useState<string | null>(null)
   const [journalDraft, setJournalDraft] = useState(blankJournalDraft)
   const [journalMode, setJournalMode] = useState<'daily' | 'free'>('daily')
   const [focusMode, setFocusMode] = useState('25 / 5')
@@ -180,6 +189,24 @@ function App() {
   const currentTrack = data.tracks[data.currentTrackIndex] ?? data.tracks[0]
   const activeTab = activeTabFor(screen)
   const hideNav = screen === 'welcome' || screen === 'login' || screen === 'backup' || screen === 'workout' || screen === 'people' || screen === 'focus'
+  const previousTodayRef = useRef(today)
+
+  useEffect(() => {
+    if (previousTodayRef.current !== today) {
+      const previousDay = previousTodayRef.current
+      setHealthSelectedDate((date) => selectedDateAfterRollover(date, previousDay, today))
+      previousTodayRef.current = today
+    }
+  }, [today])
+
+  useEffect(() => {
+    const refresh = () => setToday(localDateKey())
+    const timer = window.setInterval(refresh, 30_000)
+    window.addEventListener('focus', refresh)
+    window.addEventListener('pageshow', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('pageshow', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [])
 
   const notify = (message: string) => {
     setToast(message)
@@ -204,7 +231,7 @@ function App() {
     event?.preventDefault()
     const text = captureText.trim()
     if (!text) return
-    const thought: Thought = { id: `thought-${Date.now()}`, text, createdAt: 'Just now', pinned: false }
+    const thought: Thought = { id: `thought-${Date.now()}`, text, createdAt: new Date().toISOString(), pinned: false }
     setData((current) => ({ ...current, thoughts: [thought, ...current.thoughts] }))
     setCaptureText('')
     setSheet({ kind: null })
@@ -216,7 +243,7 @@ function App() {
     const category = data.brainCategories.find((item) => item.id === categoryId)
     if (!thought || !category) return
     const id = `note-${Date.now()}`
-    const note: Note = { id, title: thought.text, body: `Captured ${thought.createdAt.toLowerCase()}.`, tags: [category.name.toLowerCase()], relatedNoteIds: [], pinned: false }
+    const note: Note = { id, title: thought.text, body: `Captured ${displayCaptureTime(thought.createdAt)}.`, tags: [category.name.toLowerCase()], relatedNoteIds: [], pinned: false }
     setData((current) => ({
       ...current,
       thoughts: current.thoughts.filter((item) => item.id !== thoughtId),
@@ -236,7 +263,9 @@ function App() {
   }
 
   const toggleTask = (taskId: string) => {
-    setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task) }))
+    const now = new Date()
+    const date = localDateKey(now)
+    setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? toggleTaskForDate(task, date, now.toISOString()) : task) }))
   }
 
   const toggleHabit = (habitId: string) => {
@@ -249,7 +278,7 @@ function App() {
         ...current,
         treeGrowth: Math.max(0, current.treeGrowth + growthDelta),
         habits: current.habits.map((item) => item.id === habitId ? { ...item, completed: nextCompleted } : item),
-        tasks: current.tasks.map((task) => task.title === habit.title ? { ...task, completed: nextCompleted } : task),
+        tasks: current.tasks,
       }
     })
   }
@@ -290,7 +319,7 @@ function App() {
       const nextProjectId = taskDraft.projectId || undefined
       setData((current) => ({
         ...current,
-        tasks: current.tasks.map((task) => task.id === existing.id ? { ...task, title: taskDraft.title.trim(), projectId: nextProjectId } : task),
+        tasks: current.tasks.map((task) => task.id === existing.id ? { ...task, title: taskDraft.title.trim(), projectId: nextProjectId, dueDate: taskDraft.dueDate || undefined, recurrence: taskDraft.recurrence } : task),
         projects: current.projects.map((project) => {
           const withoutTask = project.nextTaskIds.filter((taskId) => taskId !== existing.id)
           return project.id === nextProjectId ? { ...project, nextTaskIds: [...withoutTask, existing.id] } : { ...project, nextTaskIds: withoutTask }
@@ -299,7 +328,7 @@ function App() {
       notify('Task updated')
     } else {
       const id = `task-${Date.now()}`
-      const task: Task = { id, title: taskDraft.title.trim(), completed: false, priority: 'medium', projectId: taskDraft.projectId || undefined }
+      const task: Task = { id, title: taskDraft.title.trim(), completed: false, priority: 'medium', projectId: taskDraft.projectId || undefined, dueDate: taskDraft.dueDate || undefined, recurrence: taskDraft.recurrence, completedOn: [] }
       setData((current) => ({
         ...current,
         tasks: [...current.tasks, task],
@@ -307,12 +336,12 @@ function App() {
       }))
       notify('Task added')
     }
-    setTaskDraft({ title: '', projectId: '' })
+    setTaskDraft({ title: '', projectId: '', dueDate: localDateKey(), recurrence: 'once' })
     setSheet({ kind: null })
   }
 
   const openTaskEditor = (task: Task) => {
-    setTaskDraft({ title: task.title, projectId: task.projectId ?? '' })
+    setTaskDraft({ title: task.title, projectId: task.projectId ?? '', dueDate: task.dueDate ?? '', recurrence: task.recurrence ?? 'once' })
     openSheet('task', task.id)
   }
 
@@ -371,16 +400,16 @@ function App() {
 
   const saveHealth = (event: FormEvent) => {
     event.preventDefault()
-    const entryDate = formatLongDate(healthDraftDate)
-    const existing = data.healthEntries.find((entry) => entry.date === entryDate)
-    const entry = { id: existing?.id ?? `health-${Date.now()}`, date: entryDate, energy: healthDraft.energy, sleep: healthDraft.sleep, workout: existing?.workout ?? 'Rest day', notes: healthDraft.notes }
+    const entryDate = healthDraftDate
+    const existing = data.healthEntries.find((entry) => entry.date === entryDate || (entryDate === '2026-08-25' && entry.date === formatLongDate(entryDate)))
+    const entry = { id: existing?.id ?? `health-${Date.now()}`, date: entryDate, updatedAt: new Date().toISOString(), energy: healthDraft.energy, sleep: healthDraft.sleep, workout: existing?.workout ?? 'Rest day', notes: healthDraft.notes }
     setData((current) => ({ ...current, healthEntries: [entry, ...current.healthEntries.filter((item) => item.id !== entry.id)] }))
     setSheet({ kind: null })
     notify('Health log updated')
   }
 
-  const openHealthEditor = (date = previewDate.iso) => {
-    const entry = data.healthEntries.find((item) => item.date === formatLongDate(date))
+  const openHealthEditor = (date = today) => {
+    const entry = data.healthEntries.find((item) => item.date === date || (date === '2026-08-25' && item.date === formatLongDate(date)))
     setHealthDraftDate(date)
     setHealthDraft({ energy: entry?.energy ?? 3, sleep: entry?.sleep ?? '', notes: entry?.notes ?? '' })
     openSheet('health')
@@ -397,6 +426,7 @@ function App() {
   const addExerciseToPlan = (date: string, workoutGuideId: string, defaults: { sets: number; reps: number; unit: PlannedExerciseUnit }) => {
     const guideExercise = searchWorkoutGuideExercises().find((item) => item.id === workoutGuideId)
     if (!guideExercise) return
+    if (data.healthPlans.find((item) => item.date === date)?.session) { notify('This day’s workout is already started'); return }
     setData((current) => {
       const localExercise = current.exercises.find((item) => item.workoutGuideId === workoutGuideId)
       const localExerciseId = localExercise?.id ?? `exercise-guide-${guideExercise.id}`
@@ -425,7 +455,7 @@ function App() {
   const updateWellnessLog = (log: WellnessLog) => {
     setData((current) => ({
       ...current,
-      wellnessLogs: [log, ...(current.wellnessLogs ?? []).filter((item) => item.date !== log.date)],
+      wellnessLogs: [{ ...log, updatedAt: new Date().toISOString() }, ...(current.wellnessLogs ?? []).filter((item) => item.date !== log.date)],
     }))
   }
 
@@ -443,7 +473,7 @@ function App() {
         const photo: SkinPhoto = { id: `skin-photo-${Date.now()}`, date, src, createdAt: new Date().toISOString() }
         return {
           ...current,
-          wellnessLogs: [{ ...log, skinPhoto: src }, ...(current.wellnessLogs ?? []).filter((item) => item.date !== date)],
+          wellnessLogs: [{ ...log, skinPhoto: src, updatedAt: new Date().toISOString() }, ...(current.wellnessLogs ?? []).filter((item) => item.date !== date)],
           skinPhotos: [photo, ...(current.skinPhotos ?? [])],
         }
       })
@@ -453,7 +483,7 @@ function App() {
 
   const saveJournal = (event: FormEvent) => {
     event.preventDefault()
-    const entry: JournalEntry = { id: `journal-${Date.now()}`, date: previewDate.date, mode: journalMode, ...journalDraft }
+    const entry: JournalEntry = { id: `journal-${Date.now()}`, date: localDateKey(), createdAt: new Date().toISOString(), mode: journalMode, ...journalDraft }
     setData((current) => ({ ...current, journalEntries: [entry, ...current.journalEntries] }))
     setJournalDraft(blankJournalDraft)
     setSheet({ kind: null })
@@ -463,7 +493,7 @@ function App() {
   const handleUpload = (file?: File) => {
     if (!file) return
     try {
-      const asset: ImageAsset = { id: `image-${Date.now()}`, title: file.name.replace(/\.[^.]+$/, ''), src: stageImage(file), palette: ['#d7d0c3', '#8c8b81', '#272b2a'], tags: ['uploaded'], projectIds: [], collectionIds: [], origin: 'upload', height: 'medium', createdAt: previewDate.iso }
+      const asset: ImageAsset = { id: `image-${Date.now()}`, title: file.name.replace(/\.[^.]+$/, ''), src: stageImage(file), palette: ['#d7d0c3', '#8c8b81', '#272b2a'], tags: ['uploaded'], projectIds: [], collectionIds: [], origin: 'upload', height: 'medium', createdAt: new Date().toISOString() }
       setData((current) => ({ ...current, imageAssets: [asset, ...current.imageAssets] }))
       notify('Added to Inspiration')
     } catch { notify('Could not add this image') }
@@ -513,7 +543,7 @@ function App() {
     setFocusRunning(false)
     setFocusPaused(false)
     if (completed) {
-      setData((current) => ({ ...current, treeGrowth: current.treeGrowth + 5, focusSessions: [{ id: `focus-${Date.now()}`, mode: focusMode, minutes: modeMinutes[focusMode] ?? 25, completedAt: previewDate.iso, projectId: 'project-os' }, ...current.focusSessions] }))
+      setData((current) => ({ ...current, treeGrowth: current.treeGrowth + 5, focusSessions: [{ id: `focus-${Date.now()}`, mode: focusMode, minutes: modeMinutes[focusMode] ?? 25, completedAt: new Date().toISOString(), projectId: 'project-os' }, ...current.focusSessions] }))
       notify('Focus complete · +5 growth')
     }
     navigate('home')
@@ -541,37 +571,54 @@ function App() {
     if (resting && restSeconds === 0) setResting(false)
   }, [resting, restSeconds])
 
-  const startWorkout = () => {
-    setWorkoutExerciseIndex(0)
+  const startWorkout = (date: string) => {
+    const plan = data.healthPlans.find((item) => item.date === date)
+    if (!plan?.exercises.length) { notify('Build this day’s exercise first'); return }
+    const existing = plan.session
+    if (existing?.completedAt) { notify('This workout is already complete'); return }
+    setWorkoutDate(date)
+    setWorkoutExerciseIndex(existing?.activeIndex ?? 0)
     setResting(false)
+    if (!existing) setData((current) => ({ ...current, healthPlans: current.healthPlans.map((item) => item.date === date ? beginWorkoutSession(item, new Date().toISOString()) : item) }))
     navigate('workout')
   }
 
   const completeSet = () => {
-    const workout = data.workouts[0]
-    const exercise = data.exercises[workoutExerciseIndex]
-    if (!workout || !exercise) return
-    const currentSets = workout.completedSets[exercise.id] ?? 0
-    if (currentSets >= exercise.sets) return
-    setData((current) => ({
-      ...current,
-      treeGrowth: current.treeGrowth + 2,
-      workouts: current.workouts.map((item) => item.id === workout.id ? { ...item, completedSets: { ...item.completedSets, [exercise.id]: currentSets + 1 } } : item),
-    }))
-    if (currentSets + 1 < exercise.sets) {
+    const plan = data.healthPlans.find((item) => item.date === workoutDate)
+    const planned = plan?.exercises[workoutExerciseIndex]
+    if (!plan?.session || !planned) return
+    const currentSets = plan.session.completedSets[planned.id] ?? 0
+    if (currentSets >= planned.sets) return
+    setData((current) => {
+      let advanced = false
+      const healthPlans = current.healthPlans.map((item) => {
+        if (item.date !== workoutDate) return item
+        const next = recordWorkoutSet(item, workoutExerciseIndex)
+        advanced = next !== item
+        return next
+      })
+      return advanced ? { ...current, treeGrowth: current.treeGrowth + 2, healthPlans } : current
+    })
+    if (currentSets + 1 < planned.sets) {
       setRestSeconds(90)
       setResting(true)
     }
   }
 
   const nextExercise = () => {
-    const workout = data.workouts[0]
-    if (!workout) return
-    if (workoutExerciseIndex < workout.exerciseIds.length - 1) {
-      setWorkoutExerciseIndex((index) => index + 1)
+    const plan = data.healthPlans.find((item) => item.date === workoutDate)
+    if (!plan?.session) return
+    const planned = plan.exercises[workoutExerciseIndex]
+    if (!planned || (plan.session.completedSets[planned.id] ?? 0) < planned.sets) { notify('Complete the sets to continue'); return }
+    if (workoutExerciseIndex < plan.exercises.length - 1) {
+      const nextIndex = workoutExerciseIndex + 1
+      setData((current) => ({ ...current, healthPlans: current.healthPlans.map((item) => item.date === workoutDate ? advanceWorkoutSession(item, workoutExerciseIndex, new Date().toISOString()) : item) }))
+      setWorkoutExerciseIndex(nextIndex)
       setResting(false)
     } else {
-      setData((current) => ({ ...current, healthEntries: [{ id: `health-${Date.now()}`, date: previewDate.date, energy: 4, sleep: '7h 12m', workout: 'Upper Body', notes: 'Workout complete. Feeling stronger.' }, ...current.healthEntries.filter((entry) => entry.date !== previewDate.date)] }))
+      if (plan.exercises.some((exercise) => (plan.session?.completedSets[exercise.id] ?? 0) < exercise.sets)) { notify('Finish each movement before completing this workout'); return }
+      const completedAt = new Date().toISOString()
+      setData((current) => ({ ...current, healthPlans: current.healthPlans.map((item) => item.date === workoutDate ? advanceWorkoutSession(item, workoutExerciseIndex, completedAt) : item) }))
       navigate('health')
       notify('Workout complete')
     }
@@ -579,6 +626,7 @@ function App() {
 
   const resetDemo = () => {
     setData(createDemoState())
+    setHealthSelectedDate(localDateKey())
     setSelectedProjectId('project-os')
     setSelectedPersonId('person-anna')
     setSelectedImageId(null)
@@ -588,6 +636,7 @@ function App() {
 
   const restoreBackup = async (restored: AppState) => {
     await replaceData(restored)
+    setHealthSelectedDate(localDateKey())
     setSelectedProjectId(restored.projects[0]?.id ?? '')
     setSelectedPersonId(restored.people[0]?.id ?? '')
     setSelectedImageId(null)
@@ -609,19 +658,19 @@ function App() {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} onToggleTask={toggleTask} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
+      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
       case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
       case 'projects': return <ProjectsScreen data={data} onOpenProject={(project) => { setSelectedProjectId(project.id); navigate('project-detail') }} onNewProject={() => openSheet('project')} />
-      case 'project-detail': return <ProjectDetailScreen data={data} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
-      case 'health': return <HealthScreen data={data} onStartWorkout={startWorkout} onSaveDayPlan={saveDayPlan} onAddExercise={addExerciseToPlan} onUpdateWellness={updateWellnessLog} onSaveSkinPhoto={saveSkinPhoto} onOpenHealthJournal={openHealthEditor} skincareRoutine={data.skincareRoutine} skinPhotos={data.skinPhotos} onUpdateSkincareRoutine={updateSkincareRoutine} />
+      case 'project-detail': return <ProjectDetailScreen data={data} today={today} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId, dueDate: today, recurrence: 'once' }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
+      case 'health': return <HealthScreen data={data} today={today} selectedDate={healthSelectedDate} setSelectedDate={setHealthSelectedDate} onStartWorkout={startWorkout} onSaveDayPlan={saveDayPlan} onAddExercise={addExerciseToPlan} onUpdateWellness={updateWellnessLog} onSaveSkinPhoto={saveSkinPhoto} onOpenHealthJournal={openHealthEditor} skincareRoutine={data.skincareRoutine} skinPhotos={data.skinPhotos} onUpdateSkincareRoutine={updateSkincareRoutine} />
       case 'people': return <PeopleScreen people={data.people} onBack={returnToPrimaryScreen} onOpenPerson={(person) => { setSelectedPersonId(person.id); navigate('person-detail') }} />
       case 'person-detail': return <PersonDetailScreen person={selectedPerson} onBack={() => navigate('people')} onEdit={() => openPersonEditor(selectedPerson)} onRemember={addPersonMemory} />
       case 'inspiration': return <InspirationScreen assets={data.imageAssets} onBack={returnToPrimaryScreen} onUpload={() => uploadInputRef.current?.click()} onOpenImage={setSelectedImageId} />
       case 'collections': return <CollectionsScreen data={data} onBack={returnToPrimaryScreen} onOpenImage={setSelectedImageId} />
       case 'journal': return <JournalScreen entries={data.journalEntries} onBack={returnToPrimaryScreen} onNew={() => { setJournalDraft(blankJournalDraft); openSheet('journal') }} />
       case 'focus': return <FocusScreen mode={focusMode} seconds={focusSeconds} running={focusRunning} paused={focusPaused} onModeChange={(mode) => { setFocusMode(mode); setFocusSeconds((modeMinutes[mode] ?? 25) * 60) }} onStart={startFocus} onPause={() => setFocusPaused((paused) => !paused)} onBack={() => { setFocusRunning(false); setFocusPaused(false); returnToPrimaryScreen() }} />
-      case 'workout': return <WorkoutScreen data={data} exerciseIndex={workoutExerciseIndex} resting={resting} restSeconds={restSeconds} onCompleteSet={completeSet} onNextExercise={nextExercise} onSkipRest={() => setResting(false)} />
+      case 'workout': return <WorkoutScreen data={data} date={workoutDate} exerciseIndex={workoutExerciseIndex} resting={resting} restSeconds={restSeconds} onCompleteSet={completeSet} onNextExercise={nextExercise} onSkipRest={() => setResting(false)} onBack={() => { setResting(false); navigate('health') }} />
       case 'spotify': return <SpotifyScreen data={data} onBack={returnToPrimaryScreen} onToggle={() => setData((current) => ({ ...current, isPlaying: !current.isPlaying }))} onNext={() => cycleTrack(1)} onPrevious={() => cycleTrack(-1)} />
       case 'mail': return <MailScreen onBack={returnToPrimaryScreen} />
       case 'pinterest': return <PinterestScreen onBack={returnToPrimaryScreen} onSave={() => { setData((current) => ({ ...current, imageAssets: [createPinterestSample(), ...current.imageAssets] })); notify('Added to Inspiration') }} />
@@ -631,7 +680,7 @@ function App() {
 
   const renderViewport = (viewportClass: string, motionId: string, mirror = false) => (
     <div className={viewportClass} aria-hidden={mirror ? true : undefined}>
-      <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health'} />
+      <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health' || screen === 'workout'} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="screen-layer" key={screen} initial={{ opacity: 0, x: 9 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -9 }} transition={{ duration: 0.24, ease: [0.19, 1, 0.22, 1] }}>
           {renderScreen()}
@@ -639,7 +688,7 @@ function App() {
       </AnimatePresence>
       {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId={motionId} />}
       {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
-      {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
+      {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
       {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
       {toast && <motion.div className="toast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}><Check size={14} />{toast}</motion.div>}
     </div>
@@ -668,7 +717,7 @@ function App() {
         <div className="phone-holder" style={{ transform: `scale(${previewScale})` }}>
         <PhoneFrame>
           <div className="phone-app">
-            <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health'} />
+            <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health' || screen === 'workout'} />
             <AnimatePresence mode="wait" initial={false}>
               <motion.div className="screen-layer" key={screen} initial={{ opacity: 0, x: 9 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -9 }} transition={{ duration: 0.24, ease: [0.19, 1, 0.22, 1] }}>
                 {renderScreen()}
@@ -676,7 +725,7 @@ function App() {
             </AnimatePresence>
             {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId="phone" />}
             {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
-            {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
+            {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
             {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
             {toast && <motion.div className="toast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}><Check size={14} />{toast}</motion.div>}
           </div>
@@ -780,12 +829,13 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, onToggleTask, onOpenBackup, saveState, onRetrySave }: { data: AppState; onToggleTask: (id: string) => void; onOpenBackup: () => void; saveState: SaveState; onRetrySave: () => void }) {
-  const openTasks = data.tasks.filter((task) => !task.completed)
-  const completedTaskItems = data.tasks.filter((task) => task.completed)
+function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenBackup, saveState, onRetrySave }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; onOpenBackup: () => void; saveState: SaveState; onRetrySave: () => void }) {
+  const groups = classifyTasks(data.tasks, today)
+  const openTasks = groups.today.filter((task) => !taskIsComplete(task, today))
+  const completedTaskItems = groups.doneToday
   const tasks = [...openTasks, ...completedTaskItems]
-  const completedTasks = data.tasks.filter((task) => task.completed).length
-  const totalTasks = data.tasks.length
+  const completedTasks = completedTaskItems.length
+  const totalTasks = groups.today.length
   const taskCarouselRef = useRef<HTMLDivElement>(null)
   const carouselScrollLeftRef = useRef<number | null>(null)
   const completionTimerRef = useRef<number | undefined>(undefined)
@@ -812,7 +862,7 @@ function HomeScreen({ data, onToggleTask, onOpenBackup, saveState, onRetrySave }
   }, [data.tasks, departingTaskId])
   const toggleTaskFromHome = (task: Task) => {
     if (departingTaskId) return
-    if (task.completed) {
+    if (taskIsComplete(task, today)) {
       onToggleTask(task.id)
       return
     }
@@ -850,10 +900,20 @@ function HomeScreen({ data, onToggleTask, onOpenBackup, saveState, onRetrySave }
       </section>
 
       <section className="home-section home-task-section">
-        <div className="home-task-heading"><div className="home-task-heading-copy"><SectionLabel>TASKS</SectionLabel><span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span></div><div className="home-task-controls"><button className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task"><ChevronLeft size={14} /></button><button className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task"><ChevronRight size={14} /></button></div></div>
+        <div className="home-task-heading"><div className="home-task-heading-copy"><SectionLabel>{formatLongDate(today).toUpperCase()} · TASKS</SectionLabel><span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span></div><div className="home-task-controls"><button className="home-task-control" onClick={onAddTask} aria-label="Add task"><Plus size={14} /></button><button className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task"><ChevronLeft size={14} /></button><button className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task"><ChevronRight size={14} /></button></div></div>
         {tasks.length ? <motion.div layoutScroll className={`home-task-carousel ${departingTaskId ? 'is-reordering' : ''}`} ref={taskCarouselRef} aria-label="Today's tasks">
-          {tasks.map((task, index) => <motion.button layout="position" transition={{ layout: { duration: 0.86, ease: [0.22, 1, 0.36, 1] } }} className={`home-task-card priority-${task.priority} ${task.completed ? 'is-complete' : ''} ${departingTaskId === task.id ? 'is-departing' : ''}`} key={task.id} onClick={() => toggleTaskFromHome(task)} aria-pressed={task.completed}><span className="home-task-card-top"><span className="home-task-index">0{index + 1}</span><span className={`home-task-check ${task.completed ? 'is-done' : ''}`}>{task.completed && <Check size={10} />}</span></span><span className="home-task-card-title-block"><strong>{task.title}</strong></span><span className="home-task-card-foot"><span>{task.completed ? 'DONE' : 'OPEN'}</span><ChevronRight size={14} /></span></motion.button>)}
-        </motion.div> : <div className="home-task-empty"><Check size={15} /><span>Everything is complete for today.</span></div>}
+          {tasks.map((task, index) => {
+            const complete = taskIsComplete(task, today)
+            return <div className="home-task-card-wrap" key={task.id}>
+              <motion.button layout="position" transition={{ layout: { duration: 0.86, ease: [0.22, 1, 0.36, 1] } }} className={`home-task-card priority-${task.priority} ${complete ? 'is-complete' : ''} ${departingTaskId === task.id ? 'is-departing' : ''}`} onClick={() => toggleTaskFromHome(task)} aria-pressed={complete}><span className="home-task-card-top"><span className="home-task-index">0{index + 1}</span><span className={`home-task-check ${complete ? 'is-done' : ''}`}>{complete && <Check size={10} />}</span></span><span className="home-task-card-title-block"><strong>{task.title}</strong></span><span className="home-task-card-foot"><span>{complete ? 'DONE' : 'OPEN'}</span></span></motion.button>
+              <button type="button" className="home-task-card-edit" onClick={() => onEditTask(task)} aria-label={`Edit ${task.title}`}><Pencil size={13} /></button>
+            </div>
+          })}
+        </motion.div> : <div className="home-task-empty"><Check size={15} /><span>{totalTasks ? 'Everything is complete for today.' : 'Nothing scheduled today.'}</span></div>}
+        {groups.overdue.length > 0 && <div className="daily-task-group"><span className="eyebrow">OVERDUE · {groups.overdue.length}</span>{groups.overdue.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Complete ${task.title}`}><Circle size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button><small>{task.dueDate}</small></div>)}</div>}
+        {groups.unscheduled.length > 0 && <div className="daily-task-group"><span className="eyebrow">UNSCHEDULED · {groups.unscheduled.length}</span>{groups.unscheduled.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Complete ${task.title}`}><Circle size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button></div>)}</div>}
+        {groups.completedElsewhereToday.length > 0 && <div className="daily-task-group is-history"><span className="eyebrow">FINISHED TODAY</span>{groups.completedElsewhereToday.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Undo ${task.title}`}><Check size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button></div>)}</div>}
+        {groups.yesterdayDone.length > 0 && <div className="daily-task-group is-history"><span className="eyebrow">YESTERDAY · FINISHED</span>{groups.yesterdayDone.map((task) => <div key={task.id}><Check size={15} /><span>{task.title}</span></div>)}</div>}
       </section>
     </div>
   )
@@ -1225,7 +1285,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
         <div className="brain-collection-heading"><div><SectionLabel>QUICK NOTES</SectionLabel><h2>Unsorted thoughts</h2><p>Open a thought for more actions, or file it into a category right away.</p></div><button className="text-action" onClick={onCapture}><Plus size={12} /> Capture</button></div>
         <div className="brain-quick-note-list">
           {quickNotes.map((thought, index) => <motion.article className={`brain-quick-note-row brain-quick-note-tone-${index % 3}`} key={thought.id} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .035 }}>
-            <button className="brain-quick-note-main" onClick={() => onThought(thought)}><span className="brain-quick-note-icon"><Sparkles size={15} /></span><span><strong>{thought.text}</strong><small>{thought.createdAt}</small></span><ChevronRight size={14} /></button>
+            <button className="brain-quick-note-main" onClick={() => onThought(thought)}><span className="brain-quick-note-icon"><Sparkles size={15} /></span><span><strong>{thought.text}</strong><small>{displayCaptureTime(thought.createdAt)}</small></span><ChevronRight size={14} /></button>
             <label className="brain-quick-categorize"><span>Move to</span><select aria-label={`Categorize ${thought.text}`} defaultValue="" onClick={(event) => event.stopPropagation()} onChange={(event) => { if (event.target.value) onCategorizeThought(thought.id, event.target.value) }}><option value="">Choose category…</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
           </motion.article>)}
           {!quickNotes.length && <div className="brain-quick-empty"><Sparkles size={17} /><strong>No uncategorized thoughts</strong><span>Capture something small and decide where it belongs later.</span><button className="dark-button" onClick={onCapture}><Plus size={13} /> Capture thought</button></div>}
@@ -1319,7 +1379,7 @@ function ProjectStackCover({ project }: { project: Project }) {
   </span>
 }
 
-function ProjectDetailScreen({ data, project, onBack, onEditProject, onToggleTask, onEditTask, onDeleteTask, onOpenNote, onAddTask, onAddNote, onOpenImage }: { data: AppState; project?: Project; onBack: () => void; onEditProject: () => void; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onDeleteTask: (id: string) => void; onOpenNote: (note: Note) => void; onAddTask: (projectId: string) => void; onAddNote: (projectId: string) => void; onOpenImage: (id: string) => void }) {
+function ProjectDetailScreen({ data, today, project, onBack, onEditProject, onToggleTask, onEditTask, onDeleteTask, onOpenNote, onAddTask, onAddNote, onOpenImage }: { data: AppState; today: string; project?: Project; onBack: () => void; onEditProject: () => void; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onDeleteTask: (id: string) => void; onOpenNote: (note: Note) => void; onAddTask: (projectId: string) => void; onAddNote: (projectId: string) => void; onOpenImage: (id: string) => void }) {
   if (!project) return <div className="screen-scroll"><PageHeader title="Project not found" onBack={onBack} /></div>
   const projectTasks = data.tasks.filter((task) => project.nextTaskIds.includes(task.id))
   const projectNotes = data.notes.filter((note) => project.noteIds.includes(note.id))
@@ -1330,7 +1390,7 @@ function ProjectDetailScreen({ data, project, onBack, onEditProject, onToggleTas
       <div className="project-detail-hero"><div><span className="status-pill active-status">{project.status}</span><p>{project.description}</p></div><div className="detail-progress"><strong>{project.progress}<small>%</small></strong><span>complete</span></div></div>
       <div className="progress-track large"><i style={{ width: `${project.progress}%`, background: project.color }} /></div>
       <SectionLabel action={<button className="text-action" onClick={() => onAddTask(project.id)}><Plus size={13} /> Task</button>}>NEXT</SectionLabel>
-      <div className="detail-task-list">{projectTasks.length ? projectTasks.map((task) => <div className="detail-task" key={task.id}><button className="detail-task-main" onClick={() => onToggleTask(task.id)}><span className={`task-check ${task.completed ? 'is-done' : ''}`}>{task.completed && <Check size={12} />}</span><span>{task.title}</span><span className={`priority-dot ${task.priority}`} /></button><IconButton label={`Edit ${task.title}`} onClick={() => onEditTask(task)}><Pencil size={12} /></IconButton><IconButton label={`Delete ${task.title}`} onClick={() => onDeleteTask(task.id)}><Trash2 size={12} /></IconButton></div>) : <div className="inline-empty">No next moves yet.</div>}</div>
+      <div className="detail-task-list">{projectTasks.length ? projectTasks.map((task) => { const complete = taskIsComplete(task, today); return <div className="detail-task" key={task.id}><button className="detail-task-main" onClick={() => onToggleTask(task.id)}><span className={`task-check ${complete ? 'is-done' : ''}`}>{complete && <Check size={12} />}</span><span>{task.title}</span><span className={`priority-dot ${task.priority}`} /></button><IconButton label={`Edit ${task.title}`} onClick={() => onEditTask(task)}><Pencil size={12} /></IconButton><IconButton label={`Delete ${task.title}`} onClick={() => onDeleteTask(task.id)}><Trash2 size={12} /></IconButton></div> }) : <div className="inline-empty">No next moves yet.</div>}</div>
       <SectionLabel action={<button className="text-action" onClick={() => onAddNote(project.id)}><Plus size={13} /> Note</button>}>NOTES</SectionLabel>
       <div className="project-note-list">{projectNotes.length ? projectNotes.map((note) => <button className="project-note" key={note.id} onClick={() => onOpenNote(note)}><FileText size={15} /><span><strong>{note.title}</strong><small>{note.body}</small></span><ChevronRight size={14} /></button>) : <div className="inline-empty">Add a note to this project.</div>}</div>
       <SectionLabel>GALLERY</SectionLabel>
@@ -1343,7 +1403,10 @@ function ProjectDetailScreen({ data, project, onBack, onEditProject, onToggleTas
 
 type HealthScreenProps = {
   data: AppState
-  onStartWorkout: () => void
+  today: string
+  selectedDate: string
+  setSelectedDate: (date: string) => void
+  onStartWorkout: (date: string) => void
   onSaveDayPlan: (plan: DayPlan) => void
   onAddExercise: (date: string, workoutGuideId: string, defaults: { sets: number; reps: number; unit: PlannedExerciseUnit }) => void
   onUpdateWellness: (log: WellnessLog) => void
@@ -1356,22 +1419,22 @@ type HealthScreenProps = {
 
 type WellnessFocus = 'water' | 'meals' | 'sleep'
 
-function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUpdateWellness, onSaveSkinPhoto, onOpenHealthJournal, skincareRoutine, skinPhotos, onUpdateSkincareRoutine }: HealthScreenProps) {
+function HealthScreen({ data, today, selectedDate, setSelectedDate, onStartWorkout, onSaveDayPlan, onAddExercise, onUpdateWellness, onSaveSkinPhoto, onOpenHealthJournal, skincareRoutine, skinPhotos, onUpdateSkincareRoutine }: HealthScreenProps) {
   const [view, setView] = useState<'week' | 'library' | 'builder' | 'skincare' | 'wellness'>('week')
   const [wellnessFocus, setWellnessFocus] = useState<WellnessFocus>('water')
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedDate, setSelectedDate] = useState(previewDate.iso)
-  const [monthCursor, setMonthCursor] = useState(previewDate.iso)
+  const [weekOffset, setWeekOffset] = useState(() => weekOffsetForDate(selectedDate, today))
+  const [monthCursor, setMonthCursor] = useState(today)
   const [monthOpen, setMonthOpen] = useState(false)
   const [librarySearch, setLibrarySearch] = useState('')
   const [builderOpen, setBuilderOpen] = useState(false)
   const [builderDraft, setBuilderDraft] = useState<DayPlan | null>(null)
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
+  useEffect(() => { setWeekOffset(weekOffsetForDate(selectedDate, today)) }, [today, selectedDate])
 
   const weekDays = useMemo(() => {
-    const start = weekStartFor(previewDate.iso, weekOffset)
+    const start = weekStartFor(today, weekOffset)
     return Array.from({ length: 7 }, (_, index) => shiftIsoDate(start, index))
-  }, [weekOffset])
+  }, [weekOffset, today])
   const catalog = useMemo(() => searchWorkoutGuideExercises(librarySearch), [librarySearch])
   const previewExercise = useMemo(() => previewExerciseId ? searchWorkoutGuideExercises().find((exercise) => exercise.id === previewExerciseId) ?? null : null, [previewExerciseId])
   const monthDays = useMemo(() => {
@@ -1384,7 +1447,7 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
   const plans = data.healthPlans ?? []
   const selectedPlan = plans.find((plan) => plan.date === selectedDate)
   const selectedWellness: WellnessLog = data.wellnessLogs?.find((log) => log.date === selectedDate) ?? { id: `wellness-${selectedDate}`, date: selectedDate, water: 0, meals: 0, skincare: false, waterDl: 0, mealKcal: 0, skincareMorning: false, skincareNight: false }
-  const selectedHealthEntry = data.healthEntries.find((entry) => entry.date === formatLongDate(selectedDate))
+  const selectedHealthEntry = data.healthEntries.find((entry) => entry.date === selectedDate || (selectedDate === '2026-08-25' && entry.date === formatLongDate(selectedDate)))
   const selectedWaterDl = selectedWellness.waterDl ?? selectedWellness.water * 2.5
   const selectedMealKcal = selectedWellness.mealKcal ?? selectedWellness.meals * 650
   const selectedSleepLabel = selectedHealthEntry?.sleep || '—'
@@ -1396,6 +1459,7 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
   const heroExercise = heroPlannedExercise ? data.exercises.find((exercise) => exercise.id === heroPlannedExercise.exerciseId) : undefined
 
   const openBuilder = () => {
+    if (selectedPlan?.session) return
     setBuilderDraft(selectedPlan ? { ...selectedPlan, exercises: selectedPlan.exercises.map((exercise) => ({ ...exercise })) } : blankDayPlan(selectedDate))
     setBuilderOpen(true)
     setView('builder')
@@ -1420,7 +1484,7 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
 
   const moveWeek = (direction: -1 | 1) => {
     const nextOffset = weekOffset + direction
-    const nextStart = weekStartFor(previewDate.iso, nextOffset)
+    const nextStart = weekStartFor(today, nextOffset)
     setWeekOffset(nextOffset)
     setSelectedDate(nextStart)
     setMonthCursor(nextStart)
@@ -1434,7 +1498,7 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
 
   const selectMonthDate = (date: string) => {
     setSelectedDate(date)
-    setWeekOffset(weekOffsetForDate(date))
+    setWeekOffset(weekOffsetForDate(date, today))
     setMonthOpen(false)
   }
 
@@ -1449,10 +1513,11 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
     onUpdateWellness({ ...selectedWellness, skincare: nextMorning && nextNight, skincareMorning: nextMorning, skincareNight: nextNight })
   }
 
-  const dayLabel = selectedDate === previewDate.iso ? 'TODAY' : new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateFromIso(selectedDate)).toUpperCase()
+  const dayLabel = selectedDate === today ? 'TODAY' : new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateFromIso(selectedDate)).toUpperCase()
   const dailyTitle = selectedPlan?.title ?? 'Rest day'
   const hasWorkout = planExercises.length > 0
-  const dailyPerformance = data.tasks.length ? Math.round((data.tasks.filter((task) => task.completed).length / data.tasks.length) * 100) : 0
+  const scheduledTasks = classifyTasks(data.tasks, selectedDate).today
+  const dailyPerformance = scheduledTasks.length ? Math.round((scheduledTasks.filter((task) => taskIsComplete(task, selectedDate)).length / scheduledTasks.length) * 100) : 0
   const healthLiquidStyle = { '--liquid-hue': Math.round(dailyPerformance * 1.2) } as CSSProperties
 
   const openWellness = (focus: WellnessFocus) => {
@@ -1494,10 +1559,10 @@ function HealthScreen({ data, onStartWorkout, onSaveDayPlan, onAddExercise, onUp
         {monthOpen && <div className="health-month-layer" onClick={() => setMonthOpen(false)}><motion.div className="health-month-panel" role="dialog" aria-modal="true" aria-label="Monthly calendar" onClick={(event) => event.stopPropagation()} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 280 }}><div className="health-month-head"><button aria-label="Previous month" onClick={() => setMonthCursor(shiftMonthIso(monthCursor, -1))}><ChevronLeft size={16} /></button><div><span>MONTH VIEW</span><h2>{new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(dateFromIso(monthCursor))}</h2></div><button aria-label="Next month" onClick={() => setMonthCursor(shiftMonthIso(monthCursor, 1))}><ChevronRight size={16} /></button><button className="health-month-close" aria-label="Close month view" onClick={() => setMonthOpen(false)}><X size={15} /></button></div><div className="health-month-weekdays">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => <span key={day}>{day}</span>)}</div><div className="health-month-grid">{monthDays.map((date, index) => date ? <button key={date} className={selectedDate === date ? 'is-selected' : ''} onClick={() => selectMonthDate(date)}><strong>{dateFromIso(date).getDate()}</strong><small>{plans.find((plan) => plan.date === date)?.title ?? ''}</small></button> : <span key={`empty-${index}`} />)}</div></motion.div></div>}
 
         <div className="health-daily-card">
-          <div className="health-daily-topline"><SectionLabel>{dayLabel} · {formatShortDate(selectedDate).toUpperCase()}</SectionLabel></div>
+          <div className="health-daily-topline health-day-picker"><button type="button" aria-label="Previous day" onClick={() => setSelectedDate(shiftIsoDate(selectedDate, -1))}><ChevronLeft size={16} /></button><label><span>{dayLabel}</span><input type="date" aria-label="Exercise date" value={selectedDate} onChange={(event) => { if (event.target.value) setSelectedDate(event.target.value) }} /></label>{selectedDate !== today && <button type="button" className="health-day-today" onClick={() => setSelectedDate(today)}>Today</button>}<button type="button" aria-label="Next day" onClick={() => setSelectedDate(shiftIsoDate(selectedDate, 1))}><ChevronRight size={16} /></button></div>
           <div className="health-daily-copy"><h1>{dailyTitle}</h1><p>{selectedPlan?.focus ?? 'A quiet day for recovery.'}</p><div className="health-daily-meta"><span>{selectedPlan?.warmupMinutes ?? 0} min warm-up</span><span>{planExercises.length} {planExercises.length === 1 ? 'movement' : 'movements'}</span></div></div>
           <div className="health-daily-art">{heroExercise ? <ExerciseIllustration exerciseId={heroExercise.workoutGuideId} exerciseName={heroExercise.name} legacyVisual={heroExercise.visual} animated={false} singleFrame showLabel={false} /> : <div className="health-rest-art"><DumbbellIcon /><span>REST / RESET</span></div>}</div>
-          <div className="health-daily-actions"><button className="health-daily-gallery" aria-label="Open exercise gallery" onClick={(event) => { event.stopPropagation(); closeBuilder(); setView('library') }}><ImageIcon size={13} /></button><button className="health-daily-edit" aria-label="Edit daily exercise" onClick={(event) => { event.stopPropagation(); openBuilder() }}><Pencil size={13} /></button><button className="dark-button health-start-button" onClick={(event) => { event.stopPropagation(); hasWorkout ? onStartWorkout() : openBuilder() }}>{hasWorkout ? <><Play size={13} fill="currentColor" /> Start daily exercise</> : <><Plus size={13} /> Build daily exercise</>}</button></div>
+          <div className="health-daily-actions"><button className="health-daily-gallery" aria-label="Open exercise gallery" onClick={(event) => { event.stopPropagation(); closeBuilder(); setView('library') }}><ImageIcon size={13} /></button><button className="health-daily-edit" aria-label="Edit daily exercise" disabled={!!selectedPlan?.session} onClick={(event) => { event.stopPropagation(); openBuilder() }}><Pencil size={13} /></button><button className="dark-button health-start-button" disabled={!!selectedPlan?.session?.completedAt} onClick={(event) => { event.stopPropagation(); hasWorkout ? onStartWorkout(selectedDate) : openBuilder() }}>{selectedPlan?.session?.completedAt ? <><Check size={13} /> Workout complete</> : hasWorkout ? <><Play size={13} fill="currentColor" /> {selectedPlan?.session ? 'Resume exercise' : 'Start daily exercise'}</> : <><Plus size={13} /> Build daily exercise</>}</button></div>
         </div>
 
         <SectionLabel>WELLNESS & CARE</SectionLabel>
@@ -1778,7 +1843,7 @@ function CollectionsScreen({ data, onBack, onOpenImage }: { data: AppState; onBa
 }
 
 function JournalScreen({ entries, onBack, onNew }: { entries: JournalEntry[]; onBack: () => void; onNew: () => void }) {
-  return <div className="screen-scroll journal-screen"><PageHeader eyebrow="REFLECTION" title="Journal" subtitle="No performance required." onBack={onBack} action={<IconButton label="New journal entry" onClick={onNew}><Plus size={18} /></IconButton>} /><div className="journal-modes"><span className="is-active">Daily</span><span>Free</span></div><div className="journal-list">{entries.map((entry) => <article className="journal-entry" key={entry.id}><div className="journal-entry-top"><span>{entry.date}</span><span>{entry.mode === 'daily' ? 'Daily journal' : 'Free writing'}</span></div><h2>{entry.title}</h2>{entry.mode === 'daily' ? <><p>{entry.howWasToday}</p><div className="journal-entry-meta"><span>Mood {'●'.repeat(entry.mood)}<i>{'●'.repeat(5 - entry.mood)}</i></span><span>{entry.whatWasGood}</span></div></> : <p>{entry.onMind}</p>}</article>)}</div></div>
+  return <div className="screen-scroll journal-screen"><PageHeader eyebrow="REFLECTION" title="Journal" subtitle="No performance required." onBack={onBack} action={<IconButton label="New journal entry" onClick={onNew}><Plus size={18} /></IconButton>} /><div className="journal-modes"><span className="is-active">Daily</span><span>Free</span></div><div className="journal-list">{entries.map((entry) => <article className="journal-entry" key={entry.id}><div className="journal-entry-top"><span>{displayStoredDate(entry.date)}</span><span>{entry.mode === 'daily' ? 'Daily journal' : 'Free writing'}</span></div><h2>{entry.title}</h2>{entry.mode === 'daily' ? <><p>{entry.howWasToday}</p><div className="journal-entry-meta"><span>Mood {'●'.repeat(entry.mood)}<i>{'●'.repeat(5 - entry.mood)}</i></span><span>{entry.whatWasGood}</span></div></> : <p>{entry.onMind}</p>}</article>)}</div></div>
 }
 
 function FocusScreen({ mode, seconds, running, paused, onModeChange, onStart, onPause, onBack }: { mode: string; seconds: number; running: boolean; paused: boolean; onModeChange: (mode: string) => void; onStart: () => void; onPause: () => void; onBack: () => void }) {
@@ -1801,13 +1866,14 @@ function FocusScreen({ mode, seconds, running, paused, onModeChange, onStart, on
   </section></div>
 }
 
-function WorkoutScreen({ data, exerciseIndex, resting, restSeconds, onCompleteSet, onNextExercise, onSkipRest }: { data: AppState; exerciseIndex: number; resting: boolean; restSeconds: number; onCompleteSet: () => void; onNextExercise: () => void; onSkipRest: () => void }) {
-  const workout = data.workouts[0]
-  const exercise = data.exercises[exerciseIndex]
-  if (!workout || !exercise) return null
-  const completedSets = workout.completedSets[exercise.id] ?? 0
-  const isLast = exerciseIndex === workout.exerciseIds.length - 1
-  return <div className="workout-screen"><div className="workout-top"><span className="eyebrow">UPPER BODY · {exerciseIndex + 1}/{workout.exerciseIds.length}</span><button onClick={onNextExercise}><X size={17} /></button></div><div className="workout-progress"><i style={{ width: `${((exerciseIndex + completedSets / exercise.sets) / workout.exerciseIds.length) * 100}%` }} /></div><div className="workout-heading"><span className="eyebrow">EXERCISE</span><h1>{exercise.name}</h1><p className="workout-heading-meta"><strong>{exercise.sets} × {exercise.reps}</strong><span>{exercise.equipment ?? 'Bodyweight'}</span></p></div><ExerciseIllustration exerciseId={exercise.workoutGuideId} exerciseName={exercise.name} legacyVisual={exercise.visual} /><div className="exercise-instructions"><span className="eyebrow">HOW TO MOVE</span><p>{exercise.description}</p></div>{resting ? <div className="rest-card"><span className="eyebrow">REST</span><strong>{formatTimer(restSeconds)}</strong><p>Let the work settle.</p><button onClick={onSkipRest}>Skip rest</button></div> : <div className="set-panel"><div className="set-panel-top"><span>SET {completedSets + 1} <small>of {exercise.sets}</small></span><strong>{exercise.reps} {exercise.reps === 1 ? 'rep' : 'reps'}</strong></div><button className="complete-set-button" onClick={onCompleteSet}>{completedSets >= exercise.sets ? <Check size={17} /> : <CheckCircle2 size={17} />} {completedSets >= exercise.sets ? 'Set complete' : 'Complete set'}</button></div>}<div className="workout-bottom"><span>{completedSets}/{exercise.sets} sets done</span><button onClick={onNextExercise}>{isLast ? 'Finish workout' : 'Next exercise'} <ChevronRight size={14} /></button></div><WorkoutGuideCredits /></div>
+function WorkoutScreen({ data, date, exerciseIndex, resting, restSeconds, onCompleteSet, onNextExercise, onSkipRest, onBack }: { data: AppState; date: string | null; exerciseIndex: number; resting: boolean; restSeconds: number; onCompleteSet: () => void; onNextExercise: () => void; onSkipRest: () => void; onBack: () => void }) {
+  const plan = data.healthPlans.find((item) => item.date === date)
+  const planned = plan?.exercises[exerciseIndex]
+  const exercise = data.exercises.find((item) => item.id === planned?.exerciseId)
+  if (!plan || !planned || !exercise) return <div className="workout-screen"><button onClick={onBack}>Back to Health</button></div>
+  const completedSets = plan.session?.completedSets[planned.id] ?? 0
+  const isLast = exerciseIndex === plan.exercises.length - 1
+  return <div className="workout-screen"><div className="workout-top"><span className="eyebrow">{plan.title.toUpperCase()} · {exerciseIndex + 1}/{plan.exercises.length}</span><button onClick={onBack} aria-label="Leave workout; progress is saved"><X size={17} /></button></div><div className="workout-progress"><i style={{ width: `${((exerciseIndex + completedSets / Math.max(1, planned.sets)) / plan.exercises.length) * 100}%` }} /></div><div className="workout-heading"><span className="eyebrow">{formatLongDate(plan.date).toUpperCase()} · EXERCISE</span><h1>{exercise.name}</h1><p className="workout-heading-meta"><strong>{planned.sets} × {planned.reps}</strong><span>{exercise.equipment ?? 'Bodyweight'}</span></p></div><ExerciseIllustration exerciseId={exercise.workoutGuideId} exerciseName={exercise.name} legacyVisual={exercise.visual} /><div className="exercise-instructions"><span className="eyebrow">HOW TO MOVE</span><p>{exercise.description}</p></div>{resting ? <div className="rest-card"><span className="eyebrow">REST</span><strong>{formatTimer(restSeconds)}</strong><p>Let the work settle.</p><button onClick={onSkipRest}>Skip rest</button></div> : <div className="set-panel"><div className="set-panel-top"><span>SET {Math.min(planned.sets, completedSets + 1)} <small>of {planned.sets}</small></span><strong>{planned.reps} {planned.unit}</strong></div><button className="complete-set-button" onClick={onCompleteSet} disabled={completedSets >= planned.sets}>{completedSets >= planned.sets ? <Check size={17} /> : <CheckCircle2 size={17} />} {completedSets >= planned.sets ? 'Sets complete' : 'Complete set'}</button></div>}<div className="workout-bottom"><span>{completedSets}/{planned.sets} sets done</span><button onClick={onNextExercise} disabled={completedSets < planned.sets}>{isLast ? 'Finish workout' : 'Next exercise'} <ChevronRight size={14} /></button></div><WorkoutGuideCredits /></div>
 }
 
 function SpotifyScreen({ data, onBack, onToggle, onNext, onPrevious }: { data: AppState; onBack: () => void; onToggle: () => void; onNext: () => void; onPrevious: () => void }) {
@@ -1823,7 +1889,7 @@ function PinterestScreen({ onBack, onSave }: { onBack: () => void; onSave: () =>
   return <div className="screen-scroll external-screen pinterest-screen"><PageHeader eyebrow="EXTERNAL APP" title="Pinterest" subtitle="Discover out there. Keep what matters here." onBack={onBack} /><div className="pinterest-demo"><div className="pin-visual"><span /><i /><b /></div><div className="pin-copy"><span>DEMO PIN</span><h2>Soft forms / late light</h2><p>A visual found elsewhere, ready to become yours.</p></div></div><button className="save-pin-button" onClick={onSave}><Plus size={16} /> Simulate save to Inspiration</button><div className="flow-note"><span>find</span><ChevronRight size={13} /><span>share</span><ChevronRight size={13} /><strong>Personal OS</strong></div></div>
 }
 
-function LegacyRenderSheet({ sheet, setSheet, captureText, setCaptureText, saveCapture, noteDraft, setNoteDraft, saveNote, taskDraft, setTaskDraft, saveTask, onDeleteTask, projectDraft, setProjectDraft, saveProject, personDraft, setPersonDraft, savePerson, healthDraft, setHealthDraft, saveHealth, journalDraft, setJournalDraft, journalMode, setJournalMode, saveJournal, data, onConvertThoughtToTask, onConvertThoughtToNote, onDeleteThought, onPinThought }: { sheet: SheetState; setSheet: (sheet: SheetState) => void; captureText: string; setCaptureText: (value: string) => void; saveCapture: (event?: FormEvent) => void; noteDraft: { title: string; body: string }; setNoteDraft: (value: { title: string; body: string }) => void; saveNote: (event: FormEvent) => void; taskDraft: { title: string; projectId: string }; setTaskDraft: (value: { title: string; projectId: string }) => void; saveTask: (event: FormEvent) => void; onDeleteTask: (id: string) => void; projectDraft: { title: string; description: string }; setProjectDraft: (value: { title: string; description: string }) => void; saveProject: (event: FormEvent) => void; personDraft: typeof blankPersonDraft; setPersonDraft: (value: typeof blankPersonDraft) => void; savePerson: (event: FormEvent) => void; healthDraft: { energy: number; sleep: string; notes: string }; setHealthDraft: (value: { energy: number; sleep: string; notes: string }) => void; saveHealth: (event: FormEvent) => void; journalDraft: typeof blankJournalDraft; setJournalDraft: (value: typeof blankJournalDraft) => void; journalMode: 'daily' | 'free'; setJournalMode: (value: 'daily' | 'free') => void; saveJournal: (event: FormEvent) => void; data: AppState; onConvertThoughtToTask: (thought: Thought) => void; onConvertThoughtToNote: (thought: Thought) => void; onDeleteThought: (id: string) => void; onPinThought: (id: string) => void }) {
+function LegacyRenderSheet({ sheet, setSheet, captureText, setCaptureText, saveCapture, noteDraft, setNoteDraft, saveNote, taskDraft, setTaskDraft, saveTask, onDeleteTask, projectDraft, setProjectDraft, saveProject, personDraft, setPersonDraft, savePerson, healthDraft, setHealthDraft, saveHealth, journalDraft, setJournalDraft, journalMode, setJournalMode, saveJournal, data, onConvertThoughtToTask, onConvertThoughtToNote, onDeleteThought, onPinThought }: { sheet: SheetState; setSheet: (sheet: SheetState) => void; captureText: string; setCaptureText: (value: string) => void; saveCapture: (event?: FormEvent) => void; noteDraft: { title: string; body: string }; setNoteDraft: (value: { title: string; body: string }) => void; saveNote: (event: FormEvent) => void; taskDraft: TaskDraft; setTaskDraft: (value: TaskDraft) => void; saveTask: (event: FormEvent) => void; onDeleteTask: (id: string) => void; projectDraft: { title: string; description: string }; setProjectDraft: (value: { title: string; description: string }) => void; saveProject: (event: FormEvent) => void; personDraft: typeof blankPersonDraft; setPersonDraft: (value: typeof blankPersonDraft) => void; savePerson: (event: FormEvent) => void; healthDraft: { energy: number; sleep: string; notes: string }; setHealthDraft: (value: { energy: number; sleep: string; notes: string }) => void; saveHealth: (event: FormEvent) => void; journalDraft: typeof blankJournalDraft; setJournalDraft: (value: typeof blankJournalDraft) => void; journalMode: 'daily' | 'free'; setJournalMode: (value: 'daily' | 'free') => void; saveJournal: (event: FormEvent) => void; data: AppState; onConvertThoughtToTask: (thought: Thought) => void; onConvertThoughtToNote: (thought: Thought) => void; onDeleteThought: (id: string) => void; onPinThought: (id: string) => void }) {
   const close = () => setSheet({ kind: null })
   const thought = sheet.id ? data.thoughts.find((item) => item.id === sheet.id) : undefined
   let title = 'Quick capture'
@@ -1847,8 +1913,8 @@ type RenderSheetProps = {
   noteDraft: { title: string; body: string }
   setNoteDraft: (value: { title: string; body: string }) => void
   saveNote: (event: FormEvent) => void
-  taskDraft: { title: string; projectId: string }
-  setTaskDraft: (value: { title: string; projectId: string }) => void
+  taskDraft: TaskDraft
+  setTaskDraft: (value: TaskDraft) => void
   saveTask: (event: FormEvent) => void
   onDeleteTask: (id: string) => void
   projectDraft: { title: string; description: string }
@@ -1916,7 +1982,7 @@ function RenderSheet({ sheet, setSheet, captureText, setCaptureText, saveCapture
   return <SheetFrame eyebrow={eyebrow} title={title} onClose={close} centered={sheet.kind === 'capture'}>
     {sheet.kind === 'capture' && <form onSubmit={saveCapture}><textarea autoFocus value={captureText} onChange={(event) => setCaptureText(event.target.value)} placeholder="What's on your mind?" rows={4} /><div className="sheet-footer"><span>It will land in Brain first.</span><button className="dark-button" type="submit">Save</button></div></form>}
     {sheet.kind === 'note' && <form onSubmit={saveNote}><input autoFocus value={noteDraft.title} onChange={(event) => setNoteDraft({ ...noteDraft, title: event.target.value })} placeholder="Note title" /><textarea value={noteDraft.body} onChange={(event) => setNoteDraft({ ...noteDraft, body: event.target.value })} placeholder="Start writing…" rows={5} /><div className="sheet-footer"><span>Permanent memory</span><button className="dark-button" type="submit"><Check size={14} /> Save note</button></div></form>}
-    {sheet.kind === 'task' && <form onSubmit={saveTask}><input autoFocus value={taskDraft.title} onChange={(event) => setTaskDraft({ ...taskDraft, title: event.target.value })} placeholder="What needs doing?" /><div className="sheet-option-label">Belongs to</div><div className="choice-row"><button type="button" className={!taskDraft.projectId ? 'is-selected' : ''} onClick={() => setTaskDraft({ ...taskDraft, projectId: '' })}>Loose task</button>{data.projects.map((project) => <button type="button" key={project.id} className={taskDraft.projectId === project.id ? 'is-selected' : ''} onClick={() => setTaskDraft({ ...taskDraft, projectId: project.id })}>{project.title}</button>)}</div><div className="sheet-footer"><span>Keep it simple.</span>{editingTask && <button className="danger-sheet-button" type="button" onClick={() => onDeleteTask(sheet.id!)}><Trash2 size={13} /> Delete</button>}<button className="dark-button" type="submit"><Check size={14} /> Save task</button></div></form>}
+    {sheet.kind === 'task' && <form onSubmit={saveTask}><input autoFocus value={taskDraft.title} onChange={(event) => setTaskDraft({ ...taskDraft, title: event.target.value })} placeholder="What needs doing?" /><div className="sheet-option-label">Belongs to</div><div className="choice-row"><button type="button" className={!taskDraft.projectId ? 'is-selected' : ''} onClick={() => setTaskDraft({ ...taskDraft, projectId: '' })}>Loose task</button>{data.projects.map((project) => <button type="button" key={project.id} className={taskDraft.projectId === project.id ? 'is-selected' : ''} onClick={() => setTaskDraft({ ...taskDraft, projectId: project.id })}>{project.title}</button>)}</div><div className="task-schedule-fields"><label>Schedule<select value={taskDraft.recurrence} onChange={(event) => setTaskDraft({ ...taskDraft, recurrence: event.target.value as TaskDraft['recurrence'] })}><option value="once">One-off</option><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label>{taskDraft.recurrence === 'once' ? 'Due date (optional)' : 'Starts on'}<input type="date" value={taskDraft.dueDate} onChange={(event) => setTaskDraft({ ...taskDraft, dueDate: event.target.value })} /></label></div><div className="sheet-footer"><span>{taskDraft.recurrence === 'once' ? 'One clear next step.' : 'Completion resets each scheduled day.'}</span>{editingTask && <button className="danger-sheet-button" type="button" onClick={() => onDeleteTask(sheet.id!)}><Trash2 size={13} /> Delete</button>}<button className="dark-button" type="submit"><Check size={14} /> Save task</button></div></form>}
     {sheet.kind === 'project' && <form onSubmit={saveProject}><input autoFocus value={projectDraft.title} onChange={(event) => setProjectDraft({ ...projectDraft, title: event.target.value })} placeholder="Project name" /><textarea value={projectDraft.description} onChange={(event) => setProjectDraft({ ...projectDraft, description: event.target.value })} placeholder="What is this becoming?" rows={3} /><div className="sheet-footer"><span>{editingProject ? 'Refine the thread.' : 'Start with a thread.'}</span><button className="dark-button" type="submit"><FolderPlus size={14} /> {editingProject ? 'Save project' : 'Create project'}</button></div></form>}
     {sheet.kind === 'thought-actions' && thought && <div className="thought-action-sheet"><div className="selected-thought"><span className="thought-mark" /><p>{thought.text}</p></div><button onClick={() => onConvertThoughtToTask(thought)}><CheckCircle2 size={16} /><span>Turn into a task</span><ChevronRight size={14} /></button><button onClick={() => onConvertThoughtToNote(thought)}><FileText size={16} /><span>Turn into a note</span><ChevronRight size={14} /></button><button onClick={() => onPinThought(thought.id)}><Pin size={16} /><span>{thought.pinned ? 'Unpin thought' : 'Pin thought'}</span><ChevronRight size={14} /></button><button className="danger-row" onClick={() => onDeleteThought(thought.id)}><Trash2 size={16} /><span>Delete thought</span><ChevronRight size={14} /></button></div>}
     {sheet.kind === 'person' && <form onSubmit={savePerson} className="person-form"><input value={personDraft.birthday} onChange={(event) => setPersonDraft({ ...personDraft, birthday: event.target.value })} placeholder="Birthday" /><input value={personDraft.likes} onChange={(event) => setPersonDraft({ ...personDraft, likes: event.target.value })} placeholder="Likes · separate with commas" /><input value={personDraft.dislikes} onChange={(event) => setPersonDraft({ ...personDraft, dislikes: event.target.value })} placeholder="Dislikes" /><textarea value={personDraft.remember} onChange={(event) => setPersonDraft({ ...personDraft, remember: event.target.value })} placeholder="Things to remember" rows={3} /><input value={personDraft.gifts} onChange={(event) => setPersonDraft({ ...personDraft, gifts: event.target.value })} placeholder="Gift ideas" /><textarea value={personDraft.notes} onChange={(event) => setPersonDraft({ ...personDraft, notes: event.target.value })} placeholder="Notes" rows={2} /><button className="dark-button wide" type="submit"><Check size={14} /> Save memory</button></form>}

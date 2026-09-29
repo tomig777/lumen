@@ -42,6 +42,8 @@ export interface Task {
   projectId?: string
   priority: 'low' | 'medium' | 'high'
   dueDate?: string
+  recurrence?: 'once' | 'daily' | 'weekdays'
+  completedOn?: { date: string; at: string }[]
 }
 
 export interface Habit {
@@ -111,6 +113,7 @@ export interface Person {
 export interface JournalEntry {
   id: string
   date: string
+  createdAt?: string
   title: string
   mode: 'daily' | 'free'
   mood: number
@@ -124,6 +127,7 @@ export interface JournalEntry {
 export interface HealthEntry {
   id: string
   date: string
+  updatedAt?: string
   energy: number
   sleep: string
   workout: string
@@ -169,11 +173,18 @@ export interface DayPlan {
   warmupMinutes: number
   exercises: PlannedExercise[]
   notes: string
+  session?: {
+    startedAt: string
+    completedAt?: string
+    activeIndex: number
+    completedSets: Record<string, number>
+  }
 }
 
 export interface WellnessLog {
   id: string
   date: string
+  updatedAt?: string
   water: number
   meals: number
   skincare: boolean
