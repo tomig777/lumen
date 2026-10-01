@@ -50,6 +50,8 @@ import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
 import { useAppStorage, type SaveState } from './hooks/useAppStorage'
 import { useOfflineShell, type OfflineShell } from './hooks/useOfflineShell'
+import { APP_RELEASE } from './appRelease'
+import { updateStatusText } from './offlineUpdates'
 import type { BackupVerification } from './storage/indexedDbRepository'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
@@ -1026,6 +1028,19 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
     <PageHeader title="Data & backup" subtitle="Keep a copy you control." onBack={onBack} />
     <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.<span className="backup-local-status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving changes…' : 'Some changes are not saved'}</span></div>
 
+    <section className="backup-panel backup-release-panel" aria-label="App version and updates">
+      <span className="eyebrow">LUMEN</span>
+      <h2>App & updates</h2>
+      <div className="backup-status-row"><span>App version</span><strong>{APP_RELEASE.version}</strong></div>
+      <div className="backup-status-row"><span>Build</span><strong>{APP_RELEASE.build === 'local' ? 'Local preview' : APP_RELEASE.build}</strong></div>
+      <p>This is the version currently open on this device.</p>
+      <div className="backup-update-status" role="status" aria-live="polite">{updateStatusText[offlineShell.status]}</div>
+      {offlineShell.lastCheckedAt && <p className="backup-update-time">Last checked {new Date(offlineShell.lastCheckedAt).toLocaleString()}</p>}
+      <button className="backup-secondary" type="button" disabled={['checking', 'downloading'].includes(offlineShell.status)} onClick={offlineShell.checkForUpdates}>{offlineShell.status === 'checking' ? 'Checking…' : offlineShell.status === 'downloading' ? 'Downloading…' : 'Check for updates'}</button>
+      {offlineShell.updateAvailable && <button className="backup-primary" type="button" disabled={saveState.kind !== 'saved'} onClick={offlineShell.applyUpdate}>Update Lumen now</button>}
+      {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
+    </section>
+
     <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">
       <span className="eyebrow">STORAGE STATUS</span>
       <h2>On this device</h2>
@@ -1033,8 +1048,6 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
       <div className="backup-status-row"><span>Last verified export file</span><strong>{verification ? new Date(verification.checkedAt).toLocaleString() : 'None checked yet'}</strong></div>
       <div className="backup-status-row"><span>Offline app shell</span><strong>{offlineShell.ready ? 'Ready' : offlineShell.online ? 'Not ready · try again online' : 'Unavailable offline'}</strong></div>
       <p>{offlineShell.online ? 'Online now.' : 'Offline now. Notes, tasks, and photos still save on this device.'} A checked file is not proof it was copied off this phone. No off-device backup is confirmed by Lumen.</p>
-      {offlineShell.updateAvailable && <button className="backup-secondary" type="button" disabled={saveState.kind !== 'saved'} onClick={offlineShell.applyUpdate}>Update Lumen now</button>}
-      {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
     </section>
 
     <section className="backup-panel">

@@ -1,55 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
+import { createOfflineUpdateMonitor, type OfflineUpdateState } from '../offlineUpdates'
 
-export type OfflineShell = {
-  ready: boolean
-  updateAvailable: boolean
+export type OfflineShell = OfflineUpdateState & {
   online: boolean
+  checkForUpdates: () => void
   applyUpdate: () => void
 }
 
 export function useOfflineShell(): OfflineShell {
-  const [ready, setReady] = useState(false)
-  const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [state, setState] = useState<OfflineUpdateState>({ ready: false, updateAvailable: false, status: 'idle', lastCheckedAt: null })
   const [online, setOnline] = useState(navigator.onLine)
-  const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
-  const reloadForUpdate = useRef(false)
+  const monitorRef = useRef<ReturnType<typeof createOfflineUpdateMonitor> | null>(null)
 
   useEffect(() => {
-    if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
-    let cancelled = false
-    let registration: ServiceWorkerRegistration | null = null
-    const check = () => {
-      if (cancelled || !registration) return
-      setReady(!!registration.active)
-      setUpdateAvailable(!!registration.waiting)
-    }
-    const onControllerChange = () => {
-      if (reloadForUpdate.current) window.location.reload()
-      else check()
-    }
+    const monitor = createOfflineUpdateMonitor({
+      serviceWorkers: import.meta.env.PROD && 'serviceWorker' in navigator ? navigator.serviceWorker : null,
+      isOnline: () => navigator.onLine,
+      onState: setState,
+      onApply: () => window.location.reload(),
+    })
+    monitorRef.current = monitor
     const onVisibility = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) void registration?.update().catch(() => undefined)
+      if (document.visibilityState === 'visible' && navigator.onLine) void monitor.checkForUpdates()
     }
     const onOnline = () => { setOnline(true); onVisibility() }
-    const onOffline = () => setOnline(false)
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+    const onOffline = () => { setOnline(false); void monitor.checkForUpdates() }
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
-    navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then((result) => {
-      if (cancelled) return
-      registration = result
-      registrationRef.current = result
-      result.addEventListener('updatefound', () => {
-        result.installing?.addEventListener('statechange', check)
-      })
-      check()
-      void result.update().catch(() => undefined)
-    }).catch(() => { if (!cancelled) setReady(false) })
+    void monitor.checkForUpdates()
     return () => {
-      cancelled = true
-      registrationRef.current = null
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+      monitorRef.current = null
+      monitor.dispose()
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
@@ -57,14 +39,9 @@ export function useOfflineShell(): OfflineShell {
   }, [])
 
   return {
-    ready,
-    updateAvailable,
+    ...state,
     online,
-    applyUpdate: () => {
-      const waiting = registrationRef.current?.waiting
-      if (!waiting) return
-      reloadForUpdate.current = true
-      waiting.postMessage({ type: 'LUMEN_APPLY_UPDATE' })
-    },
+    checkForUpdates: () => { void monitorRef.current?.checkForUpdates() },
+    applyUpdate: () => monitorRef.current?.applyUpdate(),
   }
 }

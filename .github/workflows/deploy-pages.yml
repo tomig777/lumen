@@ -44,6 +44,7 @@ jobs:
           pnpm test:viewport
           pnpm test:icons
           pnpm test:offline
+          pnpm test:updates
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact

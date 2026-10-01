@@ -21,6 +21,14 @@ Safari's Add to Home Screen preview and the installed icon still need an actual 
 
 ## GitHub Pages
 
+### App version and update checks
+
+**Data & backup → App & updates** shows the version of the code currently open on this device and a seven-character build ID from the GitHub source commit. Local production previews explicitly show **Local preview** instead of a published build ID. Version numbers come from `package.json`; increment that version for user-facing releases. GitHub supplies `GITHUB_SHA` automatically, so each published build remains identifiable even when its version number is unchanged. The same identity is included in the page metadata and `release.json`, both part of the complete offline shell. A network response never overwrites the running app's displayed identity.
+
+**Check for updates** is always visible. It reports checking, downloading, no newer update found, a ready update, no connection, or a failed check; failed checks do not claim success. **Update Lumen now** appears only when a complete new shell is waiting, or when another tab activated a new shell and this page needs a user-initiated reload. It remains disabled until the current changes are saved. No update action clears, resets, or replaces user records. If an older app does not yet have this panel, let it check online and use its existing update button when offered; do not remove the installed app or clear website data to obtain the panel.
+
+Local checks include `pnpm test:updates`, covering update observation, offline launch, failure/retry, overlapping requests, cross-tab activation, disposal, and release identity. The Pages workflow runs this check before publication.
+
 Pushing to `main` runs the workflow in `.github/workflows/deploy-pages.yml`, which builds the app and publishes it to GitHub Pages.
 
 On iPhone, open the published site in Safari and use **Share → Add to Home Screen** for an app-like full-screen launch.
