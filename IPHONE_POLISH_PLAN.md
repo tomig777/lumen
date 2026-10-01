@@ -1,6 +1,6 @@
 # Lumen: iPhone bottom edge and Home Screen icon
 
-Status: step 1's provisional diagnosis is recorded in [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Steps 2–5 are implemented and checked locally in the production build. Step 6 publication is authorized and in progress; direct iPhone measurements, keyboard recovery, overscroll, and Home Screen icon acceptance remain pending. Publication and live verification results will be recorded below once confirmed.
+Status: step 1's provisional diagnosis is recorded in [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Steps 2–5 are implemented and checked locally in the production build. Step 6 publication and live release verification are complete. Direct iPhone measurements, keyboard recovery, overscroll, and Home Screen icon acceptance remain pending; publication is not proof of physical-device acceptance.
 
 Target: Lumen installed from GitHub Pages on the iPhone 13 Pro. The previously specified OS is iOS 17.3; record the actual installed version during device verification. Compare the installed Home Screen app with Safari because they expose different viewport behavior.
 
@@ -104,8 +104,8 @@ Step 5 is complete locally. The live Pages workflow, physical bottom-edge screen
 
 ## 6. Publish and verify on the iPhone
 
-- [ ] Commit and publish the completed implementation through the existing `main` → GitHub Pages workflow. Publication was authorized on 2026-10-01.
-- [ ] Verify the live HTML, manifest, icon PNGs, and service worker belong to the new release.
+- [x] Commit and publish the completed implementation through the existing `main` → GitHub Pages workflow. Publication was authorized on 2026-10-01.
+- [x] Verify the live HTML, manifest, icon PNGs, and service worker belong to the new release.
 - [ ] On the installed iPhone app, check cold launch, resume, portrait/landscape, navigation, the + menu, typing and dismissing the keyboard, and both light and dark screens.
 - [ ] Compare new Home and welcome screenshots with the supplied baseline. Confirm the strip is gone and the Home indicator area blends with each page.
 - [ ] Check the Home Screen logo and reopen the app offline after the updated shell is ready.
@@ -113,11 +113,17 @@ Step 5 is complete locally. The live Pages workflow, physical bottom-edge screen
 
 If device checks cannot be performed during implementation, report the release as implemented with iPhone acceptance pending. Do not mark the screenshot issue resolved solely from desktop simulation.
 
+Publication (2026-10-01): implementation commit `7ad6b31a73ed4982d87d10db33858d762badc8f7` was published to `main`. [GitHub Pages workflow 36914690822](https://github.com/tomig777/lumen/actions/runs/36914690822) completed successfully, including the production build and all release test groups. [Live Lumen](https://tomig777.github.io/lumen/) serves `assets/index-B-FSRsBg.js` and `assets/index-DyYp4sCu.css`. Direct HTTP checks returned 200 with correct MIME types for HTML, manifest, SVG, all three PNGs, the compiled assets, and the worker. HTML, manifest, and all seven shell assets match the validated local build byte-for-byte. The live worker is `lumen-shell-870c090c4fc89cef`, contains all nine expected files, and references the same entry assets as the HTML. Its hash differs from the Windows build because the existing generator hashes platform-specific relative path separators; the actual release assets are identical.
+
+Live browser smoke check: the existing desktop browser initially served its preceding cached release. The normal **Data & backup → Update Lumen now** action loaded the new entry and PNG metadata without resetting storage. Visible record counts remained unchanged (450 notes, 2 journal entries, 3 projects, 9 tasks, 0 embedded images), and the offline app shell reported Ready. No live note, task, journal, project, or image was created, edited, or deleted. At 390 × 844, welcome, Home, and Brain had shell bounds y=0–844, document height 844, and no document scroll. Welcome's document color was `#f3ece2`, Home's was `#faf7f2`, and Brain's was `#24211e`; Home navigation spanned y=776–832 with zero desktop safe-area insets. Brain rendered one canvas and the expanded + menu opened normally. Browser warning/error logs were empty. The temporary verification tab was closed and the viewport override reset; the user's existing tab was not reloaded.
+
+Remaining handoff: open the installed iPhone app online, use **Data & backup → Update Lumen now** if offered, and reopen it. Compare Home/welcome bottom edges, light/dark screens, keyboard dismissal, rotation/resume, and the Home Screen logo. Then confirm offline reopening and a test note/photo surviving close/reopen. If the existing icon remains grey, record that result and check Safari's Add to Home Screen preview; do not delete the installed app or clear website data as a refresh workaround. These checks are still pending, not failed or assumed complete.
+
 ## Execution order
 
 Layout diagnosis → full-screen/keyboard correction → background continuity → icon assets/configuration → production checks → publication → iPhone acceptance.
 
-The user authorized steps 1–6. Steps 2–5 are implemented and validated locally; step 6 publication is in progress and phone acceptance remains pending. Update the checkboxes and findings as publication and device checks are completed.
+The user authorized steps 1–6. Steps 2–5 are implemented and validated locally; step 6 publication and live release checks are complete. Phone acceptance remains pending. Update the remaining checkboxes and findings only when actual device checks are reported or performed.
 
 ## References
 

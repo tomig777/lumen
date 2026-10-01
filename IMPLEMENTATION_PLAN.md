@@ -83,7 +83,7 @@ Done when: the app starts and core local actions work without a connection; a de
 
 ## Follow-up: iPhone bottom edge and Home Screen icon
 
-The supplied iPhone screenshots show a pale strip below the app, and the installed icon falls back to a grey letter. The full-screen/keyboard layout, coordinated page backgrounds, custom PNG icons, and mobile-control corrections are implemented and production-tested locally. All 34 automated tests pass. Publication is authorized and in progress; physical iPhone bottom-edge, keyboard, icon, and offline/data acceptance remain pending. The detailed findings and release checklist are recorded in [IPHONE_POLISH_PLAN.md](IPHONE_POLISH_PLAN.md).
+The supplied iPhone screenshots show a pale strip below the app, and the installed icon falls back to a grey letter. The full-screen/keyboard layout, coordinated page backgrounds, custom PNG icons, and mobile-control corrections are implemented, production-tested, and published in commit `7ad6b31`. All 34 automated tests and the Pages workflow passed. Live assets match the tested build, and the normal update action loaded them without changing visible record counts. Physical iPhone bottom-edge, keyboard, icon, and offline/data acceptance remain pending. The detailed findings and release checklist are recorded in [IPHONE_POLISH_PLAN.md](IPHONE_POLISH_PLAN.md).
 
 ## Later: optional home server
 
