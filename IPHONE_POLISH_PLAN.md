@@ -1,6 +1,6 @@
 # Lumen: iPhone bottom edge and Home Screen icon
 
-Status: step 1's provisional diagnosis is recorded in [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Steps 2–5 are implemented and checked locally in the production build. Step 6 publication and live release verification are complete. Direct iPhone measurements, keyboard recovery, overscroll, and Home Screen icon acceptance remain pending; publication is not proof of physical-device acceptance.
+Status: step 1's provisional diagnosis is recorded in [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Steps 2–5 are implemented and checked locally in the production build. Step 6 publication and live release verification are complete. **The user has now confirmed the bottom strip still appears on every screen in the updated app. Physical-device bottom-edge acceptance failed; the previous sizing/background changes are not a fix.** A local-only screen-layout check is being added to obtain actual phone readings before another sizing change. Direct iPhone measurements, keyboard recovery, overscroll, and Home Screen icon acceptance remain pending; publication is not proof of physical-device acceptance.
 
 Target: Lumen installed from GitHub Pages on the iPhone 13 Pro. The previously specified OS is iOS 17.3; record the actual installed version during device verification. Compare the installed Home Screen app with Safari because they expose different viewport behavior.
 

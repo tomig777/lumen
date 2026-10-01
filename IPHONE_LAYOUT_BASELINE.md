@@ -56,6 +56,14 @@ For installed Home Screen mode and Safari, record the actual iOS version, standa
 
 These observations can be obtained with temporary opt-in diagnostics or Safari's remote inspector during the next implementation. No phone-only result has been marked verified in this baseline.
 
+## Updated physical-device report (2026-10-01)
+
+The user confirmed they are running the newly released app, then supplied another Home screenshot with the same bottom boundary around row 1208 of a 591 × 1280 image. They also confirmed the strip appears on **every screen**, including welcome and dark Brain. The CSS shell/background changes did not resolve the physical-device issue. An old cached app version is not an adequate explanation of this report.
+
+Release 0.1.2 adds an opt-in **Data & backup → Screen layout** snapshot. It compares `vh`, `dvh`, `lvh`, a fixed inset-zero probe outside page transforms, the actual shell bounds, window/document/visual viewport dimensions, safe-area values, mode, and reported iOS version. No layout compensation is applied, no personal records are read, and nothing is automatically transmitted. The actual iPhone readings are required before choosing between an under-sized CSS shell and an inset outside the DOM viewport. The initial hypothesis remains provisional, not a confirmed fix. The user has also been asked to confirm their current iOS version in Settings.
+
+Local diagnostic checks: build and all 49 regression tests passed. A separate production preview showed the opt-in report at 390 × 844, 320 × 568, and 844 × 390; Refresh reread the current dimensions. Document bounds remained unchanged, no horizontal overflow was introduced, buttons were at least 44 pixels high, and all invisible probes were removed after each snapshot. Copy reported success in the UI; the automation browser's separate clipboard API returned an empty value, so a pasted-report round trip was not established and remains a phone check. No personal records were edited during validation. This does not establish the cause or resolve the physical-device strip.
+
 ## Technical references
 
 - [MDN: VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport) explains why the visible viewport can change independently when the on-screen keyboard or zoom changes.

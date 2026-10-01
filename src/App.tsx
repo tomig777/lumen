@@ -45,6 +45,7 @@ import { classifyTasks, localDateKey, selectedDateAfterRollover, taskIsComplete,
 import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
+import { ScreenLayoutCheck } from './components/ScreenLayoutCheck'
 import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
@@ -1040,6 +1041,8 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
       {offlineShell.updateAvailable && <button className="backup-primary" type="button" disabled={saveState.kind !== 'saved'} onClick={offlineShell.applyUpdate}>Update Lumen now</button>}
       {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
     </section>
+
+    <ScreenLayoutCheck />
 
     <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">
       <span className="eyebrow">STORAGE STATUS</span>
