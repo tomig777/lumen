@@ -698,7 +698,8 @@ function App() {
   )
 
   if (!ready) {
-    return <div className="storage-loading-screen"><LumenMark /><strong>{saveState.kind === 'error' ? 'Could not open device data' : 'Opening Lumen…'}</strong><p>{saveState.kind === 'error' ? `${saveState.error} Do not clear this app’s storage.` : 'Checking your data on this device.'}</p>{saveState.kind === 'error' && <button type="button" onClick={retrySave}>Retry opening data</button>}</div>
+    const loadingScreen = <div className="storage-loading-screen"><LumenMark /><strong>{saveState.kind === 'error' ? 'Could not open device data' : 'Opening Lumen…'}</strong><p>{saveState.kind === 'error' ? `${saveState.error} Do not clear this app’s storage.` : 'Checking your data on this device.'}</p>{saveState.kind === 'error' && <button type="button" onClick={retrySave}>Retry opening data</button>}</div>
+    return import.meta.env.PROD ? <div className="deployed-app-root">{loadingScreen}</div> : loadingScreen
   }
 
   if (import.meta.env.PROD) {

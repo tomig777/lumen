@@ -7,11 +7,14 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build && node scripts/generate-service-worker.mjs",
     "preview": "vite preview",
+    "icons:generate": "node scripts/generate-icons.mjs",
     "test:backup": "node --test tests/backup.test.mjs",
     "test:storage": "node --test tests/storage.test.mjs",
     "test:brain": "node --test tests/brainGraph.test.mjs",
     "test:daily": "node --test tests/daily.test.mjs tests/workoutSession.test.mjs",
-    "test:offline": "node --test tests/offlineShell.test.mjs"
+    "test:offline": "node --test tests/offlineShell.test.mjs",
+    "test:viewport": "node --test tests/mobileViewport.test.mjs",
+    "test:icons": "node --test tests/icons.test.mjs"
   },
   "dependencies": {
     "@bryllim/workout-guide": "^1.0.0",

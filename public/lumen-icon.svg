@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#24211e"/>
-  <path d="M256 94v169l116 67" fill="none" stroke="#e8d9c7" stroke-linecap="round" stroke-linejoin="round" stroke-width="27"/>
-  <circle cx="256" cy="256" r="151" fill="none" stroke="#e8d9c7" stroke-width="25"/>
-  <circle cx="256" cy="256" r="13" fill="#e8d9c7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="lumen-icon-title lumen-icon-description">
+  <title id="lumen-icon-title">Lumen</title>
+  <desc id="lumen-icon-description">A warm cream L and a small point of light on dark brown.</desc>
+  <rect width="512" height="512" fill="#24211e"/>
+  <path d="M166 120H210Q222 120 222 132V318H350Q362 318 362 330V378Q362 390 350 390H166Q150 390 150 374V136Q150 120 166 120Z" fill="#e8d9c7"/>
+  <circle cx="332" cy="158" r="22" fill="#c6ab8d"/>
 </svg>

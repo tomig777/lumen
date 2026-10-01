@@ -35,12 +35,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build app
         run: pnpm build
-      - name: Check storage, dates, workouts, backups, and offline shell
+      - name: Check storage, dates, workouts, backups, viewport, icons, and offline shell
         run: |
           pnpm test:storage
           pnpm test:backup
           pnpm test:daily
           pnpm test:brain
+          pnpm test:viewport
+          pnpm test:icons
           pnpm test:offline
       - name: Configure Pages
         uses: actions/configure-pages@v5

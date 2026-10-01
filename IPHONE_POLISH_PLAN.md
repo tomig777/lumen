@@ -1,0 +1,125 @@
+# Lumen: iPhone bottom edge and Home Screen icon
+
+Status: step 1's provisional diagnosis is recorded in [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Steps 2–5 are implemented and checked locally in the production build. Step 6 publication is authorized and in progress; direct iPhone measurements, keyboard recovery, overscroll, and Home Screen icon acceptance remain pending. Publication and live verification results will be recorded below once confirmed.
+
+Target: Lumen installed from GitHub Pages on the iPhone 13 Pro. The previously specified OS is iOS 17.3; record the actual installed version during device verification. Compare the installed Home Screen app with Safari because they expose different viewport behavior.
+
+## Intended result
+
+- Each page's background continues to the physical bottom of the display without the pale strip or abrupt boundary visible in the supplied screenshots.
+- The navigation, separate + button, and Enter Lumen button sit comfortably above the system Home gesture area.
+- Opening and dismissing the keyboard leaves forms usable and restores the original layout.
+- The Home Screen icon displays a recognizable cream Lumen logo on a dark brown background.
+
+The system Home indicator remains part of iOS. This work addresses the app's surrounding background and positioning.
+
+## 1. Establish the layout baseline
+
+- [x] Compare the supplied Home and welcome screenshots with the current production layout. Record the visible strip's approximate height and the navigation/button positions.
+- [x] Inspect `src/mobile.css`, `src/hooks/useMobileViewport.ts`, the shared backgrounds in `src/polish.css`, screen-specific rules in `src/styles.css`, and the viewport/status-bar metadata in `index.html`.
+- [ ] Collect `visualViewport.height`, `visualViewport.offsetTop`, `window.innerHeight`, the app wrapper's rectangle, computed safe-area insets, and standalone status on the phone where available. Use temporary diagnostics or Safari's remote inspector during implementation.
+- [ ] Compare cold launch, resume, rotation, keyboard opening, and keyboard dismissal. Desktop simulation can check layout logic but cannot establish the iOS-specific cause.
+
+Current evidence: both supplied screenshots expose approximately 47 CSS pixels below the page. Control offsets match the current safe-area formulas relative to the shortened page. Desktop portrait, landscape, reduced-height, and restored-height measurements confirm that the wrapper always follows `visualViewport.height`; the iPhone-specific band does not reproduce on desktop. A shortened outer container is the leading hypothesis, with a separate surrounding-background mismatch. Exact iPhone viewport values and lifecycle checks remain pending.
+
+Deliverable: a short diagnosis with the relevant measurements, or an explicitly provisional diagnosis if phone measurements are unavailable.
+
+Deliverable recorded: [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md). Step 1's provisional diagnostic deliverable is complete; the unchecked phone checks remain part of device acceptance.
+
+## 2. Correct the full-screen and keyboard layout
+
+- [x] Give the installed app a stable full-screen base layout using CSS viewport/fixed-position rules verified against the baseline. Avoid compensating with an arbitrary extra height or a hard-coded iPhone inset.
+- [x] Stop applying a keyboard-sensitive visual viewport height to the entire page when the keyboard is closed. Retain scoped viewport adjustments where needed to keep editing sheets and their Save/Close controls visible.
+- [x] Reserve the bottom safe area once when positioning the navigation and separate + button. Derive scroll clearance from the controls' height, spacing, and safe area so the final content can scroll above them.
+- [x] Recheck the welcome button, image viewer, People switch, Focus controls, and editing sheets because each has separate bottom positioning.
+- [ ] Confirm rotation and keyboard dismissal restore the full layout without a stale viewport offset. Keep pinch zoom and text accessibility available.
+
+Primary files: `src/mobile.css` and `src/hooks/useMobileViewport.ts`. Change `index.html` status-bar metadata only if the measured behavior shows it contributes to the problem.
+
+Done when: the wrapper fills the available installed-app display, controls clear the gesture area, and the layout returns to its original position after editing.
+
+Local implementation (2026-10-01): the shell now uses fixed CSS bounds with `100dvh` and a `100vh` fallback. JavaScript no longer sets its height or top. Visual viewport geometry is applied only to a dialog or an inline page editor while a text field is focused and substantial keyboard-like occlusion is present. Small safe-area/chrome differences and pinch zoom do not trigger that adjustment. Focus, resize, rotation, page-show, and visibility events recalculate or clear editor offsets. Editing sheets omit the bottom gesture inset while positioned above the keyboard; navigation retains its safe-area positioning independently.
+
+Local verification: production build and all 31 tests passed, including four new viewport decision/recovery tests and the existing storage, backup, dates, workouts, Brain, and offline-shell tests. The new viewport tests are included in the Pages release gate. Rendered checks covered 390 × 844, 844 × 390, 390 × 500, and a 844 × 228 long-editor stress check. Welcome, navigation/+, quick capture, task and journal sheets, People, Focus, and the image viewer remained usable. The final Home content scrolled above the navigation without creating a document scrollbar. Reduced browser height is not a real iOS keyboard test: the unchecked device recovery check and screenshot comparison remain required in step 6. Status-bar metadata and zoom capability were left unchanged.
+
+## 3. Extend the correct background to the bottom edge
+
+- [x] Ensure the page, app wrapper, and surrounding document use coordinated colors for the current screen rather than exposing a generic paper-colored strip.
+- [x] Extend the welcome background and decorative artwork through the bottom area. Keep the Enter Lumen button in the safe interactive area.
+- [x] Check Home, Projects, Brain, Health, Focus, People, Journal, Inspiration, and Data & backup, including transitions between light and dark pages.
+- [ ] Confirm scrolling and overscroll do not reveal a different-colored document background or introduce a second page scrollbar.
+  - [x] Desktop checks: page scrolling stays contained and the surrounding document matches the page's bottom color.
+  - [ ] Installed iPhone check: confirm elastic overscroll and the physical gesture area after publication.
+
+Primary files: `src/mobile.css`, `src/polish.css`, and the page/theme wiring in `src/App.tsx` only where necessary.
+
+Done when: there is no visible horizontal background boundary at the bottom during launch, scrolling, or page changes.
+
+Local implementation (2026-10-01): shared palette tokens now define welcome cream, the existing light-page/People gradients, and the dark surface. CSS reads the visible page or image-viewer layer rather than the requested route, so exit animations do not leave a stale theme. The outer app and handset surface share that page's background; `html`, `body`, and the React root use its terminal color at the bottom. The image viewer takes precedence until closed. The loading/error screen uses the same production full-screen wrapper and its own matching paper color. Welcome artwork remains full-height and its safe-area button offset is preserved. Light editing cards retain light native controls even over a dark page.
+
+Verification: all nine planned pages were checked in the production browser, along with the image viewer and a quick-note dialog on Brain. Computed colors/gradients matched across the visible page, wrapper, and document. Checks covered portrait 390 × 844, landscape 844 × 390, reduced-height Brain at 390 × 500, and dark-to-light navigation. Home and landscape People scrolled internally while document scroll stayed zero and document dimensions remained at the viewport size. The build and all 31 existing tests passed; no new test was added solely for CSS token substitution. Actual iPhone launch/resume, elastic overscroll, and the screenshot comparison remain pending in step 6. Status-bar metadata, icons, storage, and deployment were not changed.
+
+## 4. Create and wire the custom icon
+
+- [x] Create a simple vector logo: a warm-cream geometric Lumen mark on `#24211e` dark brown. Start with a clear L shape and a restrained light accent; check readability at small Home Screen sizes.
+- [x] Keep an editable SVG source and export square, opaque PNGs at 180 × 180, 192 × 192, and 512 × 512. Leave enough internal space for platform masking; let iOS apply its rounded corners.
+- [x] Point `index.html`'s `apple-touch-icon` at the 180-pixel PNG with the correct size declaration. Keep the Lumen title.
+- [x] Add the PNG icons to `public/manifest.webmanifest` with accurate sizes and MIME types. Use relative URLs that work under `/lumen/` on GitHub Pages.
+- [x] Use versioned PNG filenames to avoid reusing the old SVG/fallback icon URL.
+- [ ] Verify the icon shown in Safari's Add to Home Screen preview and then on an installed shortcut; record existing-icon cache behavior separately after publication.
+
+Primary files: `public/lumen-icon.svg`, new PNG files under `public/`, `public/manifest.webmanifest`, and `index.html`.
+
+Done when: the Home Screen shows the designed logo instead of the grey letter fallback, and the mark stays legible at its displayed size.
+
+Local implementation (2026-10-01): `public/lumen-icon.svg` now contains an editable cream L (`#e8d9c7`) and warm point of light (`#c6ab8d`) on a full, opaque dark-brown square. The three `lumen-icon-v1-*.png` exports total 5,670 bytes. Apple metadata points at the 180-pixel PNG; the manifest includes 192- and 512-pixel PNGs with `any maskable` purposes and keeps the SVG as a scalable fallback. All paths are relative. `scripts/generate-icons.mjs` provides repeatable export using an optional installed Sharp module; normal app builds and CI need no image-library dependency. README documents regeneration and safe icon troubleshooting.
+
+Local verification: inspected the 180- and 512-pixel exports and a 60-pixel downsample for legibility. Three new icon tests verify actual dimensions, RGB opacity, dark square corners, palette, every foreground pixel's placement inside the maskable safe circle, exact asset copies in the built output, HTML/manifest metadata, `/lumen/` URL resolution, and offline-shell inclusion. The production build and all 34 tests passed. The content-hashed worker includes all nine output files, including each PNG, without changing its update strategy. The Pages workflow now runs the icon tests before publication. The installed iPhone logo, Safari preview, and existing-icon cache behavior remain unverified until step 6. No storage, in-app artwork, or live deployment was changed in this step.
+
+## 5. Validate the production release
+
+- [x] Run `pnpm build` and `pnpm test:offline`. Confirm the generated service worker includes the PNG assets and preserves the complete-release update strategy.
+- [x] Inspect the production build at 390 × 844 portrait, 844 × 390 landscape, and a reduced height representing an open keyboard. Check scrolling, forms, navigation, and light/dark backgrounds.
+- [x] Test viewport decision logic with focused recovery/resizing tests. Use rendered checks for CSS and icon appearance; do not substitute CSS-text assertions for layout verification.
+- [x] Check the icon URLs and image dimensions in the built output and confirm the release checks are configured in the existing Pages workflow. Its actual GitHub execution remains required during step 6.
+
+Done when: the production build and relevant checks pass, the icons are included in the offline shell, and the simulated layouts show no regressions.
+
+Local validation (2026-10-01): all nine planned pages were inspected across the portrait/landscape checks, with Home, Brain, Projects, Health, and People internal scrolling; Focus playback controls; the expanded + menu; the image viewer; and quick-note, new-project, task, and journal forms. Twenty-five recorded outer-layout checkpoints matched the requested viewport, with zero document scroll. Page colors continued through the surrounding document during light/dark changes. Reduced-height checks are desktop layout simulations, not a real iOS keyboard test.
+
+| Viewport | Main checks |
+| --- | --- |
+| 390 × 844 | Welcome, Home, Brain, Projects, Health, Focus, People, Journal, Inspiration; navigation/+, page backgrounds, and restored full-height layout |
+| 844 × 390 | Welcome, Brain, Projects, Health, Focus, People, Data & backup; internal scrolling, menu bounds, and image-viewer spacing |
+| 390 × 500 | Quick capture, new-project and task sheets, image viewer; readable fields and reachable Save/Close controls |
+| 844 × 228 | Long journal draft; scroll down to Save and back to Close without moving the surrounding document |
+
+Rendered checks caught and corrected mobile-only issues in `src/mobile.css`: sheet Close buttons had a 44-pixel height but retained a 34/36-pixel width; Health's 119-pixel date field truncated the year at 16-pixel text size; People's landscape Back control moved partly offscreen with the scrolling page; and the image viewer's fixed 390-pixel artwork overlapped its header/caption at reduced height. Close controls are now 44 × 44, the date field has 160 pixels with wrapping available, People's Back control stays fixed above the safe area, and artwork fits the available region between non-shrinking viewer controls. A more-specific sheet dropdown style also overrode the intended mobile font size; the final build confirms 16 pixels. No data schema or storage behavior was changed.
+
+After correction, the image viewer had 20-pixel separation between its header, artwork, and footer at both 390 × 500 and 844 × 390. People's Back control remained fully visible at y=332–376 after scrolling 340 pixels in landscape. Task Save and Close were visible at 390 × 500, journal Save and Close were reachable by internal scrolling at 844 × 228, and returning to portrait restored an 844-pixel shell without stale editor geometry. Browser warning/error logs were empty at the final check.
+
+Final release checks: `pnpm build` and all 34 tests passed, covering storage, backups, dates/workouts, Brain, viewport decisions, icons, and offline releases. The final shell is `lumen-shell-f28b1b0c5de09894`, containing all nine output files. Local HTTP checks returned 200 for HTML, manifest, SVG, all three PNGs, and the worker, with correct MIME types; PNG dimensions/opacity and relative `/lumen/` paths passed the icon tests. The installed local worker's **Update Lumen now** flow loaded the new content-hashed assets without clearing storage, and the quick-capture test note survived reload/update. All UI writes were confined to the separate localhost preview, not the user's live app. The existing Vite large-bundle warning remains a separate performance follow-up, not an icon/layout release failure.
+
+Step 5 is complete locally. The live Pages workflow, physical bottom-edge screenshot comparison, Safari icon preview, installed Home Screen icon, iOS keyboard/overscroll behavior, and phone offline/data acceptance remain unchecked in step 6. No commit or publication was performed.
+
+## 6. Publish and verify on the iPhone
+
+- [ ] Commit and publish the completed implementation through the existing `main` → GitHub Pages workflow. Publication was authorized on 2026-10-01.
+- [ ] Verify the live HTML, manifest, icon PNGs, and service worker belong to the new release.
+- [ ] On the installed iPhone app, check cold launch, resume, portrait/landscape, navigation, the + menu, typing and dismissing the keyboard, and both light and dark screens.
+- [ ] Compare new Home and welcome screenshots with the supplied baseline. Confirm the strip is gone and the Home indicator area blends with each page.
+- [ ] Check the Home Screen logo and reopen the app offline after the updated shell is ready.
+- [ ] Confirm a test note and uploaded image still open after the update. Do not use clearing website data or Reset Demo Data as an icon-refresh or layout fix.
+
+If device checks cannot be performed during implementation, report the release as implemented with iPhone acceptance pending. Do not mark the screenshot issue resolved solely from desktop simulation.
+
+## Execution order
+
+Layout diagnosis → full-screen/keyboard correction → background continuity → icon assets/configuration → production checks → publication → iPhone acceptance.
+
+The user authorized steps 1–6. Steps 2–5 are implemented and validated locally; step 6 publication is in progress and phone acceptance remains pending. Update the checkboxes and findings as publication and device checks are completed.
+
+## References
+
+- [WebKit: full-screen layout and safe areas](https://webkit.org/blog/7929/designing-websites-for-iphone-x/)
+- [Apple: configuring web apps and PNG Home Screen icons](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)

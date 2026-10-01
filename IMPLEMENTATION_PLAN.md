@@ -81,6 +81,10 @@ Implementation checks: build and focused tests, including an offline worker harn
 
 Done when: the app starts and core local actions work without a connection; a deployment preserves existing data; a backup can be restored on a clean installation.
 
+## Follow-up: iPhone bottom edge and Home Screen icon
+
+The supplied iPhone screenshots show a pale strip below the app, and the installed icon falls back to a grey letter. The full-screen/keyboard layout, coordinated page backgrounds, custom PNG icons, and mobile-control corrections are implemented and production-tested locally. All 34 automated tests pass. Publication is authorized and in progress; physical iPhone bottom-edge, keyboard, icon, and offline/data acceptance remain pending. The detailed findings and release checklist are recorded in [IPHONE_POLISH_PLAN.md](IPHONE_POLISH_PLAN.md).
+
 ## Later: optional home server
 
 The old laptop can later host private sync and off-device backups. That is a separate project: authentication, network availability, encryption, server updates, image storage, automated backups, and restore testing. The repository boundary in milestone 1 prepares the app for this without making the phone depend on a server now.

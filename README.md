@@ -11,6 +11,14 @@ pnpm dev
 
 Create a production build with `pnpm build`.
 
+## Home Screen icon
+
+The editable logo is `public/lumen-icon.svg`: a cream L with a warm point of light on the app's dark brown. Opaque, square PNG exports are checked in at 180, 192, and 512 pixels. The HTML uses the 180-pixel PNG for [Apple's Home Screen icon metadata](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html); the manifest uses the larger PNGs. The mark fits inside the central 80%-diameter maskable safe circle. Corners are not baked into the artwork.
+
+After editing the SVG, regenerate the exports with `pnpm icons:generate` using an installed Sharp module, or `pnpm icons:generate "<absolute path to the sharp module>"`. Sharp is an optional authoring tool, not an app or CI dependency: normal builds copy the checked-in PNGs. For a later logo revision, increment the filename version in the exporter, HTML, manifest, and icon tests together. Run `pnpm build` then `pnpm test:icons` to validate the exported dimensions, opacity, palette, safe padding, relative `/lumen/` URLs, and offline inclusion.
+
+Safari's Add to Home Screen preview and the installed icon still need an actual iPhone check after publication. Existing installed icons may keep an older image; do not clear website data or delete the installed app as an icon-refresh troubleshooting step.
+
 ## GitHub Pages
 
 Pushing to `main` runs the workflow in `.github/workflows/deploy-pages.yml`, which builds the app and publishes it to GitHub Pages.
@@ -48,7 +56,7 @@ New releases download as a complete shell. The current app stays on its existing
 
 The app copies the old local-storage record into IndexedDB, verifies record and image integrity, then activates the new store. It does not delete the old record. On the actual installed iPhone app, confirm that existing content and photos open, a newly created note and photo survive closing and reopening the app, and an exported backup passes its integrity check. Once you start adding personal data, keep a verified backup off the phone.
 
-Local checks: `pnpm build`, then `pnpm test:storage`, `pnpm test:backup`, `pnpm test:daily`, `pnpm test:brain`, and `pnpm test:offline`. The Pages workflow runs these checks before publishing. They do not replace the iPhone checks.
+Local checks: `pnpm build`, then `pnpm test:storage`, `pnpm test:backup`, `pnpm test:daily`, `pnpm test:brain`, `pnpm test:viewport`, `pnpm test:icons`, and `pnpm test:offline`. The Pages workflow runs these checks before publishing. They do not replace the iPhone checks.
 
 ## iPhone layout acceptance (when ready to test)
 
