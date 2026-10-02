@@ -78,7 +78,7 @@ test('welcome artwork and the lazy glass chunk are in the offline shell without 
   assert.match(renderer, /dpr=\{\[1, 1.5\]\}/)
   assert.match(renderer, /samples=\{2\}/)
   assert.match(renderer, /webglcontextlost/)
-  assert.match(renderer, /environment.dispose\(\)/)
+  assert.match(renderer, /geometry.dispose\(\)/)
 })
 
 test('palette, effects and responsive rules remain scoped to welcome', () => {
@@ -169,7 +169,7 @@ test('only one glass surface paints, with no native appearance or rounded backdr
 test('the procedural glass silhouette exactly matches its canvas in portrait, narrow and landscape layouts', async () => {
   const renderer = await readFile(new URL('../src/components/FluidGlassButton.tsx', import.meta.url), 'utf8')
   assert.match(renderer, /capsuleGeometry\(viewport.width, viewport.height\)/)
-  const geometrySource = renderer.slice(renderer.indexOf('function capsuleGeometry('), renderer.indexOf('/** Small local studio'))
+  const geometrySource = renderer.slice(renderer.indexOf('function capsuleGeometry('), renderer.indexOf('function GlassScene('))
   const { code } = transformSync(geometrySource, { loader: 'ts', format: 'cjs' })
   const capsuleGeometry = new Function('THREE', `${code}\nreturn capsuleGeometry`)(THREE)
   for (const [width, height] of [[286, 58], [264, 54], [274, 54]]) {
@@ -181,4 +181,27 @@ test('the procedural glass silhouette exactly matches its canvas in portrait, na
       assert.ok(Math.abs(size.y * 100 - height) < .001)
     } finally { geometry.dispose() }
   }
+})
+
+test('refraction is retained without the studio reflection strip or off-centre specular light', async () => {
+  const renderer = await readFile(new URL('../src/components/FluidGlassButton.tsx', import.meta.url), 'utf8')
+  assert.match(renderer, /transmission=\{1\}/)
+  assert.match(renderer, /envMapIntensity=\{0\}/)
+  assert.match(renderer, /specularIntensity=\{0\}/)
+  assert.match(renderer, /clearcoat=\{0\}/)
+  assert.doesNotMatch(renderer, /studioEnvironment|scene.environment|PMREMGenerator|directionalLight/)
+})
+
+test('the soft light spread is outside and only above the unchanged button highlight', () => {
+  const actions = css.match(/\.lumen-start-actions \{([^}]+)\}/)[1]
+  const glow = css.match(/\.lumen-start-actions::before \{([^}]+)\}/)[1]
+  assert.match(actions, /position: relative;/)
+  assert.match(actions, /padding-top: var\(--welcome-entry-gap\);/)
+  assert.match(glow, /top: calc\(var\(--welcome-entry-gap\) - 32px\);/)
+  assert.match(glow, /height: 32px;/)
+  assert.match(glow, /at 50% 100%/)
+  assert.match(glow, /pointer-events: none;/)
+  assert.doesNotMatch(glow, /box-shadow:|filter:|animation:|border:/)
+  assert.match(css, /--welcome-entry-gap: 12px/)
+  assert.match(css, /--welcome-entry-gap: 8px/)
 })

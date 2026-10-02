@@ -41,33 +41,8 @@ function capsuleGeometry(width: number, height: number) {
   return geometry
 }
 
-/** Small local studio texture: soft champagne lights on a brown room.
- * No network environment/HDR assets or image loading are involved. */
-function studioEnvironment(renderer: THREE.WebGLRenderer) {
-  const width = 128, height = 64
-  const bytes = new Uint8Array(width * height * 4)
-  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-    const u = x / width, v = y / height
-    const key = Math.exp(-((u - .73) ** 2 / .018 + (v - .60) ** 2 / .015))
-    const fill = Math.exp(-((u - .30) ** 2 / .035 + (v - .60) ** 2 / .024))
-    const light = Math.min(1, key * .95 + fill * .35)
-    const index = (y * width + x) * 4
-    bytes[index] = 36 + light * 196
-    bytes[index + 1] = 33 + light * 184
-    bytes[index + 2] = 30 + light * 169
-    bytes[index + 3] = 255
-  }
-  const source = new THREE.DataTexture(bytes, width, height)
-  source.colorSpace = THREE.SRGBColorSpace
-  source.mapping = THREE.EquirectangularReflectionMapping
-  source.needsUpdate = true
-  const generator = new THREE.PMREMGenerator(renderer)
-  try { return generator.fromEquirectangular(source) }
-  finally { source.dispose(); generator.dispose() }
-}
-
 function GlassScene({ active, onReady, onFailure }: WelcomeGlassSceneProps) {
-  const { gl, scene, viewport, invalidate } = useThree()
+  const { gl, viewport, invalidate } = useThree()
   const buffer = useFBO(384, Math.max(64, Math.round(384 * viewport.height / viewport.width)), {
     depthBuffer: false, type: THREE.UnsignedByteType,
   })
@@ -79,13 +54,6 @@ function GlassScene({ active, onReady, onFailure }: WelcomeGlassSceneProps) {
     shift: { value: 0 }, brown: { value: new THREE.Color('#302923') }, sand: { value: new THREE.Color('#c6ab8d') },
   }), [])
   const firstFrame = useRef(true)
-
-  useEffect(() => {
-    const environment = studioEnvironment(gl)
-    scene.environment = environment.texture
-    invalidate()
-    return () => { scene.environment = null; environment.dispose() }
-  }, [gl, scene, invalidate])
 
   useEffect(() => () => { geometry.dispose() }, [geometry])
 
@@ -144,13 +112,14 @@ function GlassScene({ active, onReady, onFailure }: WelcomeGlassSceneProps) {
         </mesh>, backdrop,
       )}
       <ambientLight intensity={.4} />
-      <directionalLight position={[-3, 4, 6]} color="#e8d9c7" intensity={.3} />
       <mesh geometry={geometry}>
+        {/* Keep refraction/depth, not the studio light's long reflected bar.
+            The approved top glint and external bloom are authored in CSS. */}
         <MeshTransmissionMaterial buffer={buffer.texture} samples={2} resolution={64}
           transmission={1} thickness={.32} ior={1.18} roughness={.07}
           chromaticAberration={.002} anisotropicBlur={0} distortion={0} temporalDistortion={0}
           color="#f2e7d9" attenuationColor="#c6ab8d" attenuationDistance={4}
-          envMapIntensity={.85} clearcoat={.7} clearcoatRoughness={.09} />
+          envMapIntensity={0} specularIntensity={0} clearcoat={0} />
       </mesh>
     </>
   )

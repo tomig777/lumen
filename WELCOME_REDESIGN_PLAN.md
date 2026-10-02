@@ -25,6 +25,33 @@ rules. The accepted `100lvh` ancestor/app heights, safe-area navigation offsets,
 manifest/Apple status-bar metadata and storage code must not change. The later
 startup refinement below adds only temporary first-paint colour hints.
 
+## Remove the marked face reflection · 0.1.11
+
+- The user's annotated iPhone screenshot on confirmed 0.1.10 identifies the
+  long bright band across the upper button face, not an external lower rim or
+  the system Home indicator. The previous backing/geometry change did not
+  remove that band and must not be treated as physical acceptance.
+- Remove the procedural studio environment and off-centre directional light;
+  disable environment/specular/clearcoat reflections on the glass material.
+  Keep its original refraction, capsule, colour, thickness, renderer lifecycle
+  and performance bounds. The separately authored top-centre CSS glint remains.
+- Add one restrained, static amber radial light spread on the action container,
+  outside the button's clip and only above its top edge. Its position follows
+  the existing 22px / 12px / 8px action gaps, so it adds no layout height and
+  stays aligned in portrait, short and landscape layouts. No blur filter,
+  shadow below the button, external assets or additional animation/render loop.
+- Leave artwork, typography, page colours, native status hints, accepted iPhone
+  document-height rules, navigation, storage and update mechanics unchanged.
+
+Preflight: production build and all 104 tests passed. Rendered checks at
+390 × 844, 320 × 568 and 844 × 390 show the broad reflected band and small
+off-centre specular spot removed, with the approved glint and new upward glow
+retained. Measured glow bottoms equal button tops at every tested size; canvas
+and button bounds match and no horizontal overflow appears. Keyboard entry
+unmounts the canvas and restores the light Home surface. No warning/error logs
+were observed. Physical iPhone acceptance follows the normal versioned update;
+desktop rendering alone does not confirm the user's phone result.
+
 ## Single glass surface · 0.1.10
 
 - The user's iPhone confirms the native status icons now appear white, but a

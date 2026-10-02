@@ -89,10 +89,25 @@
   text-wrap: balance;
 }
 .lumen-start-actions {
+  --welcome-entry-gap: 22px;
+  position: relative;
   display: flex;
   justify-content: center;
-  padding-top: 22px;
+  padding-top: var(--welcome-entry-gap);
   min-width: 0;
+}
+/* This light spreads into the page ABOVE the edge glint. It is separate from
+   the clipped button so it cannot create a reflection bar across its face. */
+.lumen-start-actions::before {
+  position: absolute;
+  content: '';
+  left: 50%;
+  top: calc(var(--welcome-entry-gap) - 32px);
+  width: min(70%, 192px);
+  height: 32px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 96px 32px at 50% 100%, rgba(216, 156, 83, .18), rgba(198, 171, 141, .055) 48%, transparent 100%);
+  pointer-events: none;
 }
 .lumen-enter-button {
   position: relative;
@@ -195,7 +210,7 @@
   .lumen-start-copy { gap: 7px; }
   .lumen-start-copy h1 { font-size: 58px; }
   .lumen-start-subtitle { font-size: 13px; }
-  .lumen-start-actions { padding-top: 12px; }
+  .lumen-start-actions { --welcome-entry-gap: 12px; }
   .lumen-enter-button { min-height: 54px; }
 }
 @media (max-height: 480px) and (min-width: 600px) {
@@ -210,5 +225,5 @@
   .lumen-start-copy { grid-area: copy; align-self: end; }
   .lumen-start-hero { grid-area: hero; }
   .lumen-start-subtitle { grid-area: subtitle; }
-  .lumen-start-actions { grid-area: actions; align-self: start; padding-top: 8px; }
+  .lumen-start-actions { grid-area: actions; align-self: start; --welcome-entry-gap: 8px; }
 }
