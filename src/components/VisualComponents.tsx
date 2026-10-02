@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, Brain, ChevronRight, Clock3, Folder, Heart, House, Image as ImageIcon, Layers3, Pause, Play, Plus, Sparkles, SkipBack, SkipForward, Users } from 'lucide-react'
+import { BookOpen, Brain, ChevronRight, Clock3, Folder, Heart, House, Image as ImageIcon, Layers3, Pause, Play, Plus, Settings, Sparkles, SkipBack, SkipForward, Users } from 'lucide-react'
 import type { ImageAsset, Person, Tab, Track } from '../types'
 import type { MapNode } from '../brainGraph'
 import { StoredImage } from './StoredImage'
@@ -52,7 +52,7 @@ interface BottomNavProps {
 export interface BottomNavAction {
   id: string
   label: string
-  icon: 'people' | 'inspiration' | 'journal' | 'focus' | 'collections' | 'health-journal' | 'quick-note'
+  icon: 'people' | 'inspiration' | 'journal' | 'focus' | 'collections' | 'settings' | 'quick-note'
   onSelect: () => void
 }
 
@@ -76,7 +76,7 @@ function ActionGlyph({ icon }: { icon: BottomNavAction['icon'] }) {
   if (icon === 'journal') return <BookOpen size={16} strokeWidth={2} />
   if (icon === 'focus') return <Clock3 size={16} strokeWidth={2} />
   if (icon === 'collections') return <Layers3 size={16} strokeWidth={2} />
-  if (icon === 'health-journal') return <Heart size={16} strokeWidth={2} />
+  if (icon === 'settings') return <Settings size={16} strokeWidth={2} />
   return <Sparkles size={16} strokeWidth={2} />
 }
 

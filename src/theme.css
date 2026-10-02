@@ -1,4 +1,4 @@
-/* Global appearance layer. Imported last; no viewport/geometry changes here.
+/* Global appearance layer. Follows legacy styles; no viewport/geometry changes here.
    Role-specific selectors bridge legacy page styles without filtering media. */
 html[data-lumen-theme] {
   --lumen-bg: #24211e;

@@ -159,8 +159,8 @@ test('failed measurements remove every probe and disable stale report actions', 
 
 test('comparison entry is opt-in and blocked while app writes are unfinished', async () => {
   const component = await readFile(new URL('../src/components/ScreenLayoutCheck.tsx', import.meta.url), 'utf8')
-  const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(app, /<ScreenLayoutCheck canLeave=\{saveState.kind === 'saved'\} \/>/)
+  const settings = await readFile(new URL('../src/components/SettingsScreen.tsx', import.meta.url), 'utf8')
+  assert.match(settings, /<ScreenLayoutCheck canLeave=\{saveState.kind === 'saved'\} \/>/)
   assert.match(component, /\{canLeave\s*\? <a[^>]+href="\.\/screen-layout-test.html\?case=a&theme=light"/)
   assert.match(component, /: <button[^>]+disabled>Open layout comparison/)
   assert.doesNotMatch(component, /location\.(?:assign|replace)|useEffect|window\.open/)

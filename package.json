@@ -1,7 +1,7 @@
 {
   "name": "personal-os",
   "private": true,
-  "version": "0.1.12",
+  "version": "0.1.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
     "test:icons": "node --test tests/icons.test.mjs",
     "test:welcome": "node --test tests/welcome.test.mjs tests/welcomeGlass.test.mjs tests/launchTheme.test.mjs",
     "test:theme": "node --test tests/theme.test.mjs",
+    "test:settings": "node --test tests/settings.test.mjs",
     "test:updates": "node --test tests/offlineUpdates.test.mjs tests/appRelease.test.mjs"
   },
   "dependencies": {

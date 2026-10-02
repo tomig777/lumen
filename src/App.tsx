@@ -47,15 +47,13 @@ import { classifyTasks, localDateKey, selectedDateAfterRollover, taskIsComplete,
 import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
-import { ScreenLayoutCheck } from './components/ScreenLayoutCheck'
+import { SettingsScreen } from './components/SettingsScreen'
 import { WelcomeGlass } from './components/WelcomeGlass'
 import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
 import { useAppStorage, type SaveState } from './hooks/useAppStorage'
 import { useOfflineShell, type OfflineShell } from './hooks/useOfflineShell'
-import { APP_RELEASE } from './appRelease'
-import { updateStatusText } from './offlineUpdates'
 import type { BackupVerification } from './storage/indexedDbRepository'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import { useLaunchTheme } from './hooks/useLaunchTheme'
@@ -201,7 +199,7 @@ function App() {
   const selectedImage = data.imageAssets.find((asset) => asset.id === selectedImageId)
   const currentTrack = data.tracks[data.currentTrackIndex] ?? data.tracks[0]
   const activeTab = activeTabFor(screen)
-  const hideNav = screen === 'welcome' || screen === 'login' || screen === 'backup' || screen === 'workout' || screen === 'people' || screen === 'focus'
+  const hideNav = screen === 'welcome' || screen === 'login' || screen === 'settings' || screen === 'backup' || screen === 'workout' || screen === 'people' || screen === 'focus'
   const previousTodayRef = useRef(today)
 
   useEffect(() => {
@@ -658,7 +656,7 @@ function App() {
   const openThought = (thought: Thought) => openSheet('thought-actions', thought.id)
 
   const quickActions: BottomNavAction[] = [
-    { id: 'health-journal', label: 'Health journal', icon: 'health-journal', onSelect: () => openHealthEditor() },
+    { id: 'settings', label: 'Settings', icon: 'settings', onSelect: () => navigate('settings') },
     { id: 'people', label: 'People', icon: 'people', onSelect: () => navigate('people') },
     { id: 'inspiration', label: 'Inspiration', icon: 'inspiration', onSelect: () => navigate('inspiration') },
     { id: 'journal', label: 'Journal', icon: 'journal', onSelect: () => { setJournalDraft(blankJournalDraft); navigate('journal') } },
@@ -671,8 +669,9 @@ function App() {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} theme={theme} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
-      case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
+      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} saveState={saveState} onRetrySave={retrySave} />
+      case 'settings': return <SettingsScreen onBack={returnToPrimaryScreen} onOpenBackup={() => navigate('backup')} saveState={saveState} offlineShell={offlineShell} />
+      case 'backup': return <BackupScreen data={data} onBack={() => navigate('settings')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
       case 'projects': return <ProjectsScreen data={data} onOpenProject={(project) => { setSelectedProjectId(project.id); navigate('project-detail') }} onNewProject={() => openSheet('project')} />
       case 'project-detail': return <ProjectDetailScreen data={data} today={today} project={selectedProject} onBack={() => navigate('projects')} onEditProject={() => { setProjectDraft({ title: selectedProject?.title ?? '', description: selectedProject?.description ?? '' }); openSheet('project', selectedProject?.id) }} onToggleTask={toggleTask} onEditTask={openTaskEditor} onDeleteTask={deleteTask} onOpenNote={openNoteEditor} onAddTask={(projectId) => { setTaskDraft({ title: '', projectId, dueDate: today, recurrence: 'once' }); openSheet('task') }} onAddNote={(projectId) => openNoteEditor(undefined, projectId)} onOpenImage={setSelectedImageId} />
@@ -829,7 +828,7 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenBackup, saveState, onRetrySave }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; onOpenBackup: () => void; saveState: SaveState; onRetrySave: () => void }) {
+function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveState, onRetrySave }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; saveState: SaveState; onRetrySave: () => void }) {
   const groups = classifyTasks(data.tasks, today)
   const openTasks = groups.today.filter((task) => !taskIsComplete(task, today))
   const completedTaskItems = groups.doneToday
@@ -880,7 +879,7 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenBa
   }
   return (
     <div className="screen-scroll home-screen home-minimal-screen home-theme-preview">
-      <div className="minimal-home-top"><span className={`home-save-state is-${saveState.kind}`} role="status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : 'Not saved'}</span>{saveState.kind === 'error' && <button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button>}<button className="home-backup-link" type="button" onClick={onOpenBackup}><Download size={14} /> Data & backup</button></div>
+      <div className="minimal-home-top"><span className={`home-save-state is-${saveState.kind}`} role="status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : 'Not saved'}</span>{saveState.kind === 'error' && <button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button>}</div>
 
       <section className="home-liquid-focus" style={liquidStyle}>
         <div className="home-liquid-heading">
@@ -1021,32 +1020,6 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
   return <main className="screen-scroll backup-screen">
     <PageHeader title="Data & backup" subtitle="Keep a copy you control." onBack={onBack} />
     <div className="backup-intro">Your data currently lives in this browser on this device. A saved file is your recovery copy; this app has no cloud sync yet.<span className="backup-local-status">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving changes…' : 'Some changes are not saved'}</span></div>
-
-    <section className="backup-panel backup-release-panel" aria-label="App version and updates">
-      <span className="eyebrow">LUMEN</span>
-      <h2>App & updates</h2>
-      <div className="backup-status-row"><span>App version</span><strong>{APP_RELEASE.version}</strong></div>
-      <div className="backup-status-row"><span>Build</span><strong>{APP_RELEASE.build === 'local' ? 'Local preview' : APP_RELEASE.build}</strong></div>
-      <p>This is the version currently open on this device.</p>
-      <div className="backup-update-status" role="status" aria-live="polite">{updateStatusText[offlineShell.status]}</div>
-      {offlineShell.lastCheckedAt && <p className="backup-update-time">Last checked {new Date(offlineShell.lastCheckedAt).toLocaleString()}</p>}
-      <button className="backup-secondary" type="button" disabled={['checking', 'downloading'].includes(offlineShell.status)} onClick={offlineShell.checkForUpdates}>{offlineShell.status === 'checking' ? 'Checking…' : offlineShell.status === 'downloading' ? 'Downloading…' : 'Check for updates'}</button>
-      {offlineShell.updateAvailable && <button className="backup-primary" type="button" disabled={saveState.kind !== 'saved'} onClick={offlineShell.applyUpdate}>Update Lumen now</button>}
-      {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
-    </section>
-
-    <section className="backup-panel backup-icon-panel" aria-label="Home Screen icon artwork">
-      <span className="eyebrow">APP IDENTITY</span>
-      <h2>Home Screen icon</h2>
-      <div className="backup-icon-preview">
-        <img src="./lumen-icon-v2-180.png" width="72" height="72" alt="Lumen’s amber glass loop on dark brown" />
-        <div><strong>Lumen · Glass loop</strong><span>The icon supplied by this version.</span></div>
-      </div>
-      <p>iOS controls the installed icon. An older Home Screen icon may stay unchanged after an app update.</p>
-      <p>To check the new artwork, open Lumen’s website in Safari and inspect Share → Add to Home Screen. You can cancel without installing. Keep your existing Lumen installation and data.</p>
-    </section>
-
-    <ScreenLayoutCheck canLeave={saveState.kind === 'saved'} />
 
     <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">
       <span className="eyebrow">STORAGE STATUS</span>

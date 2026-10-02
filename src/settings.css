@@ -1,0 +1,29 @@
+/* Settings uses the shared semantic palette and existing app shell. */
+.phone-app .settings-screen .page-header { margin-bottom: 24px; }
+.phone-app .settings-screen .page-header h1 { font: 400 32px/1.12 Georgia, 'Times New Roman', serif; letter-spacing: -.04em; outline: none; }
+.phone-app .settings-screen .page-header p { font-size: 14px; line-height: 1.5; }
+.phone-app .settings-screen .back-button { width: 44px; height: 44px; flex: 0 0 44px; }
+.phone-app .settings-panel { margin-bottom: 20px; padding: 20px; border-radius: 24px; background: var(--lumen-surface); border: 1px solid var(--lumen-line); }
+.settings-appearance { min-width: 0; margin: 0; padding: 0; border: 0; }
+.settings-appearance legend { padding: 0; font-size: 17px; font-weight: 600; }
+html[data-lumen-theme] .phone-app .settings-appearance p, html[data-lumen-theme] .phone-app .settings-local-note { color: var(--lumen-text-secondary); font-size: 13px; line-height: 1.55; }
+.settings-appearance p { margin: 8px 0 16px; }
+.settings-theme-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.phone-app .settings-theme-options label { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; padding: 10px; border-radius: 999px; background: var(--lumen-surface-raised); border: 1px solid var(--lumen-control-edge); cursor: pointer; font-size: 15px; }
+.phone-app .settings-theme-options label.is-selected { color: var(--lumen-on-selection); background: var(--lumen-selection); border-color: transparent; }
+.phone-app .settings-theme-options input { width: 18px; height: 18px; margin: 0; accent-color: var(--lumen-accent); }
+.phone-app .settings-theme-options input:checked { accent-color: var(--lumen-on-selection); }
+html[data-lumen-theme] .phone-app .settings-preference-warning { color: var(--lumen-warning); background: var(--lumen-warning-bg); padding: 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; margin: 16px 0 0; }
+.settings-links { display: grid; gap: 10px; }
+.phone-app .settings-screen .settings-link { min-height: 76px; width: 100%; padding: 16px; display: flex; align-items: center; gap: 14px; text-align: left; border-radius: 20px; border: 1px solid var(--lumen-line); background: var(--lumen-surface); }
+.settings-link > span { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.settings-link > svg { flex: 0 0 auto; color: var(--lumen-text-secondary); }
+.settings-link strong { font-size: 15px; font-weight: 600; }
+.settings-link small { font-size: 12px; line-height: 1.4; }
+.settings-local-note { margin: 20px 4px 0; }
+.phone-app .settings-screen .backup-panel p { font-size: 13px; }
+.phone-app .settings-screen .backup-status-row { flex-wrap: wrap; font-size: 13px; }
+.phone-app .backup-update-status { color: var(--lumen-text); background: var(--lumen-surface-raised); }
+@media (hover: hover) {
+  .phone-app .settings-screen .settings-link:hover { background: var(--lumen-surface-raised); }
+}

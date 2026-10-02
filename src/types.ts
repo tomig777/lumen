@@ -5,6 +5,7 @@ export type Screen =
   | 'welcome'
   | 'login'
   | 'backup'
+  | 'settings'
   | 'project-detail'
   | 'people'
   | 'person-detail'

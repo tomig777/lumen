@@ -45,6 +45,7 @@ jobs:
           pnpm test:icons
           pnpm test:welcome
           pnpm test:theme
+          pnpm test:settings
           pnpm test:offline
           pnpm test:updates
       - name: Configure Pages

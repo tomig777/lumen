@@ -51,24 +51,41 @@ opt-in and not emitted into the published offline shell. Native status-bar
 contrast, cold launch/resume, rotation and keyboard behavior still require the
 physical iPhone; desktop/browser geometry does not establish those results.
 
-## 3. Settings and quick actions
+## 3. Settings and quick actions — implemented; phone acceptance pending
 
-Next implementation phase. The production appearance selector will be added here.
+The production appearance selector is now available at + → Settings.
 
-- [ ] Add Settings route, originating-tab return behavior and accessible heading.
-- [ ] Replace only Health journal's + tile with Settings/gear; keep other actions.
-- [ ] Put Appearance, Data & backup, App & updates, Diagnostics and App identity
+- [x] Add Settings route, originating-tab return behavior and accessible heading.
+- [x] Replace only Health journal's + tile with Settings/gear; keep other actions.
+- [x] Put Appearance, Data & backup, App & updates, Diagnostics and App identity
   inside Settings. Reuse services and existing backup/update guards.
-- [ ] Remove Home Data & backup link only after the new path is working.
-- [ ] Keep Home save-state/retry and app-wide failure banners; preserve health
+- [x] Remove Home Data & backup link only after the new path is working.
+- [x] Keep Home save-state/retry and app-wide failure banners; preserve health
   records and their Health-page entry point.
-- [ ] Verify + dismissal, nested back behavior, persisted toggle and unchanged
+- [x] Verify + dismissal, nested back behavior, persisted toggle and unchanged
   export/restore/update workflows, including an unsaved-data update refusal.
 
 Gate: every old backup capability remains reachable; theme control works without
 editing personal data; Settings returns to the correct tab.
 
+Verification for 0.1.13: build and all 117 tests pass, including native appearance
+radio behavior, denied preference persistence, nested section back/focus/scroll,
+and update refusal while loading/saving/errored (button and handler). Existing
+storage, backup restore/integrity and update-monitor regressions remain in place.
+Browser QA verified + → Settings, all four originating-tab returns, backup back
+to Settings, Light persistence after reload, keyboard radio selection, identity,
+live layout diagnostics and updates. A demo export from the moved backup page
+passed Lumen's actual integrity checker (450 notes, 2 journals, 3 projects, 9 tasks;
+no embedded images in this profile). No restore was performed on the user's
+installation. Health → Sleep → Edit sleep check-in still opens the health editor.
+390 × 844, 320 × 568 and 844 × 390 browser checks found no document-width overflow.
+Physical iPhone native colors, file/share delivery, safe-area and keyboard checks
+remain pending; local preview and automated results do not prove phone behavior.
+
 ## 4. Shared glass controls and navigation
+
+Next implementation phase; this release does not introduce nav/button renderers
+or replace Home's circle/character.
 
 - [ ] Implement lightweight theme-aware primary/icon button and nav/menu finishes.
 - [ ] Preserve all four tabs, active selection semantics and 44px targets.
