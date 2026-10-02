@@ -49,6 +49,7 @@ import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits 
 import { StoredImage } from './components/StoredImage'
 import { SettingsScreen } from './components/SettingsScreen'
 import { WelcomeGlass } from './components/WelcomeGlass'
+import { HomeCharacter } from './components/HomeCharacter'
 import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
@@ -665,11 +666,11 @@ function App() {
     { id: 'quick-note', label: 'Quick note', icon: 'quick-note', onSelect: () => openSheet('capture') },
   ]
 
-  const renderScreen = () => {
+  const renderScreen = (mirror = false) => {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} theme={theme} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} saveState={saveState} onRetrySave={retrySave} />
+      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} saveState={saveState} onRetrySave={retrySave} theme={theme} characterActive={screen === 'home' && !sheet.kind && !selectedImage} mirror={mirror} />
       case 'settings': return <SettingsScreen onBack={returnToPrimaryScreen} onOpenBackup={() => navigate('backup')} saveState={saveState} offlineShell={offlineShell} />
       case 'backup': return <BackupScreen data={data} onBack={() => navigate('settings')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
@@ -695,7 +696,7 @@ function App() {
       <StatusBar light={theme === 'dark'} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="screen-layer" key={screen} initial={{ opacity: 0, x: 9 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -9 }} transition={{ duration: 0.24, ease: [0.19, 1, 0.22, 1] }}>
-          {renderScreen()}
+          {renderScreen(mirror)}
         </motion.div>
       </AnimatePresence>
       {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId={motionId} />}
@@ -828,7 +829,7 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveState, onRetrySave }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; saveState: SaveState; onRetrySave: () => void }) {
+function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveState, onRetrySave, theme = 'dark', characterActive = true, mirror = false }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; saveState: SaveState; onRetrySave: () => void; theme?: 'dark' | 'light'; characterActive?: boolean; mirror?: boolean }) {
   const groups = classifyTasks(data.tasks, today)
   const openTasks = groups.today.filter((task) => !taskIsComplete(task, today))
   const completedTaskItems = groups.doneToday
@@ -892,7 +893,7 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveStat
           <span className="home-liquid-state">{totalTasks && performance === 100 ? 'COMPLETE' : performance > 0 ? 'IN MOTION' : 'A FRESH START'}</span>
         </div>
         <div className="liquid-bowl-stage">
-          <div className="liquid-glass-window home-placeholder-orb" aria-hidden="true" />
+          <HomeCharacter theme={theme} active={characterActive} mirror={mirror} />
           <span className="liquid-bowl-shadow" aria-hidden="true" />
         </div>
         <p className="home-liquid-caption">Your day, a little clearer.</p>

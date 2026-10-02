@@ -165,17 +165,53 @@ text, keyboard, safe areas, native status colors and smoothness remain pending;
 desktop/browser QA does not prove those results. Phase 6 adds the real 3D
 character and eyes; this release intentionally uses only its static slot.
 
-## 6. Static real 3D character
+## 6. Static real 3D character — implemented; phone appearance acceptance pending
 
-- [ ] Add one lazy procedural espresso/bronze sphere with cream pill eyes.
-- [ ] Match the measured circle size/center and contrast in both modes.
-- [ ] Cap renderer cost; no expensive transmission/post-processing by default.
-- [ ] Suppress rendering in the aria-hidden preview mirror; dispose on exit.
-- [ ] Test load/context failure, offline asset availability and static fallback.
+- [x] Add one lazy procedural espresso/bronze sphere with cream pill eyes.
+- [x] Match the measured circle size/center and inspect both palettes in browser.
+- [x] Cap renderer cost; no expensive transmission/post-processing by default.
+- [x] Suppress rendering in the aria-hidden preview mirror; dispose on exit.
+- [x] Test load/context failure, offline asset availability and static fallback.
 - [ ] Inspect actual iPhone appearance/responsiveness before animation tuning.
 
 Gate: depth is genuinely 3D; visible Home has one bounded scene; tasks/navigation
 stay usable while loading or after renderer failure. Appearance approval first.
+
+Verification for 0.1.16 (2026-10-03): production build and all 140 tests pass.
+Eleven character tests exercise visibility/overlay/background loading gates,
+the mirror exclusion, canceled imports, first-draw readiness, initialization and
+context failures, stale callbacks, cleanup, actual spherical eye placement,
+demand/never render branches and the precached scene chunk. The existing Home,
+storage, backup, dates, theme, welcome, graph and update regressions still pass.
+
+The original procedural model uses a 48 × 32 sphere (under 3,200 triangles),
+two small capsule meshes oriented to surface normals, opaque polished bronze,
+local cream/amber lights and an orthographic camera. Its canvas is 216 × 216 CSS
+pixels at y=145.39 and x=87/52/314 for the three reference viewports. DPR is
+capped at 1.5 (at most 324 × 324 backing pixels); no model download, remote HDR,
+texture, shadow-map, transmission buffer or post-processing pass is introduced.
+Geometry/materials are declarative and owned/disposed by Fiber. The shared
+Three/Fiber dependency is a lazy chunk already used by welcome; the entire
+release, including both scene chunks, is cached by the existing offline worker.
+
+This phase has no blink/gaze timers or animation loop. Rendering is demand-only
+while visible and uncovered, never while backgrounded/off-screen/behind an
+editor, and unmounts on leaving Home. The CSS character with static cream eyes
+is immediately available until a successful actual draw; failed graphics or
+chunk loading retains that fallback without blocking navigation or tasks.
+The mirror uses only the fallback and does not observe, load or mount a scene.
+
+Browser QA checked Dark/Light, 390 × 844, 320 × 568 and 844 × 390; no document
+width overflow or hero-slot changes. Opening an empty task editor paused the
+scene without creating a record; scrolling the character off-screen paused it.
+Brain navigation removed its canvas, returning Home produced one fresh canvas,
+and the desktop phone/mirror pair had exactly one renderer across two hosts.
+Task completion/undo still changed real progress 0 → 50 → 0. A local safe update
+applied refined lighting without clearing records; browser logs had no errors.
+
+These bounds/tests do not establish GPU timing, Airplane Mode or visual approval
+on the iPhone. Inspect this static appearance and responsiveness there before
+tuning/adding Phase 7 motion. No character interactions or data changes added.
 
 ## 7. Idle eyes
 

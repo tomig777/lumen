@@ -18,6 +18,7 @@ const { code } = transformSync(`import React, { useEffect, useLayoutEffect, useR
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Circle, Plus, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { classifyTasks, taskIsComplete } from './daily';
+import { HomeCharacter } from './HomeCharacter';
 ${helpers}\n${source}\nexport { HomeScreen };`, { loader: 'tsx', format: 'cjs', jsx: 'transform' })
 const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children?.map(text).join('') ?? ''
 const task = (id, fields = {}) => ({ id, title: `Task ${id}`, priority: 'medium', completed: false, ...fields })
@@ -34,7 +35,7 @@ function harness(tasks, { reduced = false, save = 'saved' } = {}) {
     return components.get(tag)
   } })
   const module = { exports: {} }
-  new Function('require','module','exports',code)(name => name === './daily' ? daily : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
+  new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './HomeCharacter' ? { HomeCharacter: () => React.createElement('div', { 'aria-hidden': true }) } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
   const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), scrollBy: options => scrolls.push(options) }
   const props = { data: { tasks }, today: date, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
     toggles.push(id); props.data = { tasks: props.data.tasks.map(item => item.id === id ? daily.toggleTaskForDate(item,props.today,`${date}T12:00:00Z`) : item) }; render()
