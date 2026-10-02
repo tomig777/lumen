@@ -155,7 +155,7 @@ test('eye positions and pill orientations follow the actual spherical surface', 
   for (const x of [-.23, .23]) {
     const pose = geometryModule.exports.eyePose(x, .18)
     const position = new THREE.Vector3(...pose.position)
-    assert.ok(Math.abs(position.length() - 1.03) < 1e-9)
+    assert.ok(Math.abs(position.length() - 1.04) < 1e-9)
     const normal = position.clone().normalize()
     const localZ = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion(...pose.quaternion))
     assert.ok(localZ.distanceTo(normal) < 1e-9)
@@ -191,7 +191,10 @@ test('actual scene is bounded and demand-rendered, with first-frame/context guar
     assert.equal(material.props.color, '#e8d9c7'); assert.ok(material.props.metalness <= .05)
     assert.deepEqual(view.root.findByType('hemisphereLight').props.args, ['#fff0da', '#b59f87', 1.5])
     for (const eye of view.root.findAllByType('capsuleGeometry')) {
-      assert.deepEqual(eye.props.args, [.047 * 1.25, .16 * 1.25, 6, 12])
+      assert.deepEqual(eye.props.args, [.076, .204, 6, 12])
+      const [radius, length] = eye.props.args
+      assert.ok(radius / .05875 > 1.25 && radius / .05875 < 1.35, 'eyes are noticeably wider')
+      assert.ok((length + 2 * radius) / .3175 > 1.1 && (length + 2 * radius) / .3175 < 1.15, 'height increases modestly')
     }
     for (const eye of view.root.findAllByType('meshBasicMaterial')) assert.equal(eye.props.color, '#302b26')
     assert.equal(draws, 0); assert.equal(readies, 0)
@@ -215,7 +218,7 @@ test('Home wiring excludes mirrors/overlays and the scene chunk is part of the o
   assert.match(css, /home-character\[data-ready="true"\] .home-character-fallback \{ visibility: hidden/)
   assert.match(css, /pointer-events: none/)
   assert.match(css, /#fff1dc, #e8d9c7 45%, #b59f87 82%/)
-  assert.match(css, /home-character-fallback i \{[^}]*width: 13px; height: 34px;[^}]*background: #302b26/)
+  assert.match(css, /home-character-fallback i \{[^}]*width: 16px; height: 38px;[^}]*background: #302b26/)
   const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
   assert.match(worker, /assets\/HomeCharacterScene-[^" ]+\.js/)
   assert.doesNotMatch(source, /localStorage|indexedDB|onClick|setInterval/)

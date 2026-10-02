@@ -37,7 +37,7 @@ function CharacterModel({ theme, active, onReady, onFailure }: HomeCharacterScen
     {[-.23, .23].map(x => {
       const pose = eyePose(x, .18)
       return <mesh key={x} position={pose.position} quaternion={pose.quaternion}>
-        <capsuleGeometry args={[.05875, .2, 6, 12]} />
+        <capsuleGeometry args={[.076, .204, 6, 12]} />
         <meshBasicMaterial color="#302b26" />
       </mesh>
     })}

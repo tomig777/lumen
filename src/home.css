@@ -89,9 +89,9 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character {
   background: radial-gradient(ellipse at 28% 22%, #fff1dc, #e8d9c7 45%, #b59f87 82%);
 }
 .home-character-fallback { position: absolute; inset: 0; }
-.home-character-fallback i { position: absolute; top: 33%; width: 13px; height: 34px; border-radius: 999px; background: #302b26; }
-.home-character-fallback i:first-child { left: calc(50% - 32px); transform: rotate(-3deg); }
-.home-character-fallback i:last-child { right: calc(50% - 32px); transform: rotate(3deg); }
+.home-character-fallback i { position: absolute; top: 32%; width: 16px; height: 38px; border-radius: 999px; background: #302b26; }
+.home-character-fallback i:first-child { left: calc(50% - 34px); transform: rotate(-3deg); }
+.home-character-fallback i:last-child { right: calc(50% - 34px); transform: rotate(3deg); }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character[data-ready="true"] { background: transparent; }
 .home-character[data-ready="true"] .home-character-fallback { visibility: hidden; }
 .home-character > div { position: absolute !important; inset: 0; }

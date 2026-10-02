@@ -289,6 +289,15 @@ That fixture does not prove iOS Dynamic Type behavior. It was removed before
 the release build. Physical iPhone appearance, larger text and native status/safe
 area acceptance remain pending; ask the user to approve before Phase 7 motion.
 
+Follow-up 0.1.18 (2026-10-03): user approved the rest of the appearance and
+requested slightly bigger, wider eyes. Capsule radius .076 and straight length
+.204 make width about 29% greater and total height about 12% greater than 0.1.17.
+Surface attachment moves to radius 1.04; fallback eyes become 16 × 38px while
+keeping their centers. Body, palette, lighting, headers and controls are unchanged.
+Production build and all 142 tests pass; 390 × 844 browser preview has no errors.
+No eye animation is introduced by this adjustment; physical appearance approval
+for the new proportions remains the next checkpoint.
+
 ## 7. Idle eyes
 
 - [ ] Add randomized quiet gaze/blink sequencing with short bounded animations.
