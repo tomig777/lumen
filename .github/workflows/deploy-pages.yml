@@ -46,6 +46,7 @@ jobs:
           pnpm test:welcome
           pnpm test:theme
           pnpm test:settings
+          pnpm test:glass
           pnpm test:offline
           pnpm test:updates
       - name: Configure Pages

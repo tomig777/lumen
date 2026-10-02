@@ -1,0 +1,185 @@
+/* Shared CSS-only material. Opaque bases make contrast independent of whatever
+   scrolls behind a control. Diagonal shading, one LOCAL top glint, no lower rim.
+   Keep shell/safe-area geometry in mobile.css and the accepted welcome separate. */
+html[data-lumen-theme] {
+  --lumen-glass-top: #45382c;
+  --lumen-glass-bottom: #302820;
+  --lumen-glass-quiet-top: #39322b;
+  --lumen-glass-quiet-bottom: #302b26;
+  --lumen-glass-highlight: rgba(255,237,208,.045);
+  --lumen-glass-selected-top: #e8d9c7;
+  --lumen-glass-selected-bottom: #cfb698;
+}
+html[data-lumen-theme='light'] {
+  --lumen-glass-top: #ead8c0;
+  --lumen-glass-bottom: #d8bea0;
+  --lumen-glass-quiet-top: #f3ede4;
+  --lumen-glass-quiet-bottom: #e3d6c5;
+  --lumen-glass-highlight: rgba(255,255,255,.16);
+  --lumen-glass-selected-top: #65513f;
+  --lumen-glass-selected-bottom: #49382b;
+}
+/* Intentional extra scope beats legacy per-page :has() and selected-button
+   colors without !important or recoloring semantic destructive actions. */
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+  .complete-set-button, .save-pin-button, .remember-button, .onboarding-login-submit,
+  .home-save-retry, .nav-capture, .nav-action-item.is-primary,
+  .focus-player-play, .spotify-controls .spotify-play,
+  .icon-button, .back-button, .settings-back-button, .backup-secondary,
+  .health-daily-gallery, .health-daily-edit, .home-task-control) {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--lumen-text);
+  background: linear-gradient(145deg, var(--lumen-glass-top), var(--lumen-glass-bottom));
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  transition: scale 150ms ease;
+}
+html[data-lumen-theme] .phone-app.phone-app :is(.icon-button, .back-button,
+  .settings-back-button, .health-daily-gallery, .health-daily-edit, .home-task-control):not(:disabled) {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: linear-gradient(145deg, var(--lumen-glass-quiet-top), var(--lumen-glass-quiet-bottom));
+}
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+  .complete-set-button, .save-pin-button, .remember-button, .onboarding-login-submit,
+  .home-save-retry, .backup-secondary) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+/* Only two prominent pill families emit above-edge light, never beneath them. */
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary)::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  left: 20%;
+  right: 20%;
+  top: -20px;
+  height: 20px;
+  background: radial-gradient(ellipse at 50% 100%, var(--lumen-glow), transparent 72%);
+}
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+  .nav-capture, .bottom-nav)::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  left: calc(50% - 28px);
+  width: 56px;
+  height: 2px;
+  background: radial-gradient(ellipse at center, var(--lumen-glint), transparent 72%);
+  opacity: .65;
+}
+html[data-lumen-theme] .phone-app.phone-app .bottom-nav {
+  border-color: transparent;
+  color: var(--lumen-text);
+  background: linear-gradient(145deg, var(--lumen-glass-quiet-top), var(--lumen-glass-quiet-bottom));
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* Capture retains its existing absolute anchor; only the glyph rotates. */
+html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-capture { position: absolute; transform: none; }
+html[data-lumen-theme] .phone-app.phone-app .nav-capture::after { left: calc(50% - 12px); width: 24px; }
+html[data-lumen-theme] .phone-app.phone-app .nav-capture-icon { display: inline-flex; }
+html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-item {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--lumen-text-secondary);
+  background: transparent;
+}
+html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-active-bubble {
+  background: linear-gradient(145deg, var(--lumen-glass-selected-top), var(--lumen-glass-selected-bottom));
+  box-shadow: none;
+}
+html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-item.is-active .nav-icon-wrap { color: var(--lumen-on-selection); }
+html[data-lumen-theme] .phone-app.phone-app .nav-action-menu {
+  color: var(--lumen-text);
+  background: linear-gradient(145deg, var(--lumen-glass-quiet-top), var(--lumen-glass-quiet-bottom));
+  border-color: var(--lumen-line);
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-lumen-theme] .phone-app.phone-app .nav-action-item {
+  min-width: 0;
+  min-height: 48px;
+  gap: 8px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--lumen-text);
+  background: var(--lumen-surface);
+  transition: scale 150ms ease;
+}
+html[data-lumen-theme] .phone-app.phone-app .nav-action-item.is-primary {
+  background: linear-gradient(145deg, var(--lumen-glass-top), var(--lumen-glass-bottom));
+}
+html[data-lumen-theme] .phone-app.phone-app .nav-action-item .nav-action-icon {
+  position: static;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 24px;
+  color: inherit;
+  background: transparent;
+}
+html[data-lumen-theme] .phone-app.phone-app .nav-action-item > span:last-child { width: auto; min-width: 0; overflow-wrap: anywhere; }
+html[data-lumen-theme] .phone-app.phone-app .home-task-heading { flex-wrap: wrap; gap: 12px; }
+html[data-lumen-theme] .phone-app.phone-app .health-start-button { flex: 1; max-width: 240px; }
+/* Never fade a disabled label below readable contrast or leave a bright glint. */
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+  .complete-set-button, .save-pin-button, .remember-button, .onboarding-login-submit,
+  .home-save-retry, .nav-capture, .nav-action-item, .focus-player-play,
+  .spotify-controls .spotify-play, .icon-button, .back-button, .settings-back-button,
+  .backup-secondary, .health-daily-gallery, .health-daily-edit, .home-task-control):disabled {
+  color: var(--lumen-text-muted);
+  background: var(--lumen-surface);
+  opacity: 1;
+  scale: 1;
+  cursor: not-allowed;
+}
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary, .nav-capture):disabled::before,
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary, .nav-capture):disabled::after { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+    .nav-capture, .nav-action-item.is-primary, .health-start-button):not(:disabled):hover {
+    color: var(--lumen-text);
+    background: linear-gradient(var(--lumen-glass-highlight), var(--lumen-glass-highlight)),
+      linear-gradient(145deg, var(--lumen-glass-top), var(--lumen-glass-bottom));
+  }
+  html[data-lumen-theme] .phone-app.phone-app :is(.icon-button, .back-button,
+    .settings-back-button, .backup-secondary, .health-daily-gallery, .health-daily-edit,
+    .home-task-control):not(:disabled):hover { color: var(--lumen-text); transform: none; }
+}
+html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+  .backup-secondary, .nav-capture, .nav-action-item, .icon-button, .back-button,
+  .settings-back-button, .health-daily-gallery, .health-daily-edit, .home-task-control):not(:disabled):active { scale: .98; }
+html[data-lumen-theme] .phone-app.phone-app :is(.nav-item, .nav-capture,
+  .nav-action-item, .dark-button, .backup-primary, .backup-secondary, .icon-button,
+  .back-button, .settings-back-button):focus-visible { outline: 2px solid var(--lumen-focus); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
+    .backup-secondary, .nav-item, .nav-capture, .nav-action-item, .icon-button,
+    .back-button, .settings-back-button, .health-daily-gallery, .health-daily-edit,
+    .home-task-control):not(:disabled) { transition: none; scale: 1; }
+}

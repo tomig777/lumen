@@ -82,20 +82,42 @@ installation. Health → Sleep → Edit sleep check-in still opens the health ed
 Physical iPhone native colors, file/share delivery, safe-area and keyboard checks
 remain pending; local preview and automated results do not prove phone behavior.
 
-## 4. Shared glass controls and navigation
+## 4. Shared glass controls and navigation — implemented; phone acceptance pending
 
-Next implementation phase; this release does not introduce nav/button renderers
-or replace Home's circle/character.
+CSS-only shared finishes; no additional nav/button renderer and no replacement
+of Home's circle/character in this release.
 
-- [ ] Implement lightweight theme-aware primary/icon button and nav/menu finishes.
-- [ ] Preserve all four tabs, active selection semantics and 44px targets.
-- [ ] Add pressed/focus/disabled states; validate actual composite contrast.
-- [ ] Use controlled top glints; no broad face stripe/lower rim, full-page blur,
+- [x] Implement lightweight theme-aware primary/icon button and nav/menu finishes.
+- [x] Preserve all four tabs, active selection semantics and 44px targets.
+- [x] Add pressed/focus/disabled states; validate actual composite contrast.
+- [x] Use controlled top glints; no broad face stripe/lower rim, full-page blur,
   individual per-button canvas or decorative pointer-event interception.
-- [ ] Verify scrolling, menu fit, portrait/landscape and Reduce Motion.
+- [x] Verify scrolling, menu fit, portrait/landscape and Reduce Motion.
 
 Gate: visually related to approved welcome glass, readable and responsive, with
 no duplicate reflection layers or navigation/layout regressions.
+
+Verification for 0.1.14: production build and all 122 tests pass. The five new
+tests cover native-button/current-tab semantics, menu routing, Escape/focus,
+outside dismissal/listener cleanup, reduced-motion animation branches, sampled
+actual gradient/hover composites in both modes, focus/selected-icon contrast and
+CSS-only material boundaries. Primary labels remain at least 4.5:1 across the
+opaque gradients and hover composites; selected icons/focus at least 3:1.
+Disabled controls retain the existing tested opaque semantic pairings.
+
+Browser QA checked Dark/Light Home, Brain, Projects, Health, Settings/updates and
+editor controls. At 390 × 844 the nav (12,776; 314 × 56), four tab targets, and +
+(332,780; 50 × 50) match their measured baseline browser bounds. Home task
+controls and shared icons are now 44px; headings can wrap instead of overflow.
+320 × 568, 844 × 390 and a short 320 × 320 browser viewport retained menu fit,
+44px targets and no document-width overflow. Quick note remained reachable via
+the internally scrolling short menu; opening/closing an empty editor saved no
+record. The existing guarded updater applied local revisions without clearing
+storage. Shared navigation has no backdrop blur; only the + glyph rotates.
+Welcome source, standalone document height/safe-area CSS and record storage are
+unchanged. Actual iPhone safe areas, keyboard/native colors, Reduce Motion and
+scroll smoothness still need physical-device acceptance; automated/browser QA
+does not establish those results. Phase 5 is next.
 
 ## 5. Home visual overhaul
 

@@ -760,7 +760,7 @@ function App() {
 function PageHeader({ eyebrow, title, subtitle, onBack, action }: { eyebrow?: string; title: string; subtitle?: string; onBack?: () => void; action?: React.ReactNode }) {
   return (
     <header className={`page-header ${onBack ? 'has-back' : ''}`}>
-      {onBack && <button className="back-button" onClick={onBack} aria-label="Go back"><ArrowLeft size={17} /></button>}
+      {onBack && <button type="button" className="back-button" onClick={onBack} aria-label="Go back"><ArrowLeft size={17} /></button>}
       <div className="page-header-copy"><span className="eyebrow">{eyebrow ?? 'PERSONAL OS'}</span><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
       {action && <div className="page-header-action">{action}</div>}
     </header>
@@ -768,7 +768,7 @@ function PageHeader({ eyebrow, title, subtitle, onBack, action }: { eyebrow?: st
 }
 
 function IconButton({ label, children, onClick, className = '' }: { label: string; children: React.ReactNode; onClick?: () => void; className?: string }) {
-  return <button className={`icon-button ${className}`} onClick={onClick} aria-label={label}>{children}</button>
+  return <button type="button" className={`icon-button ${className}`} onClick={onClick} aria-label={label}>{children}</button>
 }
 
 function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {

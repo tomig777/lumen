@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import React, { useEffect, useId, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { BookOpen, Brain, ChevronRight, Clock3, Folder, Heart, House, Image as ImageIcon, Layers3, Pause, Play, Plus, Settings, Sparkles, SkipBack, SkipForward, Users } from 'lucide-react'
 import type { ImageAsset, Person, Tab, Track } from '../types'
 import type { MapNode } from '../brainGraph'
@@ -83,6 +83,9 @@ function ActionGlyph({ icon }: { icon: BottomNavAction['icon'] }) {
 export function BottomNav({ active, onChange, quickActions, motionId = 'default' }: BottomNavProps) {
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
+  const captureRef = useRef<HTMLButtonElement>(null)
+  const menuId = useId()
+  const reducedMotion = useReducedMotion()
 
   useEffect(() => {
     if (!isActionMenuOpen) return
@@ -90,7 +93,10 @@ export function BottomNav({ active, onChange, quickActions, motionId = 'default'
       if (!navRef.current?.contains(event.target as Node)) setIsActionMenuOpen(false)
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsActionMenuOpen(false)
+      if (event.key === 'Escape') {
+        setIsActionMenuOpen(false)
+        captureRef.current?.focus()
+      }
     }
     window.addEventListener('pointerdown', dismiss)
     window.addEventListener('keydown', onKeyDown)
@@ -109,26 +115,27 @@ export function BottomNav({ active, onChange, quickActions, motionId = 'default'
     <nav ref={navRef} className={`bottom-nav ${isActionMenuOpen ? 'is-action-menu-open' : ''}`} aria-label="Primary navigation">
       {navItems.map((item) => (
         <button
+          type="button"
           className={`nav-item ${active === item.id ? 'is-active' : ''} ${item.id === 'home' ? 'is-home' : ''}`}
           key={item.id}
           onClick={() => { setIsActionMenuOpen(false); onChange(item.id) }}
           aria-label={item.label}
           aria-current={active === item.id ? 'page' : undefined}
         >
-          {active === item.id && <motion.span layoutId={`nav-active-bubble-${motionId}`} className="nav-active-bubble" transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }} aria-hidden="true" />}
-          <motion.span className="nav-icon-wrap" animate={active === item.id ? { y: -1 } : { y: 0 }}>
+          {active === item.id && <motion.span layoutId={reducedMotion ? undefined : `nav-active-bubble-${motionId}`} className="nav-active-bubble" transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }} aria-hidden="true" />}
+          <motion.span className="nav-icon-wrap" animate={active === item.id && !reducedMotion ? { y: -1 } : { y: 0 }}>
             <NavGlyph icon={item.icon} />
           </motion.span>
         </button>
       ))}
       <AnimatePresence>
-        {isActionMenuOpen && <motion.div className="nav-action-menu" initial={{ opacity: 0, y: 14, scale: .88 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: .92 }} transition={{ type: 'spring', damping: 24, stiffness: 360 }}>
+        {isActionMenuOpen && <motion.div id={menuId} className="nav-action-menu" initial={reducedMotion ? false : { opacity: 0, y: 14, scale: .88 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: .92 }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', damping: 24, stiffness: 360 }}>
           <div className="nav-action-grid">
-            {quickActions.map((action, index) => <motion.button key={action.id} className={`nav-action-item ${action.id === 'quick-note' ? 'is-primary' : ''}`} onClick={() => selectAction(action)} initial={{ opacity: 0, y: 8, scale: .9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: .9 }} transition={{ delay: index * .035, type: 'spring', damping: 22, stiffness: 420 }}><span className="nav-action-icon"><ActionGlyph icon={action.icon} /></span><span>{action.label}</span></motion.button>)}
+            {quickActions.map((action, index) => <motion.button type="button" key={action.id} className={`nav-action-item ${action.id === 'quick-note' ? 'is-primary' : ''}`} onClick={() => selectAction(action)} initial={reducedMotion ? false : { opacity: 0, y: 8, scale: .9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6, scale: .9 }} transition={reducedMotion ? { duration: 0 } : { delay: index * .035, type: 'spring', damping: 22, stiffness: 420 }}><span className="nav-action-icon"><ActionGlyph icon={action.icon} /></span><span>{action.label}</span></motion.button>)}
           </div>
         </motion.div>}
       </AnimatePresence>
-      <motion.button className="nav-capture" onClick={() => setIsActionMenuOpen((open) => !open)} aria-label={isActionMenuOpen ? 'Close quick actions' : 'Open quick actions'} aria-expanded={isActionMenuOpen} animate={{ rotate: isActionMenuOpen ? 45 : 0 }} transition={{ type: 'spring', damping: 18, stiffness: 320 }}><Plus size={20} /></motion.button>
+      <button ref={captureRef} type="button" className="nav-capture" onClick={() => setIsActionMenuOpen((open) => !open)} aria-label={isActionMenuOpen ? 'Close quick actions' : 'Open quick actions'} aria-expanded={isActionMenuOpen} aria-controls={isActionMenuOpen ? menuId : undefined}><motion.span className="nav-capture-icon" animate={{ rotate: isActionMenuOpen ? 45 : 0 }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', damping: 18, stiffness: 320 }}><Plus size={20} /></motion.span></button>
     </nav>
   )
 }
