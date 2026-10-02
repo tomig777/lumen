@@ -1,0 +1,144 @@
+/* Phase 5: quiet Home surfaces, local typography and the measured hero slot.
+   No shell height/inset changes, blur renderer, font download or storage owner. */
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  scroll-padding-bottom: var(--lumen-scroll-clearance, 104px);
+  outline: none;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .minimal-home-top {
+  min-height: 16px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0;
+  color: var(--lumen-text-muted);
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state.is-error { color: var(--lumen-danger); }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus {
+  margin-bottom: 24px;
+  overflow: visible;
+  transition: none;
+}
+/* At normal text size this remains the baseline 49.39px heading, leaving the
+   stage at y=145.4 in the 390/320/844-wide browser baselines. Larger text is
+   allowed to expand naturally rather than clipping or overlaying the hero. */
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { margin: 0 5px; min-height: 49.4px; align-items: center; flex-wrap: wrap; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading > div { gap: 2px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading h1 {
+  margin: 0;
+  color: var(--lumen-text-secondary);
+  font: 500 11px/13.2px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: .14em;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading strong {
+  color: var(--lumen-text);
+  font: 500 38px/.9 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-state {
+  color: var(--lumen-text-secondary);
+  background: transparent;
+  border: 1px solid var(--lumen-line);
+  padding: 8px 12px;
+  font: 500 11px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: .08em;
+  white-space: normal;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-stage { height: 270px; margin-top: 20px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb {
+  flex: 0 0 216px;
+  width: 216px;
+  height: 216px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 28% 22%, rgba(216,156,83,.23), transparent 58%),
+    linear-gradient(145deg, #49382b, #191511 78%);
+  box-shadow: none;
+  animation: none;
+  transform: none;
+  transition: none;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb::before,
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb::after { display: none; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-shadow {
+  background: radial-gradient(ellipse, rgba(12,10,8,.22), transparent 72%);
+  animation: none;
+  filter: none;
+  opacity: 1;
+  transform: translateX(-50%);
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-caption {
+  color: var(--lumen-text-secondary);
+  margin-top: 7px;
+  font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading { margin-bottom: 16px; gap: 12px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading-copy { min-width: 0; gap: 4px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading h2 { margin: 0; color: var(--lumen-text); font: 400 28px/1.15 Georgia, 'Times New Roman', serif; letter-spacing: -.035em; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-summary { color: var(--lumen-text-muted); font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls { flex-shrink: 0; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { gap: 10px; margin-bottom: 0; padding-bottom: 8px; scroll-padding: 4px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-wrap {
+  flex: 0 0 min(82%, 320px);
+  display: grid;
+  min-height: 192px;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card {
+  height: auto;
+  min-height: 192px;
+  padding: 20px;
+  border: 1px solid var(--lumen-line);
+  border-radius: 24px;
+  background: var(--lumen-surface);
+  box-shadow: none;
+  overflow: visible;
+  transition: opacity 180ms ease;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card strong {
+  font: 500 18px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -.02em;
+  color: var(--lumen-text);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-title-block { padding: 16px 0 24px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-index,
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-foot span { color: var(--lumen-text-muted); font: 500 11px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .1em; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-check { width: 22px; height: 22px; border-color: var(--lumen-control-edge); }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-complete { opacity: 1; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-complete strong { text-decoration: line-through; color: var(--lumen-text-secondary); }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-departing { opacity: 0; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-edit.icon-button { position: absolute; right: 12px; bottom: 12px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned :is(.home-task-empty,.home-day-complete) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--lumen-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-empty { padding: 20px 0; border-color: var(--lumen-line); }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-day-complete { margin: 0 0 16px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group { margin-top: 20px; padding: 16px; border-radius: 24px; background: var(--lumen-surface); border-color: var(--lumen-line); box-shadow: none; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > .eyebrow { color: var(--lumen-text-muted); margin-bottom: 12px; font: 500 11px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .12em; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > div { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 10px; padding: 8px 0; min-height: 44px; border-color: var(--lumen-line); color: var(--lumen-text-secondary); font-size: 15px; line-height: 1.5; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group .daily-task-row { grid-template-columns: 44px minmax(0,1fr); gap: 4px 10px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-row > button { min-width: 44px; min-height: 44px; padding: 4px 0; color: var(--lumen-text); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-row > small { grid-column: 2; color: var(--lumen-text-muted); margin: 0; font-size: 12px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > div > span { overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) {
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card:hover { background: var(--lumen-surface-raised); border-color: var(--lumen-control-edge); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { scroll-behavior: auto; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card { transition: none; }
+}

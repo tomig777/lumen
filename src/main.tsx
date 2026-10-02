@@ -9,6 +9,7 @@ import './welcome.css'
 import './theme.css'
 import './settings.css'
 import './glass.css'
+import './home.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

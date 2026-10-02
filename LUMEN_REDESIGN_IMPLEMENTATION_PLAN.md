@@ -117,19 +117,53 @@ storage. Shared navigation has no backdrop blur; only the + glyph rotates.
 Welcome source, standalone document height/safe-area CSS and record storage are
 unchanged. Actual iPhone safe areas, keyboard/native colors, Reduce Motion and
 scroll smoothness still need physical-device acceptance; automated/browser QA
-does not establish those results. Phase 5 is next.
+does not establish those results.
 
-## 5. Home visual overhaul
+## 5. Home visual overhaul — implemented; phone acceptance pending
 
-- [ ] Measure existing circle/stage at reference viewports before replacement.
-- [ ] Restyle progress, save status, date controls, cards and task groups.
-- [ ] Keep a static placeholder in the circle's established slot until Phase 6.
-- [ ] Remove obsolete color-shifting caption; preserve numerical daily progress.
-- [ ] Check long titles, empty/all-done lists, overdue/unscheduled groups,
-  completion reorder, editing, larger text and nav-safe scrolling.
+- [x] Measure existing circle/stage at reference viewports before replacement.
+- [x] Restyle progress, save status, date controls, cards and task groups.
+- [x] Keep a static placeholder in the circle's established slot until Phase 6.
+- [x] Remove obsolete color-shifting caption; preserve numerical daily progress.
+- [x] Check long titles, empty/all-done lists, overdue/unscheduled/history groups,
+  completion reorder, editing and nav-safe scrolling.
+- [ ] Confirm larger text and native safe-area/keyboard behavior on the iPhone.
 
 Gate: same functional data/ordering and responsive hero position; refined Home
 presentation without new daily calculations or hidden controls.
+
+Verification for 0.1.15 (2026-10-03): build and all 129 tests pass. Seven new
+Home tests cover real date-derived progress and task groups, empty/all-done
+states and undo, single-shot completion/reordering/scroll restoration, Reduce
+Motion, timer/frame disposal, long-title/edit separation, save retry and scoped
+CSS boundaries. Daily calculations, storage, backups, welcome and shell sizing
+are unchanged; the static placeholder has no renderer or animation.
+
+The baseline circle has a 216 × 216 CSS-pixel layout size (its old animated
+transform made visual bounds fluctuate slightly). Before replacement, the
+270px stage started at y=145.39 with a 20px top margin at each reference size:
+
+| Browser viewport | Stage x / width | Circle center x | New static circle y / size |
+| --- | --- | --- | --- |
+| 390 × 844 | 20 / 350 | 195 | 145.39 / 216 × 216 |
+| 320 × 568 | 20 / 280 | 160 | 145.39 / 216 × 216 |
+| 844 × 390 | 20 / 804 | 422 | 145.39 / 216 × 216 |
+
+Browser QA checked both palettes, 390 × 844, 320 × 568, 844 × 390 and document
+width at a short 320 × 320 viewport. A disposable localhost task with a long
+title wrapped to eight lines at 320px; its 44px edit target stayed below the
+title and opened the correct editor. Completion advanced progress through
+33/67/100%, reordered cards, showed the complete-day message and remained
+undoable. At 320 × 568 the last task row ended at y=451.33, above navigation
+at y=500, without scrolling the document. The existing Settings updater applied
+the local build without clearing storage. Test records exist only on the
+isolated preview origin, not in the published assets or the user's phone.
+
+Cards expand for long content rather than clamping titles; typography uses
+local system fonts and a regular Georgia date heading. Actual iPhone larger
+text, keyboard, safe areas, native status colors and smoothness remain pending;
+desktop/browser QA does not prove those results. Phase 6 adds the real 3D
+character and eyes; this release intentionally uses only its static slot.
 
 ## 6. Static real 3D character
 
