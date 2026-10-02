@@ -1,7 +1,7 @@
 {
   "name": "personal-os",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
     "test:brain": "node --test tests/brainGraph.test.mjs",
     "test:daily": "node --test tests/daily.test.mjs tests/workoutSession.test.mjs",
     "test:offline": "node --test tests/offlineShell.test.mjs",
-    "test:viewport": "node --test tests/mobileViewport.test.mjs tests/screenLayout.test.mjs",
+    "test:viewport": "node --test tests/mobileViewport.test.mjs tests/screenLayout.test.mjs tests/layoutDiagnostic.test.mjs",
     "test:icons": "node --test tests/icons.test.mjs",
     "test:updates": "node --test tests/offlineUpdates.test.mjs tests/appRelease.test.mjs"
   },

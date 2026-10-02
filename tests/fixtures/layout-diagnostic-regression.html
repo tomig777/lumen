@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumen comparison document regressions</title>
+    <style>
+      body { margin: 24px; background: #24211e; color: #e8d9c7; font: 14px/1.5 system-ui; }
+      button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 24px; background: #e8d9c7; color: #24211e; font: inherit; }
+      pre { white-space: pre-wrap; font: 12px/1.7 monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>Comparison document regressions</h1>
+    <p>Isolated HTML, no app, saved records or service-worker registration. Viewport units, display mode and safe areas are simulated in disposable frames.</p>
+    <p>This checks geometry, internal scrolling and controls only. It cannot reproduce native iOS painting, keyboard delivery or installed navigation context.</p>
+    <button id="run" type="button">Run document regressions</button>
+    <h2 id="status">Not run</h2>
+    <pre id="results"></pre>
+    <script>
+      const run = document.getElementById('run')
+      const status = document.getElementById('status')
+      const results = document.getElementById('results')
+      const profiles = [
+        { name: 'Installed portrait', width: 390, native: 797, full: 844, top: 47, right: 0, bottom: 34, left: 0, standalone: true },
+        { name: 'Browser portrait', width: 390, native: 797, full: 844, top: 47, right: 0, bottom: 34, left: 0, standalone: false },
+        { name: 'Installed landscape', width: 844, native: 369, full: 390, top: 0, right: 47, bottom: 21, left: 47, standalone: true },
+        { name: 'Short browser', width: 390, native: 500, full: 844, top: 0, right: 0, bottom: 0, left: 0, standalone: false },
+        { name: 'Keyboard-height browser', width: 844, native: 228, full: 390, top: 0, right: 0, bottom: 0, left: 0, standalone: false },
+      ]
+      run.addEventListener('click', async () => {
+        run.disabled = true; status.textContent = 'Running'; results.textContent = ''
+        let passed = 0, checks = 0
+        const check = (ok, name) => { checks++; if (ok) passed++; results.textContent += `${ok ? 'PASS' : 'FAIL'} ${name}\n` }
+        try {
+          const response = await fetch('/screen-layout-test.html')
+          if (!response.ok) throw new Error(`Diagnostic returned ${response.status}`)
+          const source = await response.text()
+          for (const profile of profiles) for (const theme of ['light', 'dark']) {
+            let baselineNav
+            for (const selectedCase of ['a', 'b', 'c']) {
+              const iframe = document.createElement('iframe')
+              iframe.setAttribute('aria-hidden', 'true')
+              iframe.style.cssText = `position: fixed; left: -10000px; top: 0; width: ${profile.width}px; height: ${profile.native}px; border: 0`
+              const loaded = new Promise((resolve) => iframe.addEventListener('load', resolve, { once: true }))
+              // Substitute test inputs only. All layout rules and controls come
+              // from the same generated document used by the deploy build.
+              iframe.srcdoc = source
+                .replace('new URL(location.href)', `new URL('https://fixture.test/?case=${selectedCase}&theme=${theme}')`)
+                .replace(/\b100(dvh|lvh|vh)\b/g, (_, unit) => `${unit === 'dvh' ? profile.native : profile.full}px`)
+                .replace(/\(display-mode: standalone\)/g, profile.standalone ? 'all' : 'not all')
+                .replace(/env\(safe-area-inset-(top|right|bottom|left)(?:,\s*0px)?\)/g, (_, side) => `${profile[side]}px`)
+              document.body.appendChild(iframe)
+              try {
+                await loaded
+                const doc = iframe.contentDocument, win = iframe.contentWindow
+                await new Promise((resolve) => win.requestAnimationFrame(resolve))
+                const rect = (selector) => doc.querySelector(selector).getBoundingClientRect()
+                const style = (selector) => win.getComputedStyle(doc.querySelector(selector))
+                const label = `${profile.name} / ${theme} / ${selectedCase.toUpperCase()}`
+                const height = profile.standalone ? profile.full : profile.native
+                check(rect('.deployed-app-root').top === 0 && rect('.deployed-app-root').height === height
+                  && style('.deployed-app-root').position === (selectedCase === 'c' ? 'relative' : 'fixed'), `${label}: shell/flow`)
+                check(['body', '#root'].every((selector) => rect(selector).height === (selectedCase === 'a' ? 0 : height)), `${label}: independent document boxes`)
+                const nav = rect('.bottom-nav'), plus = rect('.nav-capture')
+                if (selectedCase === 'a') baselineNav = { top: nav.top, bottom: nav.bottom, left: nav.left, right: nav.right }
+                check(nav.top === baselineNav.top && nav.bottom === baselineNav.bottom && nav.left === baselineNav.left && nav.right === baselineNav.right
+                  && nav.height === 56 && nav.bottom === height - Math.max(12, profile.bottom)
+                  && plus.height === 50 && plus.right <= profile.width - profile.right && plus.bottom <= height - Math.max(12, profile.bottom), `${label}: unchanged nav/safe clearance`)
+                check(style('html').backgroundColor === (theme === 'dark' ? 'rgb(36, 33, 30)' : 'rgb(250, 247, 242)')
+                  && doc.querySelectorAll('.bottom-nav button').length === 5
+                  && [...doc.querySelectorAll('.bottom-nav button')].every((button) => button.getBoundingClientRect().height >= 44), `${label}: theme and four tabs/separate plus`)
+                const scroller = doc.querySelector('.screen-scroll')
+                scroller.scrollTop = scroller.scrollHeight
+                check(rect('#last-row').bottom <= nav.top - 20 && win.scrollX === 0 && win.scrollY === 0
+                  && doc.documentElement.scrollWidth === profile.width, `${label}: final row/internal scroll/no horizontal overflow`)
+                let reachable = true
+                for (const selector of ['.return-link', '#measure', '#dismiss-keyboard']) {
+                  scroller.scrollTop += rect(selector).top - Math.max(10, profile.top)
+                  const bounds = rect(selector)
+                  reachable &&= bounds.height >= 44 && bounds.top >= 0 && bounds.bottom <= Math.min(nav.top, profile.native)
+                }
+                check(reachable, `${label}: return/report/dismiss reachable by internal scroll`)
+                doc.querySelector('#keyboard-field').value = 'PRIVATE_FIXTURE_WORD'
+                doc.querySelector('#measure').click()
+                check(doc.querySelector('#report').value.startsWith('Lumen isolated screen layout')
+                  && !doc.querySelector('#report').value.includes('PRIVATE_FIXTURE_WORD')
+                  && doc.querySelectorAll('[data-lumen-layout-probe]').length === 0 && !doc.querySelector('#copy').disabled, `${label}: report/privacy/probe cleanup`)
+                doc.querySelector('#select-report').click()
+                check(doc.activeElement === doc.querySelector('#report') && doc.querySelector('#report').selectionStart === 0
+                  && doc.querySelector('#report').selectionEnd === doc.querySelector('#report').value.length, `${label}: manual report selection`)
+              } finally { iframe.remove() }
+            }
+          }
+          status.textContent = `${passed}/${checks} passed`
+        } catch (error) { status.textContent = 'Test failed'; results.textContent += String(error) }
+        finally { run.disabled = false }
+      })
+    </script>
+  </body>
+</html>

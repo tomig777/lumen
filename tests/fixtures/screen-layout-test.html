@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#24211e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lumen">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="lumen-diagnostic-revision" content="1">
+    <meta name="lumen-diagnostic-version" content="local-unpublished">
+    <meta name="lumen-diagnostic-build" content="local-unpublished">
+    <title>Lumen · Screen layout comparison</title>
+    <script id="case-selector">
+      // Select before first paint. Links load a new document, never resize an
+      // already-running Lumen page. Only these closed sets reach CSS or text.
+      (() => {
+        const params = new URL(location.href).searchParams
+        const requested = params.get('case')
+        document.documentElement.dataset.layoutCase = ['a', 'b', 'c'].includes(requested) ? requested : 'a'
+        document.documentElement.dataset.testTheme = params.get('theme') === 'dark' ? 'dark' : 'light'
+      })()
+    </script>
+    <style id="baseline-layout">
+      /* Minimal reproduction of the published outer layout. Keep these
+         dimensions independent of the test content and experiment rules. */
+      * { box-sizing: border-box; }
+      html, body, #root { min-height: 100%; margin: 0; }
+      html { background: var(--surface); overscroll-behavior: none; }
+      body { min-width: 320px; }
+      body, #root { overflow: hidden; background: var(--surface); overscroll-behavior: none; }
+      .deployed-app-root {
+        position: fixed; inset: 0; width: 100%;
+        height: 100vh; height: 100dvh;
+        overflow: hidden; background: var(--surface);
+      }
+      @media (display-mode: standalone) {
+        .deployed-app-root { bottom: auto; height: 100vh; height: 100lvh; }
+      }
+      .phone-app {
+        --nav-height: 56px;
+        --nav-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        position: relative; width: 100%; height: 100%; min-width: 0;
+        overflow: hidden; background: var(--surface);
+      }
+      .screen-scroll {
+        height: 100%; overflow-y: auto; overflow-x: hidden;
+        padding-top: max(56px, calc(env(safe-area-inset-top) + 12px));
+        padding-right: max(20px, calc(env(safe-area-inset-right) + 12px));
+        padding-bottom: calc(var(--nav-height) + var(--nav-bottom) + 24px);
+        padding-left: max(20px, calc(env(safe-area-inset-left) + 12px));
+        overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
+      }
+      .bottom-nav {
+        position: absolute; z-index: 10;
+        right: calc(64px + env(safe-area-inset-right));
+        bottom: var(--nav-bottom); left: max(12px, env(safe-area-inset-left));
+        height: var(--nav-height); padding: 5px 7px;
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+      }
+      .nav-item { position: relative; min-width: 0; min-height: 44px; }
+      .nav-capture { position: absolute; top: 3px; right: -57px; width: 50px; height: 50px; }
+    </style>
+    <style id="experiment-layout">
+      /* B changes document minimums only; C retains B and changes only the
+         app's flow participation (resetting its now-obsolete fixed insets). */
+      html:is([data-layout-case="b"], [data-layout-case="c"]),
+      html:is([data-layout-case="b"], [data-layout-case="c"]) body,
+      html:is([data-layout-case="b"], [data-layout-case="c"]) #root {
+        min-height: 100vh; min-height: 100dvh;
+      }
+      @media (display-mode: standalone) {
+        html:is([data-layout-case="b"], [data-layout-case="c"]),
+        html:is([data-layout-case="b"], [data-layout-case="c"]) body,
+        html:is([data-layout-case="b"], [data-layout-case="c"]) #root {
+          min-height: 100vh; min-height: 100lvh;
+        }
+      }
+      html[data-layout-case="c"] .deployed-app-root { position: relative; inset: auto; }
+    </style>
+    <style id="test-presentation">
+      :root {
+        --surface: #faf7f2; --ink: #24211e; --muted: #766b60;
+        --panel: #f0e9df; --line: #d9cbb9; --nav: #fffaf4;
+        --active: #24211e; --active-ink: #fffaf4;
+        color: var(--ink); color-scheme: light;
+        font: 14px/1.45 system-ui, -apple-system, sans-serif;
+      }
+      :root[data-test-theme="dark"] {
+        --surface: #24211e; --ink: #f5ede3; --muted: #bbae9e;
+        --panel: #302b26; --line: #453c33; --nav: #302b26;
+        --active: #e8d9c7; --active-ink: #24211e; color-scheme: dark;
+      }
+      h1 { margin: 5px 0 8px; font-size: 24px; line-height: 1.1; }
+      h2 { margin: 16px 0 8px; font-size: 15px; }
+      p { margin: 8px 0; }
+      a { color: inherit; }
+      .eyebrow { margin: 0; color: var(--muted); font-size: 11px; letter-spacing: .1em; }
+      .case-links, .theme-links, .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+      button, .case-links a, .theme-links a, .return-link {
+        min-height: 44px; padding: 10px 13px; border: 1px solid var(--line);
+        border-radius: 16px; background: var(--panel); color: var(--ink);
+        font: inherit; text-decoration: none; cursor: pointer;
+      }
+      .case-links a { flex: 1; text-align: center; }
+      a[aria-current="page"], .primary { background: var(--active); color: var(--active-ink); }
+      button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px solid #46b5a6; outline-offset: 3px; }
+      #mode { padding: 9px 11px; border-left: 3px solid #c39763; border-radius: 8px; background: var(--panel); }
+      #feedback { min-height: 21px; color: var(--muted); }
+      .instructions { color: var(--muted); font-size: 12px; }
+      .keyboard-row { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+      textarea {
+        display: block; width: 100%; min-width: 0; padding: 10px;
+        border: 1px solid var(--line); border-radius: 12px;
+        background: var(--panel); color: var(--ink); font: 16px/1.4 system-ui;
+      }
+      #report { font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+      .sample-list { padding: 0; list-style: none; }
+      .sample-list li { min-height: 54px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+      .bottom-nav { border: 1px solid var(--line); border-radius: 32px; background: var(--nav); }
+      .nav-item { display: grid; place-items: center; border: 0; padding: 0; background: transparent; }
+      .nav-item[aria-pressed="true"], .nav-capture { border: 0; border-radius: 50%; background: var(--active); color: var(--active-ink); }
+      .nav-item svg, .nav-capture svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .nav-capture { display: grid; place-items: center; padding: 0; }
+      /* Colored paint markers are not layout compensation. Their region and
+         the full-edge rails stay identical in every comparison case. */
+      .bottom-paint {
+        position: absolute; z-index: 1; bottom: 0; left: 0; right: 0;
+        height: 96px; pointer-events: none;
+        background: linear-gradient(to top, #71dfba 0 10px, #d1a3f3 10px 20px, #f4c07d 20px 30px, #f2a2bc 30px 40px, transparent 40px);
+      }
+      .edge-rail { position: absolute; z-index: 2; top: 0; bottom: 0; width: 4px; pointer-events: none; }
+      .edge-rail.left { left: 0; background: #71dfba; }
+      .edge-rail.right { right: 0; background: #d1a3f3; }
+      .dvh-line { position: absolute; z-index: 3; top: 100vh; top: 100dvh; left: 0; right: 0; border-top: 2px dashed #f2a2bc; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="deployed-app-root">
+        <div class="phone-app">
+          <main class="screen-scroll">
+            <p class="eyebrow" id="identity">LOCAL DIAGNOSTIC · REVISION 1</p>
+            <h1 id="case-title">Screen layout comparison</h1>
+            <p id="mode">Checking display mode…</p>
+            <nav class="case-links" aria-label="Comparison case">
+              <a href="?case=a" data-case-link="a">A · Current</a>
+              <a href="?case=b" data-case-link="b">B · Document</a>
+              <a href="?case=c" data-case-link="c">C · Flow</a>
+            </nav>
+            <nav class="theme-links" aria-label="Comparison theme">
+              <a href="?theme=light" data-theme-link="light">Light</a>
+              <a href="?theme=dark" data-theme-link="dark">Dark</a>
+              <a class="return-link" href="../../">Return to Lumen</a>
+            </nav>
+            <p class="instructions">Each case opens a fresh document. Compare A first and again after B/C. Look for cut-off buttons and colored bottom bands; larger measurements alone are not proof of a fix.</p>
+            <p class="instructions">No Lumen records are loaded or saved. This local page is not published to your phone yet. Browser results do not prove installed-iPhone painting.</p>
+            <div class="actions">
+              <button type="button" class="primary" id="measure">Check layout</button>
+              <button type="button" id="copy" disabled>Copy report</button>
+            </div>
+            <p id="feedback" role="status" aria-live="polite"></p>
+            <section id="report-panel" hidden>
+              <label for="report">Layout report — selectable text, no field contents</label>
+              <textarea id="report" readonly rows="10" spellcheck="false"></textarea>
+              <div class="actions"><button type="button" id="select-report">Select report text</button></div>
+            </section>
+            <div class="keyboard-row">
+              <label for="keyboard-field">Keyboard test — type a test word only</label>
+              <textarea id="keyboard-field" rows="2" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Temporary test text; never saved"></textarea>
+              <button type="button" id="dismiss-keyboard">Dismiss keyboard</button>
+            </div>
+            <h2>Internal scroll check</h2>
+            <p class="instructions">Scroll to the final sample row. The page should scroll inside its frame while navigation stays in place. The colored bands and edge rails test painting, not document height.</p>
+            <ul class="sample-list" id="samples" aria-label="Non-personal scroll samples"></ul>
+            <p id="last-row">Final sample — this must scroll above navigation.</p>
+          </main>
+          <div class="bottom-paint" aria-hidden="true"></div>
+          <div class="edge-rail left" aria-hidden="true"></div>
+          <div class="edge-rail right" aria-hidden="true"></div>
+          <div class="dvh-line" aria-hidden="true"></div>
+          <nav class="bottom-nav" aria-label="Diagnostic navigation targets">
+            <button class="nav-item" type="button" aria-label="Home target" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z M9 20v-7h6v7"/></svg></button>
+            <button class="nav-item" type="button" aria-label="Brain target" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M12 5C8 0 4 5 6 8c-5 1-4 7 0 8-1 5 5 6 6 2 M12 5c4-5 8 0 6 3 5 1 4 7 0 8 1 5-5 6-6 2"/></svg></button>
+            <button class="nav-item" type="button" aria-label="Projects target" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V5h6l2 3h10v12Z"/></svg></button>
+            <button class="nav-item" type="button" aria-label="Health target" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21 3 12C-2 4 8-1 12 6c4-7 14-2 9 6Z"/></svg></button>
+            <button class="nav-capture" type="button" aria-label="Plus target"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16 M4 12h16"/></svg></button>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <script id="diagnostic-controls">
+      (() => {
+        const root = document.documentElement
+        const selectedCase = root.dataset.layoutCase
+        const theme = root.dataset.testTheme
+        const names = { a: 'A · Current fixed app', b: 'B · Full-height document', c: 'C · Normal-flow app' }
+        const revision = document.querySelector('meta[name="lumen-diagnostic-revision"]').content
+        const version = document.querySelector('meta[name="lumen-diagnostic-version"]').content
+        const build = document.querySelector('meta[name="lumen-diagnostic-build"]').content
+        const standalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches
+        document.getElementById('identity').textContent = `DIAGNOSTIC ${revision} · LUMEN ${version} / ${build}`
+        document.getElementById('case-title').textContent = names[selectedCase]
+        document.getElementById('mode').textContent = standalone()
+          ? 'Home Screen / standalone — check actual bottom painting.'
+          : 'Browser tab — NOT installed-iPhone acceptance.'
+        document.querySelectorAll('[data-case-link]').forEach((link) => {
+          link.href = `?case=${link.dataset.caseLink}&theme=${theme}`
+          if (link.dataset.caseLink === selectedCase) link.setAttribute('aria-current', 'page')
+        })
+        document.querySelectorAll('[data-theme-link]').forEach((link) => {
+          link.href = `?case=${selectedCase}&theme=${link.dataset.themeLink}`
+          if (link.dataset.themeLink === theme) link.setAttribute('aria-current', 'page')
+        })
+        for (let index = 1; index <= 12; index++) {
+          const row = document.createElement('li')
+          row.textContent = `Sample row ${index} — no personal content`
+          document.getElementById('samples').appendChild(row)
+        }
+        const feedback = document.getElementById('feedback')
+        const report = document.getElementById('report')
+        const px = (value) => String(Math.round(value * 10) / 10)
+        const dimensions = (width, height) => `${px(width)} × ${px(height)}`
+        const box = (element) => {
+          if (!element) return 'Not present'
+          const rect = element.getBoundingClientRect()
+          const style = getComputedStyle(element)
+          return [
+            `x ${px(rect.left)}–${px(rect.right)}; y ${px(rect.top)}–${px(rect.bottom)}`,
+            `size ${dimensions(rect.width, rect.height)}`,
+            `CSS height ${style.height}; min-height ${style.minHeight}`,
+            `display ${style.display}; position ${style.position}`,
+            `overflow ${style.overflowX}/${style.overflowY}`,
+            `transform ${style.transform}; filter ${style.filter}; contain ${style.contain}`,
+          ].join('; ')
+        }
+        const measure = () => {
+          const probes = []
+          const probe = (styles) => {
+            const element = document.createElement('div')
+            element.setAttribute('aria-hidden', 'true')
+            element.dataset.lumenLayoutProbe = ''
+            element.style.cssText = `all: initial; position: fixed; top: 0; left: 0; width: 0; margin: 0; border: 0; padding: 0; visibility: hidden; pointer-events: none; ${styles}`
+            probes.push(element)
+            document.body.appendChild(element)
+            return element
+          }
+          try {
+            const heights = ['vh', 'dvh', 'lvh'].map((unit) => CSS.supports('height', `100${unit}`)
+              ? `${unit}=${px(probe(`height: 100${unit}`).getBoundingClientRect().height)}` : `${unit}=unsupported`).join(', ')
+            const fixed = box(probe('inset: 0; width: auto; height: auto'))
+            const safe = getComputedStyle(probe('height: 0; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)'))
+            const viewport = window.visualViewport
+            const scroller = document.querySelector('.screen-scroll')
+            const rows = [
+              ['Diagnostic revision', revision], ['App source', `${version} / ${build}`], ['Case', names[selectedCase]], ['Theme', theme],
+              ['iOS', navigator.userAgent.match(/(?:CPU (?:iPhone )?OS|iPhone OS) ([\d_]+)/)?.[1].replace(/_/g, '.') ?? 'Not reported'],
+              ['Mode', standalone() ? 'Home Screen / standalone' : 'Browser tab — not iPhone acceptance'],
+              ['Screen', dimensions(screen.width, screen.height)],
+              ['Window', dimensions(innerWidth, innerHeight)],
+              ['Document viewport (client)', dimensions(root.clientWidth, root.clientHeight)],
+              ['CSS heights', heights], ['Fixed inset=0 box', fixed],
+              ['Visual viewport', viewport ? `${dimensions(viewport.width, viewport.height)}; top ${px(viewport.offsetTop)}; scale ${px(viewport.scale)}` : 'Unavailable'],
+              ['Safe T/R/B/L', `${safe.paddingTop} / ${safe.paddingRight} / ${safe.paddingBottom} / ${safe.paddingLeft}`],
+              ['Document scroll', `${px(scrollX)}, ${px(scrollY)}; height ${px(root.scrollHeight)}`],
+              ['HTML box', box(root)], ['Body box', box(document.body)], ['Root box', box(document.getElementById('root'))],
+              ['App box', box(document.querySelector('.deployed-app-root'))],
+              ['Phone frame box', box(document.querySelector('.phone-app'))],
+              ['Navigation box', box(document.querySelector('.bottom-nav'))], ['Plus box', box(document.querySelector('.nav-capture'))],
+              ['Bottom paint markers', box(document.querySelector('.bottom-paint'))], ['Dvh marker', box(document.querySelector('.dvh-line'))],
+              ['Internal scroll', `${px(scroller.scrollLeft)}, ${px(scroller.scrollTop)}; height ${px(scroller.scrollHeight)}`],
+              ['Keyboard test focused', document.activeElement === document.getElementById('keyboard-field') ? 'Yes' : 'No'],
+              ['Viewport meta', document.querySelector('meta[name="viewport"]').content],
+              ['Status bar meta', document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content],
+            ]
+            return ['Lumen isolated screen layout', ...rows.map(([label, value]) => `${label}: ${value}`), 'Acceptance: physical screenshots required; geometry alone is not proof.'].join('\n')
+          } finally {
+            probes.forEach((element) => element.remove())
+          }
+        }
+        document.getElementById('measure').addEventListener('click', () => {
+          try {
+            // Read before exposing the report panel, preserving the sampled
+            // internal scroll geometry. Never include keyboard-field contents.
+            report.value = measure()
+            document.getElementById('report-panel').hidden = false
+            document.getElementById('copy').disabled = false
+            feedback.textContent = 'Snapshot ready. Copy it with a screenshot; no data was sent.'
+          } catch {
+            report.value = ''
+            document.getElementById('report-panel').hidden = true
+            document.getElementById('copy').disabled = true
+            feedback.textContent = 'Could not read layout. All probes were removed; send a screenshot instead.'
+          }
+        })
+        document.getElementById('copy').addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(report.value)
+            feedback.textContent = 'Report copied. Nothing was sent automatically.'
+          } catch {
+            feedback.textContent = 'Copy unavailable. Use Select report text, then copy manually.'
+          }
+        })
+        document.getElementById('select-report').addEventListener('click', () => { report.focus(); report.select() })
+        document.getElementById('dismiss-keyboard').addEventListener('click', () => {
+          document.getElementById('keyboard-field').blur()
+          feedback.textContent = 'Keyboard field unfocused. Check layout again after dismissal.'
+        })
+        document.querySelectorAll('.bottom-nav button').forEach((button) => button.addEventListener('click', () => {
+          if (button.classList.contains('nav-item')) {
+            document.querySelectorAll('.nav-item').forEach((item) => item.setAttribute('aria-pressed', String(item === button)))
+          }
+          feedback.textContent = `${button.getAttribute('aria-label')} pressed. This is only a reachability test.`
+        }))
+      })()
+    </script>
+  </body>
+</html>

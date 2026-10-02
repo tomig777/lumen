@@ -534,6 +534,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .backup-screen .backup-primary { background: #24211e; color: #f6ebdc; }
 .backup-screen .backup-secondary { background: #e8d9c7; color: #24211e; }
+.backup-layout-test-link { text-decoration: none; }
 .backup-screen .backup-danger { background: #694b3b; color: #fff8ef; }
 .backup-screen button:disabled { opacity: .48; cursor: not-allowed; }
 .backup-preview { margin-top: 18px; padding-top: 16px; border-top: 1px solid #dccbbb; }

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
+import { DIAGNOSTIC_FILE } from './layout-diagnostic.mjs'
 
 const output = new URL('../dist/', import.meta.url)
 const root = decodeURIComponent(output.pathname).replace(/^\/([A-Za-z]:)/, '$1')
@@ -16,7 +17,7 @@ async function filesIn(folder) {
 
 const files = (await filesIn(root)).filter((path) => !path.endsWith(`${sep}sw.js`)).sort()
 const paths = files.map((path) => relative(root, path).split(sep).join('/'))
-if (!paths.includes('index.html') || !paths.some((path) => path.startsWith('assets/'))) {
+if (!paths.includes('index.html') || !paths.includes(DIAGNOSTIC_FILE) || !paths.some((path) => path.startsWith('assets/'))) {
   throw new Error('Refusing to generate an incomplete offline shell.')
 }
 const indexHtml = await readFile(join(root, 'index.html'), 'utf8')
@@ -30,6 +31,15 @@ for (const path of files) {
   hash.update(await readFile(path))
 }
 const cacheName = `lumen-shell-${hash.digest('hex').slice(0, 16)}`
+const release = JSON.parse(await readFile(join(root, 'release.json'), 'utf8'))
+const diagnosticIdentity = [
+  `name="lumen-diagnostic-version" content="${release.version}"`,
+  `name="lumen-diagnostic-build" content="${release.build}"`,
+]
+const diagnosticHtml = await readFile(join(root, DIAGNOSTIC_FILE), 'utf8')
+if (!diagnosticIdentity.every((marker) => diagnosticHtml.includes(marker))) {
+  throw new Error('The diagnostic does not match the generated release.')
+}
 
 // One worker owns a complete, content-hashed release. Never cache user records,
 // backup files, cross-origin requests, or arbitrary runtime responses.
@@ -38,6 +48,8 @@ const FILES = ${JSON.stringify(paths)}
 const ENTRY_ASSETS = ${JSON.stringify(entryAssets)}
 const SCOPE = self.registration.scope
 const INDEX = new URL('index.html', SCOPE).href
+const DIAGNOSTIC = new URL(${JSON.stringify(DIAGNOSTIC_FILE)}, SCOPE).href
+const DIAGNOSTIC_IDENTITY = ${JSON.stringify(diagnosticIdentity)}
 const URLS = new Set(FILES.map((path) => new URL(path, SCOPE).href))
 
 self.addEventListener('install', (event) => {
@@ -47,6 +59,10 @@ self.addEventListener('install', (event) => {
     const html = await (await cache.match(INDEX))?.text()
     if (!html || !ENTRY_ASSETS.every((path) => html.includes('./' + path))) {
       throw new Error('The deployment served a mixed release; keep the previous offline shell.')
+    }
+    const diagnostic = await (await cache.match(DIAGNOSTIC))?.text()
+    if (!diagnostic || !DIAGNOSTIC_IDENTITY.every((marker) => diagnostic.includes(marker))) {
+      throw new Error('The deployment served a mixed diagnostic release; keep the previous offline shell.')
     }
   })())
 })
@@ -69,7 +85,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (request.method !== 'GET' || url.origin !== self.location.origin || !url.href.startsWith(SCOPE)) return
   if (request.mode === 'navigate') {
-    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => (await cache.match(INDEX)) ?? fetch(request)))
+    // Only this exact, precached HTML path bypasses the normal app entry.
+    // A/B/C query strings select content in that same independent document.
+    const target = url.pathname === new URL(DIAGNOSTIC).pathname ? DIAGNOSTIC : INDEX
+    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => (await cache.match(target)) ?? fetch(request)))
     return
   }
   if (URLS.has(url.href)) {

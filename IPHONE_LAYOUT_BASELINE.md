@@ -1,6 +1,6 @@
 # iPhone layout baseline: bottom gap
 
-This baseline preserves the original provisional diagnosis and subsequent verification history. Actual installed-iPhone readings arrived on 2026-10-02 and are recorded under **Measured Home Screen viewport** below. They confirm the 47-point shell-height mismatch; the new height correction is implemented locally, but actual bottom-edge painting remains unverified. The earlier implementation records at the end are historical, not proof that the phone issue was fixed.
+This baseline preserves the original provisional diagnosis and subsequent verification history. Actual installed-iPhone readings arrived on 2026-10-02 and are recorded under **Measured Home Screen viewport** below. Release 0.1.3 corrects the app-layer height, but the user's subsequent screenshots and report confirm that bottom clipping remains. See **0.1.3 physical failure and document-layer investigation** below. The earlier implementation records at the end are historical, not proof that the phone issue was fixed.
 
 ## Screenshot evidence
 
@@ -135,7 +135,58 @@ The actual production browser preview loaded JS `assets/index-BUNkjalv.js`, CSS 
 
 These production browser checks use zero native safe-area insets and reduced desktop window heights, not a phone keyboard. Local counts (450 notes, 2 journal entries, 3 projects, 9 tasks, 0 images) and last successful save (2026-10-02 02:34:10 local) stayed unchanged after the normal local shell update. The category's temporary name was discarded and no form was submitted. No live app records or deployment were touched. The new correction remains **unpublished**. Step 4 must validate actual iPhone geometry, painting beyond the old 797-point boundary and keyboard/rotation/resume recovery before marking the strip fixed.
 
+### Measured correction, step 4: release published; physical acceptance open
+
+Version **0.1.3 / 82185d6** was published from commit `82185d6050ca526473dc5ef6e92158d9be26b57f`. [Pages workflow 36950661076](https://github.com/tomig777/lumen/actions/runs/36950661076) successfully built, ran the release test groups and deployed. Pre-release checks were repeated: build, all 55 automated tests and all 70 isolated rendered checks passed. No storage/schema or metadata change, data reset, reinstall or personal content write was part of the release.
+
+Direct public HTTP verification returned 200 and expected MIME types for every deployed shell file and the worker. The live HTML and `release.json` identify 0.1.3 / `82185d6`; entry is `assets/index-X8c60EzM.js`, CSS `assets/index-WYr3wUac.css`, live worker `lumen-shell-4b265e275322b6de`. All ten shell files match the SHA-labelled local release output byte-for-byte. The worker text is identical after normalizing only its expected Windows/Linux cache-name hash difference. The file/entry lists and offline/update logic match. No test fixtures, screenshots, backups or browser data are shipped.
+
+In a temporary live desktop browser tab, the normal update UI changed 0.1.2 / `0b99c54` to 0.1.3 / `82185d6` without resetting records. Counts stayed 450 notes, 2 journals, 3 projects, 9 tasks and 0 embedded images; the last-save indicator remained Not recorded yet. Offline shell showed Ready. Brain had y=0–844 shell bounds, nav y=776–832, document color `#24211e`, no horizontal overflow and zero document scroll. Category belonged directly to `.phone-app`, with absolute y=0–844 bounds outside the page scroller; closing it removed the dialog with no retained editor height/top/keyboard marker. Warning/error logs were empty. No forms were submitted or records changed. This does not test iOS standalone painting, keyboard events, native safe areas or offline phone reopening.
+
+The user has been asked to update the installed app to **0.1.3 / 82185d6**, copy a fresh Screen layout report with the keyboard closed, and send Home and dark Brain screenshots including the bottom edge. Require full-height app geometry **and** actual painting beyond the old 797-point boundary, reachable controls, rotation/resume and keyboard dismissal. The issue remains **unconfirmed** until those device results arrive. If the strip remains with corrected geometry, investigate isolated native clipping in step 5, not arbitrary extra padding or deleting the installed app. These verification notes are local while device acceptance is pending so another documentation-only release does not change the build under test.
+
+### 0.1.3 physical failure and document-layer investigation
+
+The user supplied Home and dark Health screenshots, followed by this fresh report from the installed app with the keyboard closed:
+
+```text
+Lumen screen layout
+App: 0.1.3 / 82185d6
+iOS: 17.3
+Mode: Home Screen / standalone
+Screen: 390 × 844
+Window: 390 × 797
+Document: 390 × 797
+App top–bottom: 0–844 (height 844)
+Fixed inset=0: 0–797 (height 797)
+CSS heights: vh=844, dvh=797, lvh=844
+Visual viewport: 390 × 797; top 0; scale 1
+Safe T/R/B/L: 47px / 0px / 34px / 0px
+Document scroll: 0, 0; height 797
+App CSS height: 843.984375px
+Document color: rgb(250, 247, 242)
+Body color: rgb(250, 247, 242)
+Viewport meta: width=device-width, initial-scale=1.0, viewport-fit=cover
+Status bar meta: black-translucent
+```
+
+The published height rule is active: the app extends to the full 844 points. The screenshots still show content, including the lower portions of navigation buttons, ending around the old 797-point boundary. The surrounding band now follows the light/dark page color. This is a **failed physical painting check**, not a stale-release assumption or acceptance of step 4. The remaining difference is 47 points (the reported top inset), not the 34-point home inset; do not compensate by adding a hard-coded bottom margin.
+
+Measurement caveat: `Document` currently reports `document.documentElement.clientHeight`, which is the viewport height in standards mode, not the HTML box's CSS height. A 797 reading alone does not establish that the HTML/body boxes are 797 or that a CSS ancestor is the clip source. `App CSS height` fractional rounding is not evidence for a 47-point defect. The report lacks actual HTML/body/#root box heights; extend those observations in the controlled test instead of relabelling the existing viewport value as a box measurement.
+
+A read-only inspection of the exact live entry `assets/index-X8c60EzM.js` in a temporary desktop browser tab found HTML y=0–720, but body and #root y=0–0 with computed height `0px` and `min-height: 100%`. The fixed app, phone screen and welcome page all covered 720. HTML/body/#root have no transform, filter or containment; body/#root have `overflow: hidden`. The fixed app contributes no normal-flow height and the percentage minimum does not establish a definite body/root height. This gives a testable **document-sizing/native content-bounds hypothesis**, not proof of the iPhone paint cause. The desktop engine still draws its fixed app correctly, so a collapsed normal-flow container does not by itself prove clipping.
+
+Relevant primary reports: [WebKit 254868](https://bugs.webkit.org/show_bug.cgi?id=254868#c2) proposes full `vh` minimums on HTML/body for installed apps; [WebKit 210009](https://bugs.webkit.org/show_bug.cgi?id=210009) reports viewport readings dependent on natural content height, with a later comment linking standalone apps. These older reports describe related behavior, not a verified solution for this iOS 17.3 device. [CSSOM View's clientHeight definition](https://drafts.csswg.org/cssom-view/#dom-element-clientheight) explains the viewport/box distinction.
+
+Next: the storage-free step-5 comparison should hold the app height and control spacing constant and compare the current fixed shell with (1) explicit full-height document/root minimums and (2) a full-height normal-flow shell. Inspect actual HTML/body/#root rectangles, CSS heights, scrolling, fixed probe, native viewport, and visible markers spanning the 797–844 region. Test root clipping separately if necessary. Do not position HTML/body fixed, alter status-bar metadata, resize from the visual viewport, or move navigation to conceal the symptom. Physical screenshots remain decisive even if the viewport APIs continue reporting 797. No production source, storage, service worker or deployment changed during this investigation.
+
 ## Technical references
+
+### Independent comparison readiness (2026-10-02)
+
+Successor phases 1–2 are implemented and verified **locally only**; see `IPHONE_BOTTOM_STRIP_FIX_PLAN.md`. The read-only report now separates Document viewport (client) from actual HTML/body/React-root/app boxes. `screen-layout-test.html` is generated from the independent fixture, labelled with the local release, and reached only by a save-guarded opt-in action. An exact worker pathname exception serves its known static HTML for query-selected A/B/C cases without replacing normal app routes or accessing records.
+
+Build and 75 automated tests pass, including isolation, report privacy/copy fallback and scoped offline routing. The comparison fixture passed 240 simulated rendered checks across cases/themes/profiles; all preceding 70 rendered checks passed too. A local production preview update opened the comparison correctly and returned to Lumen with unchanged displayed counts and last-save time. These checks use desktop rendering and simulated geometry, **not native iPhone painting**. App layout, storage, install metadata and live 0.1.3 / 82185d6 remain unchanged. Next is an authorized diagnostic-only release and actual Home Screen A/B/C screenshots/reports before selecting a correction. The physical cutoff remains unresolved.
 
 - [MDN: VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport) explains why the visible viewport can change independently when the on-screen keyboard or zoom changes.
 - [WebKit issue 236445](https://bugs.webkit.org/show_bug.cgi?id=236445#c9) includes a report of Home Screen positioning discrepancies with `black-translucent` and `viewport-fit=cover`. This is evidence of a relevant class of WebKit behavior, not proof that this particular report explains the user's current iOS version.

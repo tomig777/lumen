@@ -1044,7 +1044,7 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
       {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
     </section>
 
-    <ScreenLayoutCheck />
+    <ScreenLayoutCheck canLeave={saveState.kind === 'saved'} />
 
     <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">
       <span className="eyebrow">STORAGE STATUS</span>

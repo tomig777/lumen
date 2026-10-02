@@ -8,6 +8,22 @@ export function formatScreenLayoutReport(report: ScreenLayoutReport): string {
   return ['Lumen screen layout', ...report.rows.map(([label, value]) => `${label}: ${value}`)].join('\n')
 }
 
+/** Actual CSS box, not the special viewport value returned by root.clientHeight. */
+export function describeLayoutBox(element: Element | null): string {
+  if (!element) return 'Not present'
+  const px = (value: number) => String(Math.round(value * 10) / 10)
+  const rect = element.getBoundingClientRect()
+  const style = getComputedStyle(element)
+  return [
+    `x ${px(rect.left)}–${px(rect.right)}; y ${px(rect.top)}–${px(rect.bottom)}`,
+    `size ${px(rect.width)} × ${px(rect.height)}`,
+    `CSS height ${style.height}; min-height ${style.minHeight}`,
+    `display ${style.display}; position ${style.position}`,
+    `overflow ${style.overflowX}/${style.overflowY}`,
+    `transform ${style.transform}; filter ${style.filter}; contain ${style.contain}`,
+  ].join('; ')
+}
+
 /** One user-requested snapshot. No app records, storage, network, or listeners. */
 export function readScreenLayout(release: { version: string; build: string }): ScreenLayoutReport {
   const root = document.documentElement
@@ -49,7 +65,7 @@ export function readScreenLayout(release: { version: string; build: string }): S
       ['Mode', standalone ? 'Home Screen / standalone' : 'Browser tab'],
       ['Screen', dimensions(window.screen.width, window.screen.height)],
       ['Window', dimensions(window.innerWidth, window.innerHeight)],
-      ['Document', dimensions(root.clientWidth, root.clientHeight)],
+      ['Document viewport (client)', dimensions(root.clientWidth, root.clientHeight)],
       ['App top–bottom', bounds(shell)],
       ['Fixed inset=0', fixed],
       ['CSS heights', viewportUnits],
@@ -57,6 +73,10 @@ export function readScreenLayout(release: { version: string; build: string }): S
       ['Safe T/R/B/L', `${safe.paddingTop} / ${safe.paddingRight} / ${safe.paddingBottom} / ${safe.paddingLeft}`],
       ['Document scroll', `${px(window.scrollX)}, ${px(window.scrollY)}; height ${px(root.scrollHeight)}`],
       ['App CSS height', shellStyle?.height ?? 'Not present'],
+      ['HTML box', describeLayoutBox(root)],
+      ['Body box', describeLayoutBox(document.body)],
+      ['React root box', describeLayoutBox(document.getElementById('root'))],
+      ['App box', describeLayoutBox(shell)],
       ['Document color', getComputedStyle(root).backgroundColor],
       ['Body color', getComputedStyle(document.body).backgroundColor],
       ['Viewport meta', document.querySelector('meta[name="viewport"]')?.getAttribute('content') ?? 'Missing'],

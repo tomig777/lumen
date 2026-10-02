@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { APP_RELEASE } from '../appRelease'
 import { formatScreenLayoutReport, readScreenLayout } from '../screenLayout'
 
-export function ScreenLayoutCheck() {
+export function ScreenLayoutCheck({ canLeave }: { canLeave: boolean }) {
   const [report, setReport] = useState('')
   const [message, setMessage] = useState('')
   const measure = () => {
@@ -32,5 +32,10 @@ export function ScreenLayoutCheck() {
       <button className="backup-primary" type="button" onClick={() => void copy()}>Copy layout report</button>
     </>}
     {message && <p role="status">{message}</p>}
+    <p>Compare three isolated screen layouts. The test page does not load or save your records. Open it from your Home Screen app for the iPhone comparison.</p>
+    {canLeave
+      ? <a className="backup-secondary backup-layout-test-link" href="./screen-layout-test.html?case=a&theme=light">Open layout comparison</a>
+      : <button className="backup-secondary" type="button" disabled>Open layout comparison</button>}
+    {!canLeave && <p>Finish saving your changes before leaving Lumen for the test page.</p>}
   </section>
 }

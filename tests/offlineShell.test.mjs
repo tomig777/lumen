@@ -5,9 +5,10 @@ import { runInNewContext } from 'node:vm'
 
 const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
 const currentIndex = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8')
+const currentDiagnostic = await readFile(new URL('../dist/screen-layout-test.html', import.meta.url), 'utf8')
 const scope = 'https://example.test/lumen/'
 
-function harness(indexHtml = currentIndex) {
+function harness(indexHtml = currentIndex, diagnosticHtml = currentDiagnostic, appScope = scope) {
   const listeners = new Map()
   const stores = new Map()
   let online = true
@@ -18,7 +19,10 @@ function harness(indexHtml = currentIndex) {
     fetches++
     if (!online) throw new Error('Network unavailable')
     const url = typeof request === 'string' ? request : request.url
-    return { label: `network:${url}`, async text() { return url.endsWith('/index.html') ? indexHtml : '' } }
+    return { label: `network:${url}`, async text() {
+      const pathname = new URL(url).pathname
+      return pathname.endsWith('/index.html') ? indexHtml : pathname.endsWith('/screen-layout-test.html') ? diagnosticHtml : ''
+    } }
   }
   const caches = {
     async open(name) {
@@ -37,8 +41,8 @@ function harness(indexHtml = currentIndex) {
     },
   }
   const self = {
-    registration: { scope },
-    location: { origin: new URL(scope).origin },
+    registration: { scope: appScope },
+    location: { origin: new URL(appScope).origin },
     clients: { async claim() { claims++ } },
     skipWaiting() { skipWaiting++ },
     addEventListener(name, listener) { listeners.set(name, listener) },
@@ -119,4 +123,58 @@ test('new worker waits for user action and retains the previous shell for open t
   assert.equal(app.stores.has('lumen-shell-previous'), true)
   await app.dispatch('message', { data: { type: 'LUMEN_APPLY_UPDATE' } })
   assert.equal(app.skipWaiting, 1)
+})
+
+for (const appScope of [scope, 'https://example.test/']) {
+  test(`only the exact diagnostic route bypasses the app shell offline (${appScope})`, async () => {
+    const app = harness(currentIndex, currentDiagnostic, appScope)
+    await app.dispatch('install')
+    app.setOffline()
+    for (const query of ['', '?case=a&theme=light', '?case=b&theme=dark', '?case=c&theme=dark', '?case=unknown']) {
+      const response = await app.dispatch('fetch', { request: { url: `${appScope}screen-layout-test.html${query}`, method: 'GET', mode: 'navigate' } })
+      assert.equal(response.label, `network:${appScope}screen-layout-test.html`)
+      assert.equal(await response.text(), currentDiagnostic)
+      assert.doesNotMatch(await response.text(), /assets\/index-/)
+    }
+    for (const path of ['', '?case=c', 'home', 'screen-layout-test.html/', 'nested/screen-layout-test.html', 'screen-layout-test.html.fake']) {
+      const response = await app.dispatch('fetch', { request: { url: `${appScope}${path}`, method: 'GET', mode: 'navigate' } })
+      assert.equal(response.label, `network:${appScope}index.html`)
+    }
+    assert.equal(app.fetches, app.files.length)
+    assert.equal([...app.stores.values()][0].size, app.files.length)
+  })
+}
+
+test('diagnostic traffic keeps origin, method and scope guards; unknown requests are not cached', async () => {
+  const app = harness()
+  await app.dispatch('install')
+  const before = app.fetches
+  for (const request of [
+    { url: 'https://other.test/lumen/screen-layout-test.html', method: 'GET', mode: 'navigate' },
+    { url: 'https://example.test/screen-layout-test.html', method: 'GET', mode: 'navigate' },
+    { url: `${scope}screen-layout-test.html`, method: 'POST', mode: 'navigate' },
+    { url: `${scope}screen-layout-test.html?case=b`, method: 'GET', mode: 'cors' },
+  ]) assert.equal(await app.dispatch('fetch', { request }), undefined)
+  assert.equal(app.fetches, before)
+})
+
+test('evicted diagnostic fetches its original query URL, never substitutes the app or caches a runtime response', async () => {
+  const app = harness()
+  await app.dispatch('install')
+  const store = [...app.stores.values()][0]
+  store.delete(`${scope}screen-layout-test.html`)
+  const request = { url: `${scope}screen-layout-test.html?case=c&theme=dark`, method: 'GET', mode: 'navigate' }
+  assert.equal((await app.dispatch('fetch', { request })).label, `network:${request.url}`)
+  assert.equal(store.size, app.files.length - 1)
+  app.setOffline()
+  await assert.rejects(app.dispatch('fetch', { request }), /Network unavailable/)
+})
+
+test('a mixed diagnostic cannot install over the preceding release', async () => {
+  const app = harness(currentIndex, currentDiagnostic.replace(/name="lumen-diagnostic-build" content="[^"]+"/, 'name="lumen-diagnostic-build" content="old-release"'))
+  app.stores.set('lumen-shell-previous', new Map([['old-asset', 'old-content']]))
+  await assert.rejects(app.dispatch('install'), /mixed diagnostic release/)
+  assert.equal(app.stores.has('lumen-shell-previous'), true)
+  assert.equal(app.claims, 0)
+  assert.equal(app.skipWaiting, 0)
 })
