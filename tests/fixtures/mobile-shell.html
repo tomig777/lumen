@@ -18,9 +18,9 @@
     </style>
   </head>
   <body>
-    <div class="deployed-app-root" aria-hidden="true">
+    <div id="root"><div class="deployed-app-root" aria-hidden="true">
       <div class="phone-app deployed-app-screen"><div class="brain-screen"></div></div>
-    </div>
+    </div></div>
     <main>
       <h1>Lumen shell height regression</h1>
       <p>Isolated CSS test. It does not load Lumen, register its worker, or access saved data.</p>
@@ -61,9 +61,17 @@
               .replace(/\(display-mode: standalone\)/g, scenario.standalone ? 'all' : 'not all')
             await new Promise(requestAnimationFrame)
             const bounds = shell.getBoundingClientRect()
+            const ancestors = [document.documentElement, document.body, document.querySelector('#root')]
+            const minimums = ancestors.map((element) => getComputedStyle(element).minHeight)
+            const ancestorBoxes = ancestors.map((element) => element.getBoundingClientRect().height)
+            const documentOk = scenario.standalone
+              ? minimums.every((value) => parseFloat(value) === scenario.lvh)
+                && ancestorBoxes.every((value) => value >= scenario.lvh)
+              : minimums.every((value) => !value.endsWith('px') || parseFloat(value) === 0)
             const ok = bounds.top === 0 && bounds.height === scenario.height && bounds.bottom === scenario.height
+              && getComputedStyle(shell).position === 'fixed' && documentOk && window.scrollY === 0
             if (ok) passed++
-            results.textContent += `${ok ? 'PASS' : 'FAIL'} ${scenario.name}\n  App: ${bounds.top}–${bounds.bottom}; expected 0–${scenario.height}\n\n`
+            results.textContent += `${ok ? 'PASS' : 'FAIL'} ${scenario.name}\n  App: ${bounds.top}–${bounds.bottom}; expected 0–${scenario.height}\n  HTML/body/root minimums: ${minimums.join(', ')}; boxes: ${ancestorBoxes.join(', ')}; fixed shell and no document scroll: ${ok}\n\n`
           }
           status.textContent = `${passed}/${scenarios.length} passed`
         } catch (error) {

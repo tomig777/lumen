@@ -50,7 +50,7 @@ test('renderer rejects untrusted release values and missing/duplicated template 
   assert.throws(() => renderLayoutDiagnostic(template + 'class="return-link" href="../../"', release), /marker/)
 })
 
-test('baseline retains deployed sizing, overflow and navigation offsets; B/C change only their named variables', async () => {
+test('frozen pre-fix baseline retains shell/navigation offsets; B/C change only their named variables', async () => {
   const mobile = await readFile(new URL('../src/mobile.css', import.meta.url), 'utf8')
   const base = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
   const polish = await readFile(new URL('../src/polish.css', import.meta.url), 'utf8')

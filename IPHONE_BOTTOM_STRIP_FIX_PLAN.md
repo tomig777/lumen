@@ -1,6 +1,6 @@
 # iPhone bottom-strip correction plan
 
-Status: **phase 3 publication authorized and in progress**, 2026-10-02. Phases 1–2 are implemented and verified locally. The user requested continuing after the phase-2 handoff, authorizing the diagnostic-only release **0.1.4** through the existing Pages workflow. Lumen's main layout, install metadata and persistence code remain unchanged. Physical iPhone A/B/C comparison is required before selecting or applying a production layout correction.
+Status: **physical comparison supports B; 0.1.5 correction implemented and locally verified, publication authorized**, 2026-10-02. The user supplied installed-iPhone A/B/C screenshots and reports from **0.1.4 / 789fb93**, confirmed B remains good in dark mode and after rotation, and authorized applying B and publishing it. Final acceptance of the main app, especially cold launch/resume and keyboard recovery, remains open. The cutoff is not marked resolved in production.
 
 ## Goal and confirmed baseline
 
@@ -78,10 +78,10 @@ Final local artifacts: entry **`assets/index-Bqvur_BM.js`**, stylesheet **`asset
 
 ## Step 3 — Publish a diagnostic-only release and test on the phone
 
-- [ ] Once authorized, give the diagnostic release a distinct app version/build and publish through the existing Pages workflow. The main app's layout remains unchanged.
-- [ ] Verify deployment, complete shell assets, normal update activation and unchanged record counts using a separate desktop tab without saving forms or resetting data.
-- [ ] The user opens the existing iPhone Home Screen app, uses its normal update action, confirms the diagnostic release, and enters the comparison from Data & backup. The diagnostic must report standalone mode; a page that opens in Safari does not count as the installed-app comparison.
-- [ ] Request one screenshot and copied report per case A/B/C with the keyboard closed. Compare visible markers and lower control edges beyond the former cutoff, in light and dark modes. Do not accept a taller rectangle alone.
+- [x] Once authorized, give the diagnostic release a distinct app version/build and publish through the existing Pages workflow. The main app's layout remains unchanged.
+- [x] Verify deployment, complete shell assets, normal update activation and unchanged record counts using a separate desktop tab without saving forms or resetting data.
+- [x] The user opens the existing iPhone Home Screen app, uses its normal update action, confirms the diagnostic release, and enters the comparison from Data & backup. The diagnostic must report standalone mode; a page that opens in Safari does not count as the installed-app comparison.
+- [x] Request one screenshot and copied report per case A/B/C with the keyboard closed. Compare visible markers and lower control edges beyond the former cutoff, in light and dark modes. Do not accept a taller rectangle alone.
 - [ ] For a promising case, check portrait/landscape, reopen/background-resume, a scroll gesture and keyboard open/dismiss. Confirm no uncontrolled document scrolling, navigation drift, unreachable actions or stale keyboard offset. Repeat the current baseline to detect state-dependent recovery.
 
 Gate: stop for these phone results before changing the production shell. The agent can perform desktop checks, but cannot substitute them for the user's physical iOS test.
@@ -94,9 +94,19 @@ Release preflight (2026-10-02): version 0.1.4 passes the production build and al
 
 Phone handoff after deployment verification: open the existing Home Screen Lumen online, use **Data & backup → Check for updates → Update Lumen now** if offered, and confirm **0.1.4** and the matching build. Under **Screen layout**, choose **Open layout comparison**. Its mode must say **Home Screen / standalone**, not Browser tab. With the keyboard closed, compare A first, then B and C, and A again. For each case, save a screenshot including the bottom navigation/colored bands and use **Check layout → Copy report** (or Select report text). Include which buttons/bands are clipped; a taller box alone is not acceptance. Light/dark, rotation, cold reopening/resume and keyboard tests follow for any promising candidate. Do not clear website data, reset demo data, remove/reinstall the icon, or change metadata to perform the comparison.
 
+### Phase 3 publication and live checks
+
+Commit [`789fb933208e916715d95dfd3f1c8e8fa80b9ee7`](https://github.com/tomig777/lumen/commit/789fb933208e916715d95dfd3f1c8e8fa80b9ee7) was pushed to the existing main branch. [Pages workflow 37015783690](https://github.com/tomig777/lumen/actions/runs/37015783690) successfully completed its build, all eight release test groups and deployment. Rebuilding locally with that exact source SHA and rerunning all **75 tests** also passed.
+
+[Live Lumen](https://tomig777.github.io/lumen/) reports **0.1.4 / 789fb93**, entry `assets/index-Dmij3OhW.js`, stylesheet `assets/index-imMINkYO.css`, shell `lumen-shell-54c8ec6ca13e3a8c`. All eleven published shell files returned 200 with the expected MIME types and match the SHA-labelled local output byte-for-byte. The worker matches except its expected platform-specific cache-name hash; logic, file list and route/identity handling are identical. Direct A/B/C query URLs each returned the same independent diagnostic HTML, not the main entry.
+
+A separate live desktop tab initially ran **0.1.3 / 82185d6**. **Check for updates → Update Lumen now** loaded **0.1.4 / 789fb93** with the offline shell Ready. The expanded user-requested report distinguishes client viewport from actual boxes and matches unchanged main geometry. The new opt-in link opened revision 1 / 0.1.4 / 789fb93. Fresh A/B/C/theme navigation, report generation, return-to-app and A-repeat reset all worked. At desktop 390 × 844, A has collapsed body/root boxes, B/C have 844-height boxes, C is relative and navigation remains y=776–832. The page correctly says **Browser tab — NOT installed-iPhone acceptance**. Counts before the update and after returning stayed **450 notes, 2 journals, 3 projects, 9 tasks, 0 embedded images**; last successful save remained **Not recorded yet**. No file export, restore, reset, image upload or form save was performed. Warning/error logs were empty; the verification tab is closed and its viewport reset. The user's original tab was not reloaded or closed.
+
+A desktop screenshot of the live diagnostic is saved outside the repository at `lumen-layout-diagnostic-live-0.1.4.png` in the visualization workspace. These verification notes remain local after publication, avoiding a second release/build identity during the phone checkpoint. The remaining phase-3 checkboxes await the user's actual installed-iPhone mode, screenshots/reports and stability observations. No production correction is selected from desktop geometry and no physical acceptance is claimed.
+
 ## Step 4 — Select the supported correction
 
-- [ ] If B fixes physical painting and remains stable, apply only its document/root sizing change to the deployed standalone layout. Keep the existing fixed app, navigation and page spacing.
+- [x] Select B from the physical painting, dark-mode and rotation evidence, with the user's approval to try it in production. Apply only its document/root sizing change to the deployed standalone layout. Keep the existing fixed app, navigation and page spacing. Unreported cold-launch/resume, keyboard and A-repeat observations remain explicitly unconfirmed, not assumed to have passed.
 - [ ] If B fails but C passes, use the tested normal-flow shell and audit every app-owned absolute layer against it. Preserve inner phone/page height, navigation coordinates, scroll containment and editor overlays.
 - [ ] If the minimal A case does not reproduce clipping, investigate the differences from Lumen before selecting a remedy: ancestor overflow, animation/compositing layers, startup/resume state and installed navigation context. A/B/C results without a reproducing baseline are not enough to choose a fix.
 - [ ] If all minimal cases reproduce clipping, test overflow separately and then investigate native viewport/status-bar behavior. Any alternate status-bar metadata comparison must use a separately approved disposable test installation, never delete or overwrite the user's Lumen install. Record design tradeoffs and obtain agreement before adopting a metadata change.
@@ -104,15 +114,29 @@ Phone handoff after deployment verification: open the existing Home Screen Lumen
 
 Gate: choose the smallest candidate supported by physical evidence; otherwise continue investigation without shipping another speculative production layout.
 
+### Physical comparison and B selection (2026-10-02)
+
+All three supplied reports identify diagnostic revision 1, **0.1.4 / 789fb93**, iOS 17.3 and **Home Screen / standalone**, with screen 390 × 844 and safe areas 47/0/34/0. In A, body/root boxes are zero-height; window, fixed probe and visual viewport are 797. Its screenshot visibly clips navigation/+ and omits the lower paint bands. In B and C, HTML/body/root are 844 high, window/fixed probe/visual viewport are 844, and screenshots show complete navigation and all bands reaching the bottom behind the native home indicator. The document client viewport remains 797 in both successful cases; this reading is not a rejection of visibly correct painting.
+
+The app/frame stay 844 in all cases, nav remains y=754–810 and plus y=758–808. B retains the fixed app; C changes it to relative without additional visible benefit. The user separately confirms B remains good in dark mode and after rotation. This supports B as the smallest correction; it supports the surrounding-document/drawing-bounds hypothesis without claiming to prove WebKit's internal clipping mechanism. A-repeat, cold reopening/background-resume, keyboard and offline physical checks have not been reported. The user approved applying/publishing B with those checks retained for the main-app acceptance gate. The C and native-fallback branches are not selected.
+
 ## Step 5 — Integrate, verify and publish the chosen fix
 
-- [ ] Apply the selected correction only to the intended deployed/installed context. Keep normal Safari/browser behavior and the desktop handset preview intact.
+- [x] Apply the selected correction only to the intended deployed/installed context. Keep normal Safari/browser behavior and the desktop handset preview intact.
 - [ ] Audit welcome, Home, Brain, Projects, Health, People, Focus, journal/inspiration, Data & backup, + menu, quick capture, shared sheets, category overlays and image viewer. Check reachable bottom actions, final-row clearance, keyboard dismissal, rotation/resume, pinch zoom and zero horizontal overflow.
-- [ ] Run the production build and existing automated groups (currently 55 tests), plus new document/diagnostic tests and the 70 existing rendered height/control/editor checks. Update assertions only to reflect the physically supported behavior; do not merely redefine passing geometry.
+- [x] Run the production build and all automated groups (77 tests), plus the 70 rendered height/control/editor checks and 240 comparison checks. Update assertions only to reflect the physically supported behavior; do not merely redefine passing geometry.
 - [ ] Once authorized, publish a separately identified fix release. Verify HTML, CSS/JS, release metadata and worker agree, the normal update flow works, record counts are unchanged and offline opening still works. No data schema/save changes are part of this release.
 - [ ] Keep a small reversible layout diff. If regression occurs, publish a scoped code revert through the same explicit update flow; never clear records or reset storage as rollback.
 
 Gate: implementation/release checks pass, but the strip remains labelled pending until step 6's actual phone acceptance.
+
+### Phase 5 implementation and local release preflight
+
+The sole production layout change adds `min-height: 100vh` followed by `min-height: 100lvh` to HTML/body/#root under `@media (display-mode: standalone)`, scoped by `html:has(.deployed-app-root)`. These are B's tested installed-mode minimums. Fixed app positioning, heights, navigation coordinates, safe-area offsets, inner scrolling, editor observer and browser dynamic-height rules are untouched. No storage, install identity/metadata, icon, worker-generator logic or dependencies change. Version **0.1.5** distinguishes the fix. The independent comparison retains its original layout and now accurately labels A **Previous fixed app**; it remains a frozen pre-fix reproducer rather than silently inheriting the production fix.
+
+Build and all **77 automated tests** pass. Two new checks constrain the correction to installed/deployed document minimums and preserve the fixed shell/browser behavior. The shell fixture now also checks actual HTML/body/root minimums/boxes and zero document scroll across its six browser/installed/keyboard/rotation profiles. It passes 6/6; control and editor fixtures pass 16/16 and 48/48, preserving nav safe clearance, final-row visibility, editor-only keyboard frames, focused dismissal, suspend/resume and pinch-zoom behavior. The independent A/B/C fixture still passes 240/240. These are explicitly desktop/simulated tests, not native iOS delivery or painting claims.
+
+A separate local production preview was inspected at 390 × 844: welcome, Home, Brain, Projects, Health, + popup, People, Focus, Journal, Inspiration, the demo image viewer, quick capture and Data & backup. The image viewer covers the frame with no horizontal overflow, and closing it restores the page. Preview nav stays y=776–832 and plus remains separate; safe areas are zero in this desktop browser. No form save, upload, deletion, restore or record reset was performed. Data & backup shows 0.1.5 / Local preview and offline shell Ready. The existing large-bundle warning is unchanged and outside this narrowly scoped correction. Source review and simulated checks cover the shared category/sheet editor placements; final native interactions remain step 6. Remote main was checked at 789fb933208e916715d95dfd3f1c8e8fa80b9ee7 before publication.
 
 ## Step 6 — Accept the fix on the actual iPhone
 
@@ -122,4 +146,4 @@ Gate: implementation/release checks pass, but the strip remains labelled pending
 - [ ] Record the final geometry and physical evidence in the baseline/plan. Do not require clientHeight/VisualViewport to become 844 if actual painting and interaction are correct; those readings can differ from CSS box sizes.
 - [ ] Only then mark the bottom-strip issue resolved. Keep the diagnostic opt-in or remove it in a later cleanup release; do not change the accepted build during the user's final check.
 
-Execution order: **local reproducer → local validation → diagnostic release → physical comparison checkpoint → supported app correction → regression/fix release → physical acceptance**. Phases 1–2 are complete locally; phase 3 publication and later phases/physical acceptance remain unchecked.
+Execution order: **local reproducer → local validation → diagnostic release → physical comparison checkpoint → supported app correction → regression/fix release → physical acceptance**. B is selected from actual physical evidence and integrated with passing local checks. Authorized 0.1.5 publication/live verification and final native acceptance remain; unreported stability checks are not silently marked complete.

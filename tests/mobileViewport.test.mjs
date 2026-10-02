@@ -1,8 +1,30 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFile } from 'node:fs/promises'
 import { editorViewportFrame, observeEditorViewport } from '../src/mobileViewport.ts'
 
 const portrait = { editing: true, layoutTop: 0, layoutHeight: 844, visualTop: 0, visualHeight: 844, scale: 1 }
+
+test('installed document minimums match physically tested B and leave the app fixed', async () => {
+  const css = await readFile(new URL('../src/mobile.css', import.meta.url), 'utf8')
+  const installed = css.match(/@media \(display-mode: standalone\) \{([\s\S]*?)\n\}/)[1]
+  const documentRule = installed.match(/html:has\(\.deployed-app-root\),\s*html:has\(\.deployed-app-root\) body,\s*html:has\(\.deployed-app-root\) #root\s*\{([^}]+)\}/)[1]
+  assert.deepEqual(documentRule.trim().split(';').map((value) => value.trim()).filter(Boolean),
+    ['min-height: 100vh', 'min-height: 100lvh'])
+  const fixture = await readFile(new URL('./fixtures/screen-layout-test.html', import.meta.url), 'utf8')
+  const candidate = fixture.match(/<style id="experiment-layout">([\s\S]*?)<\/style>/)[1]
+  assert.match(candidate, /@media \(display-mode: standalone\)[\s\S]*min-height: 100vh; min-height: 100lvh;/)
+  assert.match(css, /\.deployed-app-root \{\s*position: fixed;\s*inset: 0;/)
+  assert.match(installed, /\.deployed-app-root \{\s*bottom: auto;\s*height: 100vh;\s*height: 100lvh;/)
+})
+
+test('document-height correction cannot match ordinary browser or desktop preview', async () => {
+  const css = await readFile(new URL('../src/mobile.css', import.meta.url), 'utf8')
+  const outsideInstalled = css.replace(/@media \(display-mode: standalone\) \{[\s\S]*?\n\}/, '')
+  assert.doesNotMatch(outsideInstalled, /min-height: 100(?:vh|lvh|dvh)/)
+  assert.match(outsideInstalled, /\.deployed-app-root \{[\s\S]*?height: 100vh;\s*height: 100dvh;/)
+  assert.doesNotMatch(css, /height:\s*(?:844|797)px|screen\.height|position:\s*relative;\s*inset:\s*auto/)
+})
 
 test('a closed keyboard and small browser/safe-area differences do not resize editors', () => {
   assert.equal(editorViewportFrame(portrait), null)

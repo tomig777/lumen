@@ -23,7 +23,7 @@
       })()
     </script>
     <style id="baseline-layout">
-      /* Minimal reproduction of the published outer layout. Keep these
+      /* Frozen reproduction of the pre-fix 0.1.3/0.1.4 outer layout. Keep these
          dimensions independent of the test content and experiment rules. */
       * { box-sizing: border-box; }
       html, body, #root { min-height: 100%; margin: 0; }
@@ -145,7 +145,7 @@
             <h1 id="case-title">Screen layout comparison</h1>
             <p id="mode">Checking display mode…</p>
             <nav class="case-links" aria-label="Comparison case">
-              <a href="?case=a" data-case-link="a">A · Current</a>
+              <a href="?case=a" data-case-link="a">A · Previous</a>
               <a href="?case=b" data-case-link="b">B · Document</a>
               <a href="?case=c" data-case-link="c">C · Flow</a>
             </nav>
@@ -195,7 +195,7 @@
         const root = document.documentElement
         const selectedCase = root.dataset.layoutCase
         const theme = root.dataset.testTheme
-        const names = { a: 'A · Current fixed app', b: 'B · Full-height document', c: 'C · Normal-flow app' }
+        const names = { a: 'A · Previous fixed app', b: 'B · Full-height document', c: 'C · Normal-flow app' }
         const revision = document.querySelector('meta[name="lumen-diagnostic-revision"]').content
         const version = document.querySelector('meta[name="lumen-diagnostic-version"]').content
         const build = document.querySelector('meta[name="lumen-diagnostic-build"]').content

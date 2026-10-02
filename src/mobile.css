@@ -54,6 +54,17 @@ html:has(.deployed-app-root) #root {
    Keyboard adjustments remain scoped to editors, and safe-area padding stays
    separate from the shell's height. */
 @media (display-mode: standalone) {
+  /* Case B passed the physical iPhone comparison. A fixed app does not give
+     its normal-flow ancestors height: size their drawing area too, without
+     moving the app or adding safe-area compensation. Browser tabs keep their
+     existing document rules and dynamic shell height. */
+  html:has(.deployed-app-root),
+  html:has(.deployed-app-root) body,
+  html:has(.deployed-app-root) #root {
+    min-height: 100vh;
+    min-height: 100lvh;
+  }
+
   .deployed-app-root {
     bottom: auto;
     height: 100vh;

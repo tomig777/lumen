@@ -184,6 +184,8 @@ Next: the storage-free step-5 comparison should hold the app height and control 
 
 ### Independent comparison readiness (2026-10-02)
 
+This paragraph records the local phases-1–2 checkpoint, before publication. The diagnostic is now published as described in the following release note; it does not alter the main layout or resolve the physical cutoff.
+
 Successor phases 1–2 are implemented and verified **locally only**; see `IPHONE_BOTTOM_STRIP_FIX_PLAN.md`. The read-only report now separates Document viewport (client) from actual HTML/body/React-root/app boxes. `screen-layout-test.html` is generated from the independent fixture, labelled with the local release, and reached only by a save-guarded opt-in action. An exact worker pathname exception serves its known static HTML for query-selected A/B/C cases without replacing normal app routes or accessing records.
 
 Build and 75 automated tests pass, including isolation, report privacy/copy fallback and scoped offline routing. The comparison fixture passed 240 simulated rendered checks across cases/themes/profiles; all preceding 70 rendered checks passed too. A local production preview update opened the comparison correctly and returned to Lumen with unchanged displayed counts and last-save time. These checks use desktop rendering and simulated geometry, **not native iPhone painting**. App layout, storage, install metadata and live 0.1.3 / 82185d6 remain unchanged. Next is an authorized diagnostic-only release and actual Home Screen A/B/C screenshots/reports before selecting a correction. The physical cutoff remains unresolved.
@@ -192,7 +194,19 @@ Build and 75 automated tests pass, including isolation, report privacy/copy fall
 - [WebKit issue 236445](https://bugs.webkit.org/show_bug.cgi?id=236445#c9) includes a report of Home Screen positioning discrepancies with `black-translucent` and `viewport-fit=cover`. This is evidence of a relevant class of WebKit behavior, not proof that this particular report explains the user's current iOS version.
 - [WebKit: full-screen layout and safe areas](https://webkit.org/blog/7929/designing-websites-for-iphone-x/) describes keeping background coverage and interactive safe-area spacing coordinated.
 
+### Diagnostic publication and physical checkpoint (2026-10-02)
+
+The successor diagnostic-only release is live at **0.1.4 / 789fb93**, commit `789fb933208e916715d95dfd3f1c8e8fa80b9ee7`. [Pages workflow 37015783690](https://github.com/tomig777/lumen/actions/runs/37015783690) passed build, all automated release groups and deployment. All eleven published assets match the exact SHA-labelled local build; worker logic matches beyond its platform-specific cache-name hash. The live entry is `assets/index-Dmij3OhW.js`, stylesheet `assets/index-imMINkYO.css`, shell `lumen-shell-54c8ec6ca13e3a8c`.
+
+A separate live desktop tab updated normally from 0.1.3, opened A/B/C/themed independent documents and returned to Lumen. The user-requested expanded report preserves viewport versus box distinctions. Displayed counts and last-save status stayed unchanged. This is desktop browser mode with zero native safe insets, **not installed-iPhone acceptance**. Main layout, install metadata and persistence code are unchanged; the physical cutoff remains unresolved. Next: confirm the new release in the existing iPhone Home Screen app, open **Data & backup → Screen layout → Open layout comparison**, require **Home Screen / standalone**, and send keyboard-closed screenshots and copied reports for A/B/C with an A-repeat. No data clearing, reset or reinstallation is required. Detailed evidence/guardrails are in the successor plan. These verification notes are local, not another deployed build.
+
 ## Step 2: local implementation and verification
+
+### Physical B selection and 0.1.5 correction preflight (2026-10-02)
+
+The user supplied actual installed diagnostic screenshots/reports for A/B/C (0.1.4 / 789fb93, iOS 17.3, screen 390 × 844, safe 47/0/34/0). A reproduces clipped navigation and missing lower markers with zero-height body/root and a 797 window/fixed probe/visual viewport. B and C visibly reach the bottom with full navigation/markers; their HTML/body/root, window/fixed probe/visual viewport are 844, while document client viewport remains 797. Navigation positions remain y=754–810 and plus y=758–808. B leaves the app fixed; C's flow change is unnecessary for the observed benefit. B also remains good after rotation and in dark mode according to the user.
+
+The user authorized integrating/publishing B. Version 0.1.5 adds only the tested vh/lvh minimums on the installed deployed HTML/body/root; no navigation offsets, metadata, storage or worker logic change. Build and 77 automated tests pass, along with 70 rendered layout/control/editor and 240 comparison checks. Normal-browser height rules remain unchanged; the independent A case is preserved and relabelled Previous. This is evidence for a document-sizing remedy, not proof of an exact internal WebKit mechanism. Final main-app screenshots, cold launch/resume, keyboard and offline physical acceptance remain pending, as do unreported A-repeat observations. See the successor plan for release verification and acceptance; do not mark the production cutoff resolved from desktop geometry.
 
 On 2026-10-01, the outer app switched to CSS full-screen sizing rather than the visual viewport height/top. The new editor-only viewport adjustment ignores small chrome/safe-area differences and pinch zoom, and clears its properties when the keyboard-like occlusion or editing focus disappears. Navigation scroll clearance now derives from its height, bottom offset, and a 24-pixel content gap. Shared background colors, metadata, and icon assets were not changed.
 
