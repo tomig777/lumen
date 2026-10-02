@@ -16,6 +16,7 @@ html:has(.deployed-app-root .storage-loading-screen) {
 html:has(.deployed-app-root .lumen-start) {
   --lumen-surface-color: var(--lumen-welcome);
   --lumen-surface-background: var(--lumen-welcome);
+  color-scheme: dark;
 }
 html:has(.deployed-app-root .people-screen) {
   --lumen-surface-color: var(--lumen-people-bottom);
@@ -115,10 +116,6 @@ html:has(.deployed-app-root) #root {
 .deployed-app-screen .nav-action-menu { max-height: min(320px, 65vh); overflow-y: auto; }
 .deployed-app-screen .nav-action-item { min-height: 44px; }
 .deployed-app-screen .brain-section-nav button { min-height: 44px; }
-
-.deployed-app-screen .lumen-enter-button {
-  bottom: calc(29px + env(safe-area-inset-bottom));
-}
 
 .deployed-app-screen .back-button,
 .deployed-app-screen .page-header .icon-button { min-width: 44px; min-height: 44px; }

@@ -43,6 +43,7 @@ jobs:
           pnpm test:brain
           pnpm test:viewport
           pnpm test:icons
+          pnpm test:welcome
           pnpm test:offline
           pnpm test:updates
       - name: Configure Pages

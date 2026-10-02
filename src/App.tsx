@@ -777,35 +777,20 @@ function LumenMark({ compact = false }: { compact?: boolean }) {
 
 function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
   return (
-    <main className="lumen-start">
-      <svg className="lumen-start-art" viewBox="0 0 360 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <path d="M60 -20 C-15 70 30 118 89 155" fill="none" stroke="#92b4a4" strokeWidth="2" />
-        <g transform="translate(100 162) rotate(-14)">
-          <circle r="35" fill="#e9ce9e" /><path d="M-12 4 Q0 20 12 4 M-13 -5 l1 0 M12 -5 l1 0" fill="none" stroke="#353930" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M-44 -18 Q-54 0 -44 18 M42 -24 l7 7 M46 -34 l9 6" fill="none" stroke="#53584d" strokeWidth="1.4" strokeLinecap="round" />
-        </g>
-        <g transform="translate(208 468) rotate(12)">
-          <circle r="29" fill="#b9ceb8" /><path d="M-10 4 Q0 17 10 4 M-11 -5 l1 0 M10 -5 l1 0" fill="none" stroke="#353930" strokeWidth="2.3" strokeLinecap="round" />
-          <path d="M-37 -18 l-5 9 M-43 -21 l-5 10 M35 11 q9 -13 0 -26" fill="none" stroke="#53584d" strokeWidth="1.3" strokeLinecap="round" />
-        </g>
-        <g transform="translate(17 629) rotate(16)">
-          <circle r="61" fill="#bdc9e1" /><path d="M-16 -5 Q-10 -12 -4 -5 M10 -5 Q16 -12 22 -5 M-6 9 Q7 22 20 9" fill="none" stroke="#353930" strokeWidth="2" strokeLinecap="round" />
-          <path d="M70 -22 q13 17 6 36 M79 -25 q14 18 7 37" fill="none" stroke="#53584d" strokeWidth="1.3" />
-        </g>
-        <g transform="translate(321 671) rotate(-12)">
-          <ellipse rx="88" ry="111" fill="#efc1ac" /><path d="M-42 -29 Q-33 -42 -24 -29 M4 -29 Q13 -42 22 -29 M-26 -10 Q-6 10 14 -10" fill="none" stroke="#353930" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M-98 26 q-5 22 11 40 M-107 31 q-4 25 14 43" fill="none" stroke="#53584d" strokeWidth="1.4" />
-        </g>
-        <path d="M298 60 l0 13 M292 66 l12 0 M61 441 l0 10 M56 446 l10 0" stroke="#9ca498" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-      <span className="lumen-start-copy">
+    <main className="lumen-start" aria-labelledby="lumen-welcome-title">
+      <header className="lumen-start-copy">
         <span className="lumen-start-kicker">Welcome to</span>
-        <strong>Lumen</strong>
-        <span className="lumen-start-subtitle">A little space for a clearer day.</span>
-      </span>
-      <button className="lumen-enter-button" type="button" onClick={onContinue}>
-        <span>Enter Lumen</span><ArrowUpRight size={17} aria-hidden="true" />
-      </button>
+        <h1 id="lumen-welcome-title">Lumen</h1>
+      </header>
+      <div className="lumen-start-hero" aria-hidden="true">
+        <img className="lumen-start-emblem" src="./lumen-icon-v2-512.png" width="512" height="512" alt="" decoding="async" loading="eager" draggable={false} />
+      </div>
+      <p className="lumen-start-subtitle">A little space for a clearer day.</p>
+      <div className="lumen-start-actions">
+        <button className="lumen-enter-button" type="button" onClick={onContinue}>
+          <span>Enter Lumen</span><ArrowUpRight size={17} aria-hidden="true" />
+        </button>
+      </div>
     </main>
   )
 }

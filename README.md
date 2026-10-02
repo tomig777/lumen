@@ -21,6 +21,10 @@ Install metadata is deliberately PNG-only: [WebKit 256429](https://bugs.webkit.o
 
 Data & backup shows the artwork supplied by the running release. On the actual iPhone, open the normal site in Safari, refresh it, and inspect Share → Add to Home Screen; cancel the sheet without adding anything to test icon discovery safely. Existing installed icons may retain the older image. A new installation is not a storage-preserving icon refresh: [WebKit's iOS 17.2 notes](https://webkit.org/blog/14787/webkit-features-in-safari-17-2/) explain that non-cookie local data is not copied to a new Home Screen app. Never clear website data or delete/reinstall Lumen to troubleshoot this. If a replacement install is necessary, first export and verify a backup from the existing installed app, copy it off the phone, and plan an explicit restore. Native icon discovery/update behavior remains an actual-device check, not a desktop test claim.
 
+## Welcome screen
+
+The amber-glass welcome reuses the exact approved 512px icon artwork, with CSS fading only its empty outer margins into the dark-brown background. `src/welcome.css` scopes the serif/system-font typography, glass entry button, finite entrance motion, reduced-motion fallback and portrait/landscape layouts to this screen. Enter Lumen remains the single real button leading straight to Home; no sign-in, storage, installation identity or accepted full-height iPhone rules change. The existing offline shell already includes the image. Run `pnpm test:welcome` after building to check the actual component, palette contrast, offline asset, motion and layout contracts. Responsive browser previews do not replace the installed-iPhone safe-area and bottom-painting check.
+
 ## GitHub Pages
 
 ### App version and update checks
