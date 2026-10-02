@@ -49,6 +49,18 @@ html:has(.deployed-app-root) #root {
   background: var(--lumen-surface-background);
 }
 
+/* Installed iOS can report a dynamic viewport shorter than the full display.
+   Keep the shell at the stable full-screen height; browser tabs retain dvh.
+   Keyboard adjustments remain scoped to editors, and safe-area padding stays
+   separate from the shell's height. */
+@media (display-mode: standalone) {
+  .deployed-app-root {
+    bottom: auto;
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
 .phone-app.deployed-app-screen {
   --lumen-safe-bottom: env(safe-area-inset-bottom, 0px);
   --lumen-editor-safe-bottom: var(--lumen-safe-bottom);
@@ -118,10 +130,32 @@ html:has(.deployed-app-root) #root {
 }
 .deployed-app-screen .quick-capture-sheet { max-height: 100%; overflow-y: auto; padding-bottom: 20px; }
 
+.deployed-app-screen .brain-category-layer {
+  color-scheme: light;
+  padding-top: max(52px, calc(env(safe-area-inset-top) + 12px));
+  padding-right: max(18px, calc(env(safe-area-inset-right) + 12px));
+  padding-bottom: max(28px, calc(var(--lumen-editor-safe-bottom) + 12px));
+  padding-left: max(18px, calc(env(safe-area-inset-left) + 12px));
+  overscroll-behavior-y: contain;
+  scroll-padding-block: 24px;
+  -webkit-overflow-scrolling: touch;
+}
+.deployed-app-screen .brain-category-editor { padding-bottom: 0; }
+.deployed-app-screen .brain-category-editor button { min-height: 44px; }
+.deployed-app-screen .brain-category-editor-head > button,
+.deployed-app-screen .brain-color-options button,
+.deployed-app-screen .brain-icon-options button { min-width: 44px; flex-shrink: 0; }
+.deployed-app-screen .brain-color-options,
+.deployed-app-screen .brain-icon-options,
+.deployed-app-screen .brain-cover-actions { flex-wrap: wrap; }
+.deployed-app-screen .brain-note-options button { max-width: 100%; }
+.deployed-app-screen .brain-note-options button span { overflow-wrap: anywhere; text-align: left; }
+
 /* Keyboard geometry is scoped to dialogs or the page containing the active field.
    The shell, welcome art, navigation, and non-editing pages retain their CSS size. */
 html[data-lumen-keyboard='open'] .deployed-app-screen { --lumen-editor-safe-bottom: 0px; }
 html[data-lumen-keyboard='open'] .deployed-app-screen .sheet-layer,
+html[data-lumen-keyboard='open'] .deployed-app-screen .brain-category-layer,
 html[data-lumen-keyboard='open'] .deployed-app-screen .screen-layer:has(input:focus, textarea:focus, [contenteditable]:focus) {
   top: var(--lumen-editor-top, 0px);
   bottom: auto;
@@ -154,7 +188,8 @@ html[data-lumen-keyboard='open'] .deployed-app-screen .screen-layer:has(input:fo
 .deployed-app-screen .people-home-indicator { display: none; }
 .deployed-app-screen .close-friends-header { top: max(68px, calc(env(safe-area-inset-top) + 18px)); }
 .deployed-app-screen .people-bottom-switch {
-  position: fixed;
+  /* The full-height page owns this control, not the shorter native viewport. */
+  position: absolute;
   bottom: calc(14px + env(safe-area-inset-bottom));
   min-height: 44px;
 }

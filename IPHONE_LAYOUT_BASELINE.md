@@ -1,6 +1,6 @@
 # iPhone layout baseline: bottom gap
 
-Step 1 result: provisional diagnosis recorded from the supplied screenshots, source inspection, and production-browser measurements. Direct iPhone viewport measurements are still unavailable. The baseline below records the original release before runtime changes; step 2's subsequent local implementation is documented separately at the end.
+This baseline preserves the original provisional diagnosis and subsequent verification history. Actual installed-iPhone readings arrived on 2026-10-02 and are recorded under **Measured Home Screen viewport** below. They confirm the 47-point shell-height mismatch; the new height correction is implemented locally, but actual bottom-edge painting remains unverified. The earlier implementation records at the end are historical, not proof that the phone issue was fixed.
 
 ## Screenshot evidence
 
@@ -63,6 +63,77 @@ The user confirmed they are running the newly released app, then supplied anothe
 Release 0.1.2 adds an opt-in **Data & backup → Screen layout** snapshot. It compares `vh`, `dvh`, `lvh`, a fixed inset-zero probe outside page transforms, the actual shell bounds, window/document/visual viewport dimensions, safe-area values, mode, and reported iOS version. No layout compensation is applied, no personal records are read, and nothing is automatically transmitted. The actual iPhone readings are required before choosing between an under-sized CSS shell and an inset outside the DOM viewport. The initial hypothesis remains provisional, not a confirmed fix. The user has also been asked to confirm their current iOS version in Settings.
 
 Local diagnostic checks: build and all 49 regression tests passed. A separate production preview showed the opt-in report at 390 × 844, 320 × 568, and 844 × 390; Refresh reread the current dimensions. Document bounds remained unchanged, no horizontal overflow was introduced, buttons were at least 44 pixels high, and all invisible probes were removed after each snapshot. Copy reported success in the UI; the automation browser's separate clipboard API returned an empty value, so a pasted-report round trip was not established and remains a phone check. No personal records were edited during validation. This does not establish the cause or resolve the physical-device strip.
+
+## Measured Home Screen viewport (2026-10-02)
+
+The user copied the opt-in report from release **0.1.2 / 0b99c54**, opened from the iPhone Home Screen. It reports iOS **17.3**, standalone mode, scale 1, and no document scrolling.
+
+| Measurement | Reported value |
+| --- | --- |
+| Screen | 390 × 844 |
+| Window / document / visual viewport | 390 × 797 |
+| App top–bottom | 0–797; height 797 |
+| Fixed inset-zero probe | 0–797; height 797 |
+| CSS viewport heights | `vh=844`, `dvh=797`, `lvh=844` |
+| Safe top / right / bottom / left | 47 / 0 / 34 / 0 points |
+| Visual viewport top / scale | 0 / 1 |
+| Document scroll / scroll height | 0, 0 / 797 |
+| App computed height | 797px |
+| Document / body background | `rgb(250, 247, 242)` |
+
+The app is 47 points shorter than the screen, exactly matching the top safe-area value rather than the bottom inset of 34. The current `100dvh` override chooses the shorter measurement. Using fixed edges alone would still produce 797, as the independent probe shows. Repainting the surrounding document or removing bottom safe-area spacing cannot correct the shell's height and the relative positions of its contents.
+
+`viewport-fit=cover` and `black-translucent` were present in the first application HTML commit, before the initial Pages deployment. Missing initial metadata is not the leading explanation; reinstalling the user's app is not part of this correction.
+
+### Measured correction, step 1: implemented locally
+
+`src/mobile.css` now overrides the shell height only under `(display-mode: standalone)`, using `100lvh` with a preceding `100vh` fallback. It sets `bottom: auto` so the explicit full height is anchored at the top without a conflicting bottom constraint. Normal browser tabs retain the existing `100dvh` rule. The desktop handset preview, status-bar metadata, safe-area offsets, editor-only keyboard hook, storage, update behavior and published release remain unchanged.
+
+Verification: production build and all **49** existing tests passed. The isolated `tests/fixtures/mobile-shell.html` rendered the actual mobile stylesheet with substituted viewport-unit values and an explicitly simulated display-mode condition. All **six** cases passed: browser 797, Home Screen 844, stable installed shell with reduced dynamic height, browser dynamic resizing to 500, landscape-height selection, and portrait-height restoration. This checks the CSS cascade and actual DOM rectangles, not native iOS clipping, safe-area delivery, keyboard events, or painting. The fixture does not import the app, register its worker, or access saved data, and is excluded from the production output.
+
+The separate production browser preview also passed welcome/Home portrait at 390 × 844, Brain landscape at 844 × 390, reduced-height browser at 390 × 500, and restored portrait at 390 × 844. The shell matched each browser viewport; document scroll stayed zero with no second document scrollbar. Home navigation remained y=776–832 in portrait with desktop safe-area values of zero; Brain's surrounding background remained `#24211e`.
+
+The change is **not published** and the physical-device strip is **not marked resolved**. The following step records the bottom-control audit. Safe-area/editor recovery and a controlled release on the actual iPhone remain required. Require both full-height geometry and screenshots proving the formerly missing area is drawn and controls are reachable.
+
+### Measured correction, step 2: bottom anchors verified locally
+
+People was the remaining viewport-fixed bottom control. Its component now has a full-height `.people-page` wrapper. The inner `.people-screen` retains its landscape scrolling, while the return button and preview-only Home indicator are siblings outside that scroller. The mobile button uses absolute positioning against the wrapper rather than native-viewport fixed positioning. Its existing offset (`14px + safe-area-inset-bottom`), appearance and Back action are unchanged. The component is shared by the production app and the isolated regression fixture.
+
+Navigation and its separate + button already belong to the full-height `.phone-app`; welcome's button belongs to its full-height `.lumen-start`; Focus's timeline and buttons belong to the flexible full-height `.focus-player`. No arbitrary translation or new bottom inset was added to those controls.
+
+| Simulated profile | App height / native viewport | People return bottom | Nav bottom | Last content row bottom |
+| --- | --- | --- | --- | --- |
+| Installed portrait, safe bottom 34 | 844 / 797 | 796 | 810 | 730 |
+| Browser portrait, safe bottom 34 | 797 / 797 | 749 | 763 | 683 |
+| Installed landscape, safe bottom 21 | 390 / 369 | 355 | 369 | 289 |
+| Installed portrait restored | 844 / 797 | 796 | 810 | 730 |
+
+All 16 rendered checks in `tests/fixtures/mobile-controls.html` passed, including unchanged button position after landscape scrolling, navigation/+ bounds and 24-point clearance above navigation for the final content row. The fixture uses the actual People and BottomNav components/styles inside isolated frames, with substituted viewport units, display mode and safe-area values. It does not load the app, storage or worker. These measurements establish anchoring/scrolling behavior, not painting outside iOS's native viewport. The six earlier shell-height cases also still pass.
+
+In the updated production browser preview, People used `.people-page` outside the scroller and an absolute return button. At 844 × 390, the button remained x=748–824/y=332–376 after scrolling 340 pixels; clicking it returned to Home. At 390 × 844 it was y=786–830. Welcome Enter was y=761–815 in portrait and y=307–361 in landscape. Focus controls were y=711–779 in portrait and y=315–367 in landscape, and Pause/Back worked. There was no document scroll. These browser checks have native safe-area values of zero, unlike the isolated simulated-inset cases above.
+
+The production build and all 49 existing tests passed. The local update loaded entry `assets/index-p9ry8rdf.js`, CSS `assets/index-Bk3i-_gB.css`, and shell `lumen-shell-f2278f699a7acc90`. Local demo record counts and its last successful save timestamp were unchanged. No personal/live records, metadata, keyboard code, storage or deployment changed. Next is safe-area/keyboard recovery; actual iPhone acceptance remains open.
+
+### Measured correction, step 3: editor safety verified locally
+
+Brain's category editor was still fixed to the native viewport inside its page scroller. It now uses the shared `AppOverlay` to mount directly in `.phone-app`, outside scrolling and page-transition containing blocks. Its absolute inset-zero layer follows the corrected shell. When its name field is being edited, only that overlay follows the visual viewport; the underlying Brain page and navigation keep their full height. Mobile padding protects each safe edge once, removes the home inset above the keyboard, and allows internal scrolling to Save/Close. Category action targets are at least 44 points and option rows wrap; no form save behavior or records changed.
+
+The shared viewport observer keeps the previous keyboard decision threshold and zoom exemption. It clears temporary geometry synchronously on hidden/pagehide, cancels queued readings, recalculates on resume/pageshow/rotation, and removes every listener on cleanup. Six new automated cases exercise actual event handling, dismissal with retained focus, focus loss, small reported insets, zoom/invalid readings, suspended/resumed state, non-text controls and cleanup. No observer sets shell/document height or runs a polling loop.
+
+All **55** automated tests and the production build passed. The new isolated editor fixture imports the actual overlay and observer, loads the actual styles, and substitutes viewport units/safe areas while delivering explicitly simulated VisualViewport events. Its forms are fixture-only; it loads no app records or worker. All **48** rendered checks passed, plus the previous **22** height/control checks. This is not evidence of native iOS keyboard delivery or bottom painting.
+
+| Simulated editor case | Result |
+| --- | --- |
+| Installed portrait, native 797/full 844 | Category covers 844; shell and navigation remain full height while editing |
+| Panned portrait keyboard | Category y=120–620; initial Close y=179–223, scrolled Save y=548–592 |
+| Installed landscape, native 369/full 390 | Category keyboard frame y=0–228; initial Close y=52–96, scrolled Save y=156–200 |
+| Keyboard safe bottom | Category padding 28, not 28 + home inset; dismissed portrait padding restores to 46, landscape to 33 |
+| Dismissal, zoom, pagehide/pageshow | Override properties removed; current full-height geometry restored |
+| Shared sheet / quick capture / inline input | Only the active editor layer changes; full shell/nav and zero document scroll retained |
+
+The actual production browser preview loaded JS `assets/index-BUNkjalv.js`, CSS `assets/index-WYr3wUac.css`, shell `lumen-shell-6b6db5a35069e871`, still version 0.1.2 / Local preview. Category's parent was `.phone-app`, not a page scroller, with y=0–844 portrait and y=0–390 landscape. Landscape Save reached y=318–362 after 373 pixels of internal scrolling. Quick capture at 390 × 500 showed Close near y=126–170 and Save near y=338–382; the task sheet showed Close y=139–183 and Save y=433–477. Journal at 844 × 228 scrolled internally to Save y=161–205. Restored portrait reported app/document height 844, scroll 0, width 390 and no keyboard attribute or editor-height/top properties. Warning/error logs were empty.
+
+These production browser checks use zero native safe-area insets and reduced desktop window heights, not a phone keyboard. Local counts (450 notes, 2 journal entries, 3 projects, 9 tasks, 0 images) and last successful save (2026-10-02 02:34:10 local) stayed unchanged after the normal local shell update. The category's temporary name was discarded and no form was submitted. No live app records or deployment were touched. The new correction remains **unpublished**. Step 4 must validate actual iPhone geometry, painting beyond the old 797-point boundary and keyboard/rotation/resume recovery before marking the strip fixed.
 
 ## Technical references
 

@@ -39,7 +39,9 @@ import {
   Zap,
 } from 'lucide-react'
 import type { CSSProperties, FormEvent } from 'react'
-import { BrainMap, BottomNav, MusicPlayer, PeopleCloud, PhoneFrame, StatusBar, VisualArt, type BottomNavAction } from './components/VisualComponents'
+import { BrainMap, BottomNav, MusicPlayer, PhoneFrame, StatusBar, VisualArt, type BottomNavAction } from './components/VisualComponents'
+import { PeopleScreen } from './components/PeopleScreen'
+import { AppOverlay } from './components/AppOverlay'
 import { buildBrainGraph, isSampleGraphNote } from './brainGraph'
 import { classifyTasks, localDateKey, selectedDateAfterRollover, taskIsComplete, toggleTaskForDate } from './daily'
 import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
@@ -1341,7 +1343,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
       </section>}
 
       <AnimatePresence>
-        {categoryDraft && <motion.div className="brain-category-layer" role="dialog" aria-modal="true" aria-label={categoryDraft.id ? 'Edit category' : 'New category'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCategoryDraft(null)}>
+        {categoryDraft && <AppOverlay><motion.div className="brain-category-layer" role="dialog" aria-modal="true" aria-label={categoryDraft.id ? 'Edit category' : 'New category'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCategoryDraft(null)}>
           <motion.form className="brain-category-editor" onSubmit={saveCategory} onClick={(event) => event.stopPropagation()} initial={{ y: 24 }} animate={{ y: 0 }} exit={{ y: 24 }} transition={{ type: 'spring', damping: 27, stiffness: 285 }}>
             <div className="brain-category-editor-head"><div><span className="eyebrow">BRAIN LIBRARY</span><h2>{categoryDraft.id ? 'Edit category' : 'New category'}</h2></div><button type="button" aria-label="Close category editor" onClick={() => setCategoryDraft(null)}><X size={16} /></button></div>
             <div className="brain-category-preview" style={{ '--category-color': categoryDraft.color } as CSSProperties}><span>{categoryDraft.image ? <StoredImage src={categoryDraft.image} alt="Category cover preview" /> : <BrainCategoryGlyph icon={categoryDraft.icon} size={26} />}</span><div><small>PREVIEW</small><strong>{categoryDraft.name || 'Category name'}</strong><em>{categoryDraft.noteIds.length} notes selected</em></div></div>
@@ -1352,7 +1354,7 @@ function BrainScreen({ data, onCapture, onNewNote, onOpenNote, onThought, onCate
             <div className="brain-category-option"><span>Add notes</span><div className="brain-note-options">{categorySelectableNotes.map((note) => { const selected = categoryDraft.noteIds.includes(note.id); return <button type="button" className={selected ? 'is-selected' : ''} aria-pressed={selected} key={note.id} onClick={() => toggleDraftNote(note.id)}>{selected ? <Check size={11} /> : <FileText size={11} />}<span>{note.title}</span></button> })}</div></div>
             <button className="dark-button wide brain-category-save" type="submit" disabled={!categoryDraft.name.trim()}><Check size={14} /> Save category</button>
           </motion.form>
-        </motion.div>}
+        </motion.div></AppOverlay>}
       </AnimatePresence>
     </div>
   )
@@ -1842,22 +1844,6 @@ function DropletsIcon() {
 
 function UtensilsIcon() {
   return <Utensils className="wellness-meal-svg" aria-hidden="true" />
-}
-
-function PeopleScreen({ people, onBack, onOpenPerson }: { people: Person[]; onBack: () => void; onOpenPerson: (person: Person) => void }) {
-  return (
-    <div className="people-screen">
-        <header className="close-friends-header">
-          <h1 aria-label="Close Friends">
-            <span>Close</span>
-            <span>Friends</span>
-          </h1>
-        </header>
-      <PeopleCloud people={people} onSelect={onOpenPerson} />
-      <button className="people-bottom-switch" aria-label="Back to Lumen" onClick={onBack}><span className="people-switch-portraits"><i style={{ backgroundImage: `url(${peoplePortraits})`, backgroundSize: '400% 400%', backgroundPosition: '0% 0%' }} /><i style={{ backgroundImage: `url(${peoplePortraits})`, backgroundSize: '400% 400%', backgroundPosition: '33.333% 0%' }} /></span><ChevronRight size={13} /></button>
-      <span className="people-home-indicator" aria-hidden="true" />
-    </div>
-  )
 }
 
 function PersonDetailScreen({ person, onBack, onEdit, onRemember }: { person?: Person; onBack: () => void; onEdit: () => void; onRemember: () => void }) {

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumen shell height regression</title>
+    <link id="mobile-rules" rel="stylesheet" href="../../src/mobile.css?direct">
+    <style id="height-fixture"></style>
+    <style>
+      :root { --lumen-ink: #24211e; }
+      body { margin: 0; font: 14px/1.5 system-ui; color: #e8d9c7; }
+      main { position: fixed; z-index: 1; top: 24px; right: 20px; left: 20px; }
+      h1 { font-size: 21px; }
+      p { color: #c6ab8d; }
+      button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 24px; background: #e8d9c7; color: #24211e; font: inherit; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 monospace; }
+      .deployed-app-root { outline: 2px solid #c6ab8d; outline-offset: -2px; }
+    </style>
+  </head>
+  <body>
+    <div class="deployed-app-root" aria-hidden="true">
+      <div class="phone-app deployed-app-screen"><div class="brain-screen"></div></div>
+    </div>
+    <main>
+      <h1>Lumen shell height regression</h1>
+      <p>Isolated CSS test. It does not load Lumen, register its worker, or access saved data.</p>
+      <p>The actual mobile stylesheet is rendered with simulated viewport units and display mode. This is not an iOS painting or keyboard test.</p>
+      <button id="run" type="button">Run height regressions</button>
+      <h2 id="status">Not run</h2>
+      <pre id="results"></pre>
+    </main>
+    <script type="module">
+      const runButton = document.querySelector('#run')
+      const status = document.querySelector('#status')
+      const results = document.querySelector('#results')
+      const fixture = document.querySelector('#height-fixture')
+      const shell = document.querySelector('.deployed-app-root')
+      const scenarios = [
+        { name: 'Browser: reported short dvh', standalone: false, vh: 844, dvh: 797, lvh: 844, height: 797 },
+        { name: 'Home Screen: reported full lvh', standalone: true, vh: 844, dvh: 797, lvh: 844, height: 844 },
+        { name: 'Home Screen: shell stays tall', standalone: true, vh: 844, dvh: 500, lvh: 844, height: 844 },
+        { name: 'Browser: dynamic height follows', standalone: false, vh: 844, dvh: 500, lvh: 844, height: 500 },
+        { name: 'Home Screen: landscape heights', standalone: true, vh: 390, dvh: 370, lvh: 390, height: 390 },
+        { name: 'Home Screen: portrait restored', standalone: true, vh: 844, dvh: 797, lvh: 844, height: 844 },
+      ]
+
+      runButton.addEventListener('click', async () => {
+        runButton.disabled = true
+        results.textContent = ''
+        status.textContent = 'Running'
+        try {
+          const response = await fetch(document.querySelector('#mobile-rules').href)
+          if (!response.ok) throw new Error(`Stylesheet returned ${response.status}`)
+          const source = await response.text()
+          let passed = 0
+          for (const scenario of scenarios) {
+            // Substitute only the measured units and installed-mode condition.
+            // Keep the production selectors, cascade, fallback order and sizing.
+            fixture.textContent = source
+              .replace(/\b100(dvh|lvh|vh)\b/g, (_, unit) => `${scenario[unit]}px`)
+              .replace(/\(display-mode: standalone\)/g, scenario.standalone ? 'all' : 'not all')
+            await new Promise(requestAnimationFrame)
+            const bounds = shell.getBoundingClientRect()
+            const ok = bounds.top === 0 && bounds.height === scenario.height && bounds.bottom === scenario.height
+            if (ok) passed++
+            results.textContent += `${ok ? 'PASS' : 'FAIL'} ${scenario.name}\n  App: ${bounds.top}–${bounds.bottom}; expected 0–${scenario.height}\n\n`
+          }
+          status.textContent = `${passed}/${scenarios.length} passed`
+        } catch (error) {
+          status.textContent = 'Test failed'
+          results.textContent = String(error)
+        } finally {
+          runButton.disabled = false
+        }
+      })
+    </script>
+  </body>
+</html>

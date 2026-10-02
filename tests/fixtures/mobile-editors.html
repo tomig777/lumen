@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumen editor viewport regression</title>
+    <style>
+      body { margin: 24px; font: 14px/1.5 system-ui; color: #e8d9c7; background: #24211e; }
+      h1 { font-size: 21px; }
+      p { max-width: 70ch; color: #c6ab8d; }
+      button { min-height: 44px; padding: 10px 18px; border: 0; border-radius: 24px; background: #e8d9c7; color: #24211e; font: inherit; }
+      pre { white-space: pre-wrap; font: 12px/1.7 monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>Lumen editor viewport regression</h1>
+    <p>Actual mobile styles, app-overlay placement and viewport observer in isolated frames. No app, saved records or service worker is loaded. Form contents are fixture-only.</p>
+    <p>Viewport units, safe areas, standalone mode and VisualViewport events are simulated. These checks do not prove native iOS keyboard delivery or bottom-edge painting.</p>
+    <button id="run" type="button" disabled>Run editor regressions</button>
+    <h2 id="status">Not run</h2>
+    <pre id="results"></pre>
+    <script type="module" src="./mobile-editors.tsx"></script>
+  </body>
+</html>
