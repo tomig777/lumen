@@ -129,8 +129,24 @@ test('the label is centred independently of the decorative glass, with no restin
   assert.match(button, /border: 0;/)
   assert.doesNotMatch(button, /inset 0|border-color/)
   assert.doesNotMatch(css, /border-color:|inset 0 [^;]+rgba/)
-  assert.match(css, /\.lumen-enter-label[^\n]+z-index: 2/)
+  assert.match(css, /\.lumen-enter-label[^\n]+z-index: 3/)
   assert.match(css, /\.lumen-enter-glass \{[^}]*pointer-events: none/)
   assert.match(css, /\.lumen-enter-glass > div[^\n]+opacity: 0/)
   assert.match(css, /data-ready='true'[^\n]+opacity: 1/)
+})
+
+test('a top-centre shine sits above either glass fallback without a below-button shadow or outline', () => {
+  const button = css.match(/\.lumen-enter-button \{([^}]+)\}/)[1]
+  const shine = css.match(/\.lumen-enter-button::after \{([^}]+)\}/)[1]
+  const glass = css.match(/\.lumen-enter-glass \{([^}]+)\}/)[1]
+  assert.match(button, /overflow: hidden;/)
+  assert.match(button, /box-shadow: none;/)
+  assert.match(shine, /z-index: 2;/)
+  assert.match(shine, /50% 1px/)
+  assert.match(shine, /50% 0%/)
+  assert.match(shine, /pointer-events: none;/)
+  assert.match(glass, /z-index: 1;/)
+  assert.doesNotMatch(shine, /animation:|filter:|box-shadow:|border:/)
+  assert.match(css, /\.lumen-enter-label[^\n]+z-index: 3/)
+  for (const shadow of css.matchAll(/box-shadow:\s*([^;]+);/g)) assert.equal(shadow[1], 'none')
 })

@@ -22,7 +22,37 @@ the 0.1.6 Home Screen icon works and approved its artwork before this work.
 
 Implementation is in `WelcomeScreen`, `src/welcome.css` and welcome-only theme
 rules. The accepted `100lvh` ancestor/app heights, safe-area navigation offsets,
-manifest/status-bar metadata and storage code must not change.
+manifest/Apple status-bar metadata and storage code must not change. The later
+startup refinement below adds only temporary first-paint colour hints.
+
+## Welcome shine and launch contrast · 0.1.9
+
+- Keep the approved capsule, artwork, type, label alignment and subtle float.
+  Remove the external resting/hover drop shadow, which can look like an extra
+  lower edge. Do not attempt to hide iOS's system Home indicator.
+- Add a static, top-centre champagne glint and a restrained amber bloom above
+  either the WebGL renderer or CSS fallback, below the real label. Both remain
+  clipped to the capsule: no full outline, new canvas, extra frame loop, or
+  shadow/glow below the button. Preserve the keyboard-only focus ring.
+- Paint the document dark immediately with a guarded inline colour-only style
+  and `color-scheme` support hint. Keep data loading/error/retry colours dark.
+  Release the guard in a layout effect once the real screen is committed, so
+  the existing light Home / dark Brain and Health rules remain authoritative.
+  Keep `black-translucent`, viewport metadata, installation identity, accepted
+  full-height document rules, storage and service-worker update mechanics intact.
+- Native iOS status icons are OS-owned. This removes a confirmed light startup
+  surface; it does not prove white native icons or reliable per-page native
+  inversion on iOS 17.3. Physical cold-launch/reopen, Light/Dark appearance and
+  light Home / dark welcome acceptance are still required. No deletion of the
+  existing Home Screen installation or browser data is part of this change.
+
+0.1.9 preflight: production build and all 97 tests passed. Browser checks covered
+390 × 844, 320 × 568 and 844 × 390, with no horizontal overflow, no outer button
+shadow, a 0px border and under 0.01px label-centre error. Keyboard entry unmounts
+the welcome canvas and restores the light Home surface; Brain/Health remain dark.
+A separate no-app-script probe, using the actual built CSS on an uncached local
+address, confirmed a dark document/body and dark colour scheme before React.
+No storage was cleared. Desktop checks do not verify native iPhone status icons.
 
 ## Welcome refinements · 0.1.8
 

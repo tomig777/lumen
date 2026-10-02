@@ -1,7 +1,7 @@
 {
   "name": "personal-os",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,7 @@
     "test:offline": "node --test tests/offlineShell.test.mjs",
     "test:viewport": "node --test tests/mobileViewport.test.mjs tests/screenLayout.test.mjs tests/layoutDiagnostic.test.mjs",
     "test:icons": "node --test tests/icons.test.mjs",
-    "test:welcome": "node --test tests/welcome.test.mjs tests/welcomeGlass.test.mjs",
+    "test:welcome": "node --test tests/welcome.test.mjs tests/welcomeGlass.test.mjs tests/launchTheme.test.mjs",
     "test:updates": "node --test tests/offlineUpdates.test.mjs tests/appRelease.test.mjs"
   },
   "dependencies": {

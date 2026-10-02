@@ -58,6 +58,7 @@ import { APP_RELEASE } from './appRelease'
 import { updateStatusText } from './offlineUpdates'
 import type { BackupVerification } from './storage/indexedDbRepository'
 import { useMobileViewport } from './hooks/useMobileViewport'
+import { useLaunchTheme } from './hooks/useLaunchTheme'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
 
@@ -161,6 +162,7 @@ function weekOffsetForDate(iso: string, today: string) {
 function App() {
   useMobileViewport()
   const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState, backupVerification, recordBackupVerification } = useAppStorage()
+  useLaunchTheme(ready)
   const offlineShell = useOfflineShell()
   const [screen, setScreen] = useState<Screen>('welcome')
   const [selectedProjectId, setSelectedProjectId] = useState('project-os')

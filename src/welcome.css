@@ -108,14 +108,15 @@
   border-radius: 999px;
   color: var(--welcome-cream);
   background: linear-gradient(150deg, rgba(232, 217, 199, .17), rgba(198, 171, 141, .045) 60%), rgba(44, 38, 32, .76);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .2);
+  /* No outside/drop shadow: it read as an extra line beneath the capsule on iOS. */
+  box-shadow: none;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   font: 500 15px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: .01em;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: transform .18s ease;
 }
 .lumen-enter-button::before {
   position: absolute;
@@ -126,7 +127,20 @@
   background: radial-gradient(ellipse at 25% 0%, rgba(255, 237, 208, .16), transparent 65%);
   pointer-events: none;
 }
-.lumen-enter-label { position: relative; z-index: 2; pointer-events: none; }
+/* A local champagne glint above both the CSS and WebGL glass. Confine the
+   warm bloom to the top edge, not an outline or a second layer below the CTA. */
+.lumen-enter-button::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  content: '';
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 42px 2px at 50% 1px, rgba(255, 237, 208, .85), rgba(232, 217, 199, .3) 50%, transparent 100%),
+    radial-gradient(ellipse 88px 18px at 50% 0%, rgba(216, 156, 83, .2), transparent 100%);
+  pointer-events: none;
+}
+.lumen-enter-label { position: relative; z-index: 3; pointer-events: none; }
 .lumen-enter-glass {
   position: absolute;
   z-index: 1;
@@ -141,7 +155,7 @@
 @media (hover: hover) {
   .lumen-enter-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 16px 32px rgba(0, 0, 0, .23);
+    box-shadow: none;
   }
 }
 .lumen-enter-button:active { transform: translateY(1px) scale(.98); }

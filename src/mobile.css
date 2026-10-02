@@ -10,8 +10,9 @@ html:has(.deployed-app-root) {
 /* Follow the visible layer, not the requested route: outgoing pages remain in
    the DOM during their exit animation. Image viewing takes precedence. */
 html:has(.deployed-app-root .storage-loading-screen) {
-  --lumen-surface-color: var(--lumen-paper);
-  --lumen-surface-background: var(--lumen-paper);
+  --lumen-surface-color: var(--lumen-welcome);
+  --lumen-surface-background: var(--lumen-welcome);
+  color-scheme: dark;
 }
 html:has(.deployed-app-root .lumen-start) {
   --lumen-surface-color: var(--lumen-welcome);
