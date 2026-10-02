@@ -4,6 +4,7 @@ import type { ComponentType, ReactNode } from 'react'
 export interface HomeCharacterSceneProps {
   theme: 'dark' | 'light'
   active: boolean
+  reducedMotion: boolean
   onReady: () => void
   onFailure: () => void
 }
@@ -39,6 +40,7 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
   const [inView, setInView] = useState(false)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(true)
   const onReady = useCallback(() => setReady(true), [])
   const onReset = useCallback(() => setReady(false), [])
   const onFailure = useCallback(() => { setReady(false); setFailed(true) }, [])
@@ -47,6 +49,10 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
   useEffect(() => {
     if (mirror) return
     const sync = () => setVisible(!document.hidden)
+    const preference = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null
+    const syncMotion = () => setReducedMotion(preference?.matches ?? true)
+    syncMotion()
+    preference?.addEventListener('change', syncMotion)
     sync()
     document.addEventListener('visibilitychange', sync)
     const element = host.current
@@ -57,6 +63,7 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
     else setInView(true)
     return () => {
       document.removeEventListener('visibilitychange', sync)
+      preference?.removeEventListener('change', syncMotion)
       observer?.disconnect()
     }
   }, [mirror])
@@ -74,7 +81,7 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
     data-ready={ready && !failed && !mirror} data-active={eligible} data-failed={failed}>
     <span className="home-character-fallback"><i /><i /></span>
     {Scene && !failed && !mirror && <CharacterBoundary onFailure={onFailure}>
-      <CharacterSession Scene={Scene} theme={theme} active={eligible} onReady={onReady} onFailure={onFailure} onReset={onReset} />
+      <CharacterSession Scene={Scene} theme={theme} active={eligible} reducedMotion={reducedMotion} onReady={onReady} onFailure={onFailure} onReset={onReset} />
     </CharacterBoundary>}
   </div>
 }

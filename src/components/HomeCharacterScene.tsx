@@ -3,26 +3,56 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { HomeCharacterSceneProps } from './HomeCharacter'
 import { eyePose } from './characterGeometry'
+import { createIdleEyes, type EyeState } from './characterAnimation'
 
-function CharacterModel({ theme, active, onReady, onFailure }: HomeCharacterSceneProps) {
+function CharacterModel({ theme, active, reducedMotion, onReady, onFailure }: HomeCharacterSceneProps) {
   const { gl, invalidate } = useThree()
   const firstFrame = useRef(true)
+  const eyes = useRef<(THREE.Mesh | null)[]>([])
+  const animation = useRef<ReturnType<typeof createIdleEyes> | null>(null)
+  useEffect(() => {
+    const apply = ({ x, y, openness }: EyeState) => {
+      eyes.current.forEach((eye, index) => {
+        if (!eye) return
+        const pose = eyePose((index ? .23 : -.23) + x, .18 + y)
+        eye.position.fromArray(pose.position)
+        eye.quaternion.fromArray(pose.quaternion)
+        eye.scale.set(1, openness, 1)
+      })
+    }
+    apply({ x: 0, y: 0, openness: 1 })
+    if (!active || reducedMotion || document.hidden) return
+    const controller = createIdleEyes({ now: () => performance.now(), random: Math.random,
+      setTimer: (callback, delay) => window.setTimeout(callback, delay),
+      clearTimer: id => window.clearTimeout(id), requestDraw: invalidate, apply })
+    animation.current = controller
+    controller.start()
+    // Cancel immediately on hiding, before the wrapper's React update arrives.
+    const hidden = () => { if (document.hidden) controller.stop() }
+    document.addEventListener('visibilitychange', hidden)
+    return () => {
+      document.removeEventListener('visibilitychange', hidden)
+      controller.stop()
+      if (animation.current === controller) animation.current = null
+    }
+  }, [active, reducedMotion, invalidate])
   useEffect(() => {
     const canvas = gl.domElement
-    const lost = (event: Event) => { event.preventDefault(); onFailure() }
+    const lost = (event: Event) => { event.preventDefault(); animation.current?.stop(); onFailure() }
     canvas.addEventListener('webglcontextlost', lost)
     return () => { canvas.removeEventListener('webglcontextlost', lost) }
   }, [gl, onFailure])
-  useEffect(() => { if (active) invalidate() }, [active, theme, invalidate])
+  useEffect(() => { if (active) invalidate() }, [active, theme, reducedMotion, invalidate])
 
   // Priority 1 owns rendering, so readiness follows a successful actual draw.
-  // No clock, animation, continuous RAF, textures, transmission or extra pass.
+  // Only finite eye transitions invalidate subsequent frames; settled poses idle.
   useFrame(({ gl, scene, camera }) => {
     if (!active || document.hidden) return
     try {
+      animation.current?.frame()
       gl.render(scene, camera)
       if (firstFrame.current) { firstFrame.current = false; queueMicrotask(onReady) }
-    } catch { onFailure() }
+    } catch { animation.current?.stop(); onFailure() }
   }, 1)
 
   return <>
@@ -34,9 +64,9 @@ function CharacterModel({ theme, active, onReady, onFailure }: HomeCharacterScen
       <sphereGeometry args={[1, 48, 32]} />
       <meshPhysicalMaterial color="#e8d9c7" metalness={.03} roughness={.55} specularIntensity={.35} clearcoat={.2} clearcoatRoughness={.55} />
     </mesh>
-    {[-.23, .23].map(x => {
+    {[-.23, .23].map((x, index) => {
       const pose = eyePose(x, .18)
-      return <mesh key={x} position={pose.position} quaternion={pose.quaternion}>
+      return <mesh key={x} ref={eye => { eyes.current[index] = eye }} position={pose.position} quaternion={pose.quaternion}>
         <capsuleGeometry args={[.076, .204, 6, 12]} />
         <meshBasicMaterial color="#302b26" />
       </mesh>

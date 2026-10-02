@@ -300,15 +300,40 @@ for the new proportions remains the next checkpoint.
 
 ## 7. Idle eyes
 
-- [ ] Add randomized quiet gaze/blink sequencing with short bounded animations.
-- [ ] Keep eyes attached to the curved face, with smooth return to neutral.
-- [ ] Render on demand while settled; avoid React state updates every frame.
-- [ ] Pause hidden/off-screen/fully obscured; cancel frames/timers on exit.
-- [ ] Honor Reduce Motion and verify fallback/remount cleanup.
+- [x] Add randomized quiet gaze/blink sequencing with short bounded animations.
+- [x] Keep eyes attached to the curved face, with smooth return to neutral.
+- [x] Render on demand while settled; avoid React state updates every frame.
+- [x] Pause hidden/off-screen/fully obscured; cancel frames/timers on exit.
+- [x] Honor Reduce Motion and verify fallback/remount cleanup.
 - [ ] Tune on iPhone; no chat, tap reactions or task-driven emotion yet.
 
 Gate: natural subtle motion without a constant idle render loop or background
 activity; task navigation and scrolling remain responsive on the target phone.
+
+Implemented in 0.1.19 (2026-10-03), after user approval of the larger eyes.
+Only the eyes move: bounded gaze offsets of ±.10 / ±.06 sphere units ease out
+over 380ms, hold for 900–1600ms, then return over 420ms. Quiet pauses separate
+glances; independent blinks close over 80ms and reopen over 120ms. There are
+at most two pending timer channels. Settled/held poses request no further frames;
+the scene keeps its demand/never loop, capped DPR, single draw pass and existing
+appearance. Mesh position/quaternion/scale are updated directly, not React state
+per frame. No body animation, interaction or task-driven expression is added.
+
+Pause/exit, Reduce Motion, backgrounding, context loss and render failures cancel
+owned timers and reset the eyes. Resume uses fresh timing rather than replaying
+missed events. Generation guards reject stale callbacks. Home listens for live
+Reduce Motion changes and retains a neutral still 3D character; unsupported GPU,
+mirror and loading/error paths keep the existing static CSS fallback.
+
+Production build and all 148 tests pass. Deterministic clocks verify blink timing,
+smooth bounded gaze/return, idle draw suppression, timer counts and stale-callback
+guards. The actual scene harness checks mesh movement/attachment, cancellation,
+theme changes without schedule reset, Reduce Motion and graphics failure cleanup.
+Existing records, date/progress, backup, theme, layout, welcome and update tests pass.
+Browser QA checked both themes and 390 × 844 / 320 × 568 / 844 × 390, editor pause,
+off-screen pause, leaving/remounting Home and one canvas. Geometry is unchanged;
+the console has no errors. Device animation feel/GPU timing, background/resume
+and Reduce Motion acceptance still require the user's physical iPhone check.
 
 ## 8. Acceptance and controlled releases
 

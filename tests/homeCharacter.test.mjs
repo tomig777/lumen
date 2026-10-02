@@ -15,6 +15,9 @@ const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const compile = source => transformSync(source, { loader: 'tsx', jsx: 'transform', format: 'cjs' }).code
 const geometryModule = { exports: {} }
 new Function('require', 'module', 'exports', compile(await readFile(new URL('../src/components/characterGeometry.ts', import.meta.url), 'utf8')))(require, geometryModule, geometryModule.exports)
+const animationSource = await readFile(new URL('../src/components/characterAnimation.ts', import.meta.url), 'utf8')
+const animationModule = { exports: {} }
+new Function('require', 'module', 'exports', compile(animationSource))(require, animationModule, animationModule.exports)
 
 class Target extends EventTarget {
   listeners = new Set()
@@ -22,8 +25,11 @@ class Target extends EventTarget {
   removeEventListener(type, listener) { this.listeners.delete(listener); super.removeEventListener(type, listener) }
 }
 
-function harness({ hidden = false, active = true, mirror = false, theme = 'dark', crash = false } = {}) {
+function harness({ hidden = false, active = true, mirror = false, theme = 'dark', crash = false, reduced = false } = {}) {
   const oldDocument = globalThis.document, oldObserver = globalThis.IntersectionObserver
+  const oldWindow = globalThis.window
+  const preference = new Target(); preference.matches = reduced
+  globalThis.window = { matchMedia: () => preference }
   const document = new Target(); document.hidden = hidden
   globalThis.document = document
   let observer, loads = 0, cleanups = 0, disconnected = false
@@ -42,7 +48,7 @@ function harness({ hidden = false, active = true, mirror = false, theme = 'dark'
   function Scene(props) {
     if (crash) throw new Error('WebGL unavailable')
     React.useEffect(() => { callbacks.push(props); return () => { cleanups++ } }, [])
-    return React.createElement('canvas', { 'data-active': props.active, 'data-theme': props.theme })
+    return React.createElement('canvas', { 'data-active': props.active, 'data-theme': props.theme, 'data-reduced': props.reducedMotion })
   }
   let view
   const render = () => React.createElement(module.exports.HomeCharacter, { active, mirror, theme })
@@ -55,12 +61,14 @@ function harness({ hidden = false, active = true, mirror = false, theme = 'dark'
     hidden(value) { act(() => { document.hidden = value; document.dispatchEvent(new Event('visibilitychange')) }) },
     active(value) { act(() => { active = value; view.update(render()) }) },
     theme(value) { act(() => { theme = value; view.update(render()) }) },
+    motion(value) { act(() => { preference.matches = value; preference.dispatchEvent(new Event('change')) }) },
     async load() { await act(async () => { resolve({ HomeCharacterScene: Scene }); await pending }) },
     async reject() { await act(async () => { reject(new Error('Offline chunk unavailable')); await Promise.resolve() }) },
     dispose() {
       act(() => view.unmount()); assert.equal(document.listeners.size, 0)
       if (!mirror) assert.equal(disconnected, true)
       globalThis.document = oldDocument; globalThis.IntersectionObserver = oldObserver
+      assert.equal(preference.listeners.size, 0); globalThis.window = oldWindow
     },
   }
 }
@@ -76,6 +84,17 @@ test('only visible Home lazily loads one scene; fallback waits for a successful 
     h.theme('light'); assert.equal(h.view.root.findByType('canvas').props['data-theme'], 'light'); assert.equal(h.loads, 1)
   } finally { h.dispose() }
   assert.equal(h.cleanups, 1)
+})
+
+test('Reduce Motion starts and changes to a still scene without losing the approved character or reloading', async () => {
+  const h = harness({ reduced: true })
+  try {
+    h.visible(true); await h.load()
+    assert.equal(h.view.root.findByType('canvas').props['data-reduced'], true)
+    h.motion(false); assert.equal(h.view.root.findByType('canvas').props['data-reduced'], false)
+    h.motion(true); assert.equal(h.view.root.findByType('canvas').props['data-reduced'], true)
+    assert.equal(h.loads, 1); assert.equal(h.cleanups, 0)
+  } finally { h.dispose() }
 })
 
 test('mirror never observes, fetches or mounts WebGL; initially covered Home defers loading', () => {
@@ -165,7 +184,7 @@ test('eye positions and pill orientations follow the actual spherical surface', 
   assert.ok(sphere.index.count / 3 < 3200); sphere.dispose()
 })
 
-test('actual scene is bounded and demand-rendered, with first-frame/context guards and no animation pass', async () => {
+test('actual still scene is bounded and demand-rendered, with first-frame/context guards and no extra pass', async () => {
   const oldDocument = globalThis.document
   globalThis.document = { hidden: false }
   const canvas = new Target()
@@ -178,10 +197,10 @@ test('actual scene is bounded and demand-rendered, with first-frame/context guar
     useFrame: (callback, value) => { frame = callback; priority = value },
   }
   new Function('require', 'module', 'exports', compile(sceneSource))(
-    name => name === '@react-three/fiber' ? fiber : name === './characterGeometry' ? geometryModule.exports : require(name), module, module.exports,
+    name => name === '@react-three/fiber' ? fiber : name === './characterGeometry' ? geometryModule.exports : name === './characterAnimation' ? animationModule.exports : require(name), module, module.exports,
   )
   let view
-  const props = { theme: 'dark', active: true, onReady: () => readies++, onFailure: () => failures++ }
+  const props = { theme: 'dark', active: true, reducedMotion: true, onReady: () => readies++, onFailure: () => failures++ }
   try {
     act(() => { view = create(React.createElement(module.exports.HomeCharacterScene, props)) })
     const host = view.root.findByType('canvas-host')
@@ -209,7 +228,136 @@ test('actual scene is bounded and demand-rendered, with first-frame/context guar
     globalThis.document.hidden = false; failDraw = true; frame({ gl, scene: {}, camera: {} }); assert.equal(failures, 1)
     canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true })); assert.equal(failures, 2)
   } finally { act(() => view?.unmount()); assert.equal(canvas.listeners.size, 0); globalThis.document = oldDocument }
-  assert.doesNotMatch(sceneSource.replace(/\/\/[^\n]*/g, ''), /setInterval|requestAnimationFrame|Math\.random|transmission|useFBO|postprocessing|TextureLoader|dispose=\{null\}/)
+  assert.doesNotMatch(sceneSource.replace(/\/\/[^\n]*/g, ''), /setInterval|requestAnimationFrame|transmission|useFBO|postprocessing|TextureLoader|dispose=\{null\}/)
+})
+
+function idleHarness(random = .75) {
+  let now = 0, next = 0, draws = 0
+  const timers = new Map(), poses = []
+  const clock = {
+    now: () => now, random: () => random,
+    setTimer(callback, delay) { const id = ++next; timers.set(id, { callback, at: now + delay }); return id },
+    clearTimer: id => timers.delete(id), requestDraw: () => draws++, apply: pose => poses.push(pose),
+  }
+  const controller = animationModule.exports.createIdleEyes(clock)
+  return { controller, clock, timers, poses, get draws() { return draws },
+    get pose() { return poses.at(-1) },
+    advance(ms) { now += ms },
+    fire() { const [id,timer] = [...timers].sort((a,b)=>a[1].at-b[1].at)[0]; timers.delete(id); now = Math.max(now,timer.at); timer.callback() },
+  }
+}
+
+test('blink closes and reopens in 200ms, then settled frames request no more drawing', () => {
+  const h = idleHarness()
+  h.controller.start(); assert.equal(h.timers.size,2)
+  h.fire(); h.advance(80); h.controller.frame(); assert.ok(Math.abs(h.pose.openness-.08)<1e-9)
+  h.advance(60); h.controller.frame(); assert.ok(h.pose.openness>.08 && h.pose.openness<1)
+  h.advance(60); h.controller.frame(); assert.equal(h.pose.openness,1)
+  const draws = h.draws
+  h.advance(50); h.controller.frame(); assert.equal(h.draws,draws); assert.equal(h.timers.size,2)
+  h.controller.stop(); assert.equal(h.timers.size,0)
+})
+
+test('bounded random gaze eases out, holds without frames, and smoothly returns to neutral', () => {
+  for (const random of [0,.25,.75,1]) {
+    const h = idleHarness(random)
+    h.controller.start(); h.fire(); h.advance(200); h.controller.frame() // first blink
+    h.fire(); h.advance(190); h.controller.frame()
+    assert.ok(Math.abs(h.pose.x)<=.1 && Math.abs(h.pose.y)<=.06)
+    assert.ok(Math.abs(h.pose.x - (random*2-1)*.05)<1e-9)
+    h.advance(190); h.controller.frame()
+    assert.ok(Math.abs(h.pose.x - (random*2-1)*.1)<1e-9)
+    const draws = h.draws; h.controller.frame(); assert.equal(h.draws,draws)
+    h.fire(); h.advance(210); h.controller.frame()
+    assert.ok(Math.abs(h.pose.x - (random*2-1)*.05)<1e-9)
+    h.advance(210); h.controller.frame(); assert.deepEqual(h.pose,{x:0,y:0,openness:1})
+    const settled = h.draws; h.controller.frame(); assert.equal(h.draws,settled)
+    assert.equal(h.timers.size,2); h.controller.stop()
+  }
+})
+
+test('stop cancels timers and transitions; stale callbacks cannot restart even after resume', () => {
+  const h = idleHarness()
+  h.controller.start(); const stale = [...h.timers.values()].map(t=>t.callback)
+  h.fire(); h.advance(80); h.controller.frame(); assert.ok(h.pose.openness<1)
+  h.controller.stop(); assert.equal(h.timers.size,0); assert.deepEqual(h.pose,{x:0,y:0,openness:1})
+  const draws = h.draws; h.advance(10000); h.controller.frame(); stale.forEach(fn=>fn()); assert.equal(h.draws,draws)
+  h.controller.start(); const fresh = h.draws; stale.forEach(fn=>fn()); assert.equal(h.draws,fresh)
+  assert.equal(h.timers.size,2); h.controller.start(); assert.equal(h.timers.size,2)
+  h.controller.stop(); assert.equal(h.timers.size,0)
+  assert.doesNotMatch(animationSource, /setInterval|requestAnimationFrame|useState|Date\.now/)
+})
+
+test('all gaze extremes stay attached to the sphere and keep the eye pair separation', () => {
+  for (const x of [-.1,0,.1]) for (const y of [-.06,0,.06]) {
+    const poses = [-.23,.23].map(base=>geometryModule.exports.eyePose(base+x,.18+y))
+    poses.forEach(pose=>{
+      const normal = new THREE.Vector3(...pose.position).normalize()
+      assert.ok(Math.abs(new THREE.Vector3(...pose.position).length()-1.04)<1e-9)
+      const axis = new THREE.Vector3(0,0,1).applyQuaternion(new THREE.Quaternion(...pose.quaternion))
+      assert.ok(axis.distanceTo(normal)<1e-9)
+    })
+    assert.ok(poses[1].position[0]-poses[0].position[0]>.47)
+  }
+})
+
+test('actual animated scene updates mesh refs, then cancels on pause, Reduce Motion, hide, context loss and unmount', () => {
+  const oldDocument = globalThis.document, oldWindow = globalThis.window
+  const oldPerformance = Object.getOwnPropertyDescriptor(globalThis, 'performance'), oldRandom = Math.random
+  const document = new Target(); document.hidden = false
+  const canvas = new Target(), clock = idleHarness(), meshes = []
+  globalThis.document = document
+  globalThis.window = { setTimeout: clock.clock.setTimer, clearTimeout: clock.clock.clearTimer }
+  Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: clock.clock.now } })
+  Math.random = () => .75
+  let frame, draws = 0, requests = 0, failures = 0, failDraw = false, view
+  const invalidate = () => requests++
+  const gl = { domElement: canvas, render: () => { if(failDraw) throw new Error('GPU failed'); draws++ } }
+  const fiber = { Canvas: ({children,...props})=>React.createElement('canvas-host',props,children),
+    useThree: ()=>({gl,invalidate}), useFrame: callback=>{frame=callback} }
+  const module = { exports: {} }
+  new Function('require','module','exports',compile(sceneSource))(
+    name=>name==='@react-three/fiber'?fiber:name==='./characterGeometry'?geometryModule.exports:name==='./characterAnimation'?animationModule.exports:require(name),module,module.exports)
+  const props = { active:true,reducedMotion:false,theme:'dark',onReady:()=>{},onFailure:()=>failures++ }
+  const render = changes=>act(()=>view.update(React.createElement(module.exports.HomeCharacterScene,{...props,...changes})))
+  const draw = ()=>frame({gl,scene:{},camera:{}})
+  try {
+    act(()=>{view=create(React.createElement(module.exports.HomeCharacterScene,props),{createNodeMock:element=>{
+      if(element.type!=='mesh') return null
+      const index=element.props.position[0]<0?0:1
+      return meshes[index] ?? (meshes[index]=new THREE.Mesh())
+    }})})
+    assert.equal(meshes.length,2); assert.equal(clock.timers.size,2)
+    draw(); clock.fire(); clock.advance(80); draw()
+    meshes.forEach(mesh=>assert.ok(Math.abs(mesh.scale.y-.08)<1e-9))
+    clock.advance(120); draw(); meshes.forEach(mesh=>assert.equal(mesh.scale.y,1))
+    const settled=requests; draw(); assert.equal(requests,settled)
+    clock.fire(); clock.advance(190); draw()
+    assert.ok(Math.abs(meshes[0].position.x-(-.23+.025)*1.04)<1e-9)
+    meshes.forEach(mesh=>assert.ok(Math.abs(mesh.position.length()-1.04)<1e-9))
+    const scheduled=[...clock.timers.values()].map(timer=>timer.at)
+    render({theme:'light'}); assert.deepEqual([...clock.timers.values()].map(timer=>timer.at),scheduled)
+    draw(); assert.ok(Math.abs(meshes[0].position.x-(-.23+.025)*1.04)<1e-9)
+    const stale=[...clock.timers.values()].map(timer=>timer.callback)
+    render({active:false}); assert.equal(clock.timers.size,0)
+    const pausedDraws=draws; draw(); assert.equal(draws,pausedDraws)
+    render({}); assert.equal(clock.timers.size,2)
+    const resumed=requests; stale.forEach(callback=>callback()); assert.equal(requests,resumed)
+    render({reducedMotion:true}); assert.equal(clock.timers.size,0)
+    meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.ok(Math.abs(Math.abs(mesh.position.x)-.23*1.04)<1e-9)})
+    render({}); assert.equal(clock.timers.size,2)
+    document.hidden=true; document.dispatchEvent(new Event('visibilitychange')); assert.equal(clock.timers.size,0)
+    const hiddenDraws=draws; draw(); assert.equal(draws,hiddenDraws)
+    render({active:false}); document.hidden=false; render({}); assert.equal(clock.timers.size,2)
+    failDraw=true; draw(); assert.equal(failures,1);assert.equal(clock.timers.size,0)
+    render({active:false}); failDraw=false;render({});assert.equal(clock.timers.size,2)
+    canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})); assert.equal(failures,2);assert.equal(clock.timers.size,0)
+  } finally {
+    act(()=>view?.unmount()); assert.equal(clock.timers.size,0)
+    assert.equal(document.listeners.size,0); assert.equal(canvas.listeners.size,0)
+    globalThis.document=oldDocument;globalThis.window=oldWindow;Math.random=oldRandom
+    Object.defineProperty(globalThis,'performance',oldPerformance)
+  }
 })
 
 test('Home wiring excludes mirrors/overlays and the scene chunk is part of the offline shell', async () => {
