@@ -5,6 +5,7 @@ import type { ImageAsset, Person, Tab, Track } from '../types'
 import type { MapNode } from '../brainGraph'
 import { StoredImage } from './StoredImage'
 import peoplePortraits from '../people-portraits-collage.png'
+import { THEME_EVENT } from '../theme'
 
 interface PhoneFrameProps {
   children: React.ReactNode
@@ -210,10 +211,11 @@ export function BrainMap({ nodes, links, onOpenNode }: { nodes: MapNode[]; links
       context.moveTo(start.x * bounds.width / 100, start.y * bounds.height / 100)
       context.lineTo(end.x * bounds.width / 100, end.y * bounds.height / 100)
     }
-    context.strokeStyle = 'rgba(255,255,255,.14)'
+    const palette = getComputedStyle(canvas)
+    context.strokeStyle = palette.getPropertyValue('--lumen-graph-line').trim() || 'rgba(232,217,199,.14)'
     context.lineWidth = .55
     context.stroke()
-    context.fillStyle = '#fff'
+    context.fillStyle = palette.getPropertyValue('--lumen-graph-point').trim() || '#e8d9c7'
     for (const node of currentNodes) {
       const at = point(node)
       context.beginPath()
@@ -225,7 +227,7 @@ export function BrainMap({ nodes, links, onOpenNode }: { nodes: MapNode[]; links
       const at = point(selected)
       context.beginPath()
       context.arc(at.x * bounds.width / 100, at.y * bounds.height / 100, 8, 0, Math.PI * 2)
-      context.strokeStyle = 'rgba(255,255,255,.75)'
+      context.strokeStyle = palette.getPropertyValue('--lumen-graph-selected').trim() || '#d89c53'
       context.lineWidth = 1
       context.stroke()
     }
@@ -255,10 +257,12 @@ export function BrainMap({ nodes, links, onOpenNode }: { nodes: MapNode[]; links
     intersection.observe(map)
     const onVisibility = () => { if (document.visibilityState === 'visible') scheduleDraw() }
     document.addEventListener('visibilitychange', onVisibility)
+    document.addEventListener(THEME_EVENT, scheduleDraw)
     return () => {
       resize.disconnect()
       intersection.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
+      document.removeEventListener(THEME_EVENT, scheduleDraw)
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
     }
   }, [])

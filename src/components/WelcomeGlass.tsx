@@ -30,7 +30,7 @@ function GlassSession({ Scene, active, onReady, onFailure, onReset }: WelcomeGla
 }
 
 /** The real button and its CSS fallback never depend on loading WebGL. */
-export function WelcomeGlass() {
+export function WelcomeGlass({ theme = 'dark' }: { theme?: 'dark' | 'light' } = {}) {
   const host = useRef<HTMLSpanElement>(null)
   const [Scene, setScene] = useState<ComponentType<WelcomeGlassSceneProps> | null>(null)
   const [visible, setVisible] = useState(false)
@@ -59,7 +59,7 @@ export function WelcomeGlass() {
   }, [])
 
   useEffect(() => {
-    if (!visible || reduced || failed || Scene) return
+    if (!visible || reduced || failed || Scene || theme !== 'dark') return
     let cancelled = false
     // This creates a separate offline-cached chunk, not a renderer in the
     // main app bundle. Reduce Motion doesn't need to load it at all.
@@ -67,11 +67,11 @@ export function WelcomeGlass() {
       if (!cancelled) setScene(() => module.FluidGlassButton)
     }).catch(() => { if (!cancelled) onFailure() })
     return () => { cancelled = true }
-  }, [visible, reduced, failed, Scene, onFailure])
+  }, [visible, reduced, failed, Scene, onFailure, theme])
 
   return (
-    <span ref={host} className="lumen-enter-glass" aria-hidden="true" data-ready={ready && !failed && !reduced}>
-      {Scene && !failed && !reduced && (
+    <span ref={host} className="lumen-enter-glass" aria-hidden="true" data-ready={ready && !failed && !reduced && theme === 'dark'}>
+      {Scene && !failed && !reduced && theme === 'dark' && (
         <GlassBoundary onFailure={onFailure}>
           <GlassSession Scene={Scene} active={visible} onReady={onReady} onFailure={onFailure} onReset={onReset} />
         </GlassBoundary>

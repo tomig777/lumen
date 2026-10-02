@@ -59,6 +59,7 @@ import { updateStatusText } from './offlineUpdates'
 import type { BackupVerification } from './storage/indexedDbRepository'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import { useLaunchTheme } from './hooks/useLaunchTheme'
+import { setAppTheme, useAppTheme } from './theme'
 import type { AppState, BrainCategory, BrainCategoryIcon, DayPlan, Exercise, Habit, ImageAsset, JournalEntry, Note, Person, PlannedExercise, PlannedExercisePhase, PlannedExerciseUnit, Project, Screen, SheetState, SkinPhoto, SkincareRoutine, Tab, Task, Thought, WellnessLog } from './types'
 import peoplePortraits from './people-portraits-collage.png'
 
@@ -161,6 +162,7 @@ function weekOffsetForDate(iso: string, today: string) {
 
 function App() {
   useMobileViewport()
+  const theme = useAppTheme()
   const { data, setData, ready, saveState, retrySave, replaceData, stageImage, portableState, backupVerification, recordBackupVerification } = useAppStorage()
   useLaunchTheme(ready)
   const offlineShell = useOfflineShell()
@@ -667,7 +669,7 @@ function App() {
 
   const renderScreen = () => {
     switch (screen) {
-      case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} />
+      case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} theme={theme} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
       case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onOpenBackup={() => navigate('backup')} saveState={saveState} onRetrySave={retrySave} />
       case 'backup': return <BackupScreen data={data} onBack={() => navigate('home')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
@@ -691,7 +693,7 @@ function App() {
 
   const renderViewport = (viewportClass: string, motionId: string, mirror = false) => (
     <div className={viewportClass} aria-hidden={mirror ? true : undefined}>
-      <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health' || screen === 'workout'} />
+      <StatusBar light={theme === 'dark'} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="screen-layer" key={screen} initial={{ opacity: 0, x: 9 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -9 }} transition={{ duration: 0.24, ease: [0.19, 1, 0.22, 1] }}>
           {renderScreen()}
@@ -729,7 +731,7 @@ function App() {
         <div className="phone-holder" style={{ transform: `scale(${previewScale})` }}>
         <PhoneFrame>
           <div className="phone-app">
-            <StatusBar light={screen === 'welcome' || screen === 'focus' || screen === 'brain' || screen === 'health' || screen === 'workout'} />
+            <StatusBar light={theme === 'dark'} />
             <AnimatePresence mode="wait" initial={false}>
               <motion.div className="screen-layer" key={screen} initial={{ opacity: 0, x: 9 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -9 }} transition={{ duration: 0.24, ease: [0.19, 1, 0.22, 1] }}>
                 {renderScreen()}
@@ -749,7 +751,7 @@ function App() {
       </div>
       <div className="dev-toolbar">
         <span><span className="dev-dot" /> DEV PREVIEW</span>
-        <div className="dev-actions"><button onClick={resetDemo}><RotateCcw size={12} /> Reset Demo Data</button><button className={previewScale === 0.84 ? 'is-selected' : ''} onClick={() => setPreviewScale(0.84)}>84%</button><button className={previewScale === 1 ? 'is-selected' : ''} onClick={() => setPreviewScale(1)}>100%</button></div>
+        <div className="dev-actions"><button type="button" onClick={() => setAppTheme(theme === 'dark' ? 'light' : 'dark')}>Theme: {theme}</button><button onClick={resetDemo}><RotateCcw size={12} /> Reset Demo Data</button><button className={previewScale === 0.84 ? 'is-selected' : ''} onClick={() => setPreviewScale(0.84)}>84%</button><button className={previewScale === 1 ? 'is-selected' : ''} onClick={() => setPreviewScale(1)}>100%</button></div>
       </div>
       <input ref={uploadInputRef} type="file" accept="image/*" hidden onChange={(event) => { handleUpload(event.target.files?.[0]); event.target.value = '' }} />
     </div>
@@ -778,7 +780,7 @@ function LumenMark({ compact = false }: { compact?: boolean }) {
   return <span className={`lumen-mark ${compact ? 'is-compact' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
 }
 
-function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
+function WelcomeScreen({ onContinue, theme = 'dark' }: { onContinue: () => void; theme?: 'dark' | 'light' }) {
   return (
     <main className="lumen-start" aria-labelledby="lumen-welcome-title">
       <header className="lumen-start-copy">
@@ -791,7 +793,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
       <p className="lumen-start-subtitle">A little space for a clearer day.</p>
       <div className="lumen-start-actions">
         <button className="lumen-enter-button" type="button" onClick={onContinue}>
-          <WelcomeGlass />
+          <WelcomeGlass theme={theme} />
           <span className="lumen-enter-label">Enter Lumen</span>
         </button>
       </div>

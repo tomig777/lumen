@@ -10,6 +10,7 @@ const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf
 const mobile = await readFile(new URL('../src/mobile.css', import.meta.url), 'utf8')
 const polish = await readFile(new URL('../src/polish.css', import.meta.url), 'utf8')
 const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
+const globalTheme = await readFile(new URL('../src/theme.css', import.meta.url), 'utf8')
 const source = await readFile(new URL('../src/hooks/useLaunchTheme.ts', import.meta.url), 'utf8')
 const { code } = transformSync(source, { loader: 'ts', format: 'cjs' })
 const module = { exports: {} }
@@ -30,13 +31,11 @@ test('the production document declares a dark first paint before the app module 
   assert.doesNotMatch(theme, /height|width|position|overflow|padding|margin|!important/)
 })
 
-test('loading and its error/retry content use the same readable dark welcome palette', () => {
-  assert.match(mobile, /html:has\(\.deployed-app-root \.storage-loading-screen\) \{[^}]*--lumen-surface-color: var\(--lumen-welcome\);[^}]*color-scheme: dark;/)
-  const loading = polish.match(/\.storage-loading-screen \{([^}]+)\}/)[1]
-  assert.match(loading, /color: #e8d9c7;/)
-  assert.match(loading, /background: var\(--lumen-welcome\);/)
-  assert.match(polish, /\.storage-loading-screen p \{[^}]*color: #c6ab8d;/)
-  assert.match(polish, /\.storage-loading-screen button \{[^}]*background: #e8d9c7; color: #24211e;/)
+test('loading/error/retry content follows the saved global appearance with readable token roles', () => {
+  assert.match(mobile, /--lumen-surface-color: var\(--lumen-bg\)/)
+  assert.match(globalTheme, /\.storage-loading-screen\) \{[^}]*color: var\(--lumen-text\);[^}]*background-color: var\(--lumen-bg\)/)
+  assert.match(globalTheme, /\.storage-loading-screen p \{[^}]*color: var\(--lumen-text-secondary\)/)
+  assert.match(globalTheme, /\.storage-loading-screen button \{[^}]*color: var\(--lumen-on-selection\); background: var\(--lumen-selection\)/)
 })
 
 test('launch colours are released only when a real screen is ready, including a delayed data load', () => {
@@ -70,11 +69,13 @@ test('launch colours are released only when a real screen is ready, including a 
   }
 })
 
-test('the app uses readiness to release boot styling and leaves light/dark pages and native controls alone', () => {
+test('readiness releases only boot styling; the global theme owns all pages without native status hacks', () => {
   assert.match(app, /useLaunchTheme\(ready\)/)
   assert.match(source, /useLayoutEffect/)
   assert.doesNotMatch(source, /localStorage|indexedDB|setTimeout|setInterval|addEventListener|matchMedia|setAttribute|theme-color|status-bar-style/)
-  assert.match(mobile, /html:has\(\.deployed-app-root\) \{[^}]*color-scheme: light;/)
-  assert.match(mobile, /html:has\(\.deployed-app-root \.lumen-start\) \{[^}]*color-scheme: dark;/)
-  assert.match(mobile, /html:has\(\.deployed-app-root :is\(\.brain-screen, \.health-screen, \.focus-player-screen\)\) \{[^}]*color-scheme: dark;/)
+  assert.match(mobile, /html:has\(\.deployed-app-root\) \{[^}]*color-scheme: inherit;/)
+  assert.doesNotMatch(mobile, /color-scheme: (?:light|dark)/)
+  assert.match(globalTheme, /html\[data-lumen-theme='light'\]/)
+  assert.match(app, /const theme = useAppTheme\(\)/)
+  assert.equal((app.match(/<StatusBar light=\{theme === 'dark'\}/g) ?? []).length, 2)
 })

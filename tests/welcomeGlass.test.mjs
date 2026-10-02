@@ -16,7 +16,7 @@ class Target extends EventTarget {
   removeEventListener(type, listener) { this.listeners.delete(listener); super.removeEventListener(type, listener) }
 }
 
-function harness({ reduced = false, hidden = false, loader, autoReady = true } = {}) {
+function harness({ reduced = false, hidden = false, loader, autoReady = true, theme = 'dark' } = {}) {
   const originalWindow = globalThis.window, originalDocument = globalThis.document
   const document = new Target()
   document.hidden = hidden
@@ -42,9 +42,10 @@ function harness({ reduced = false, hidden = false, loader, autoReady = true } =
     return React.createElement('canvas', { 'data-active': active })
   }
   let renderer
+  const buttonTree = () => React.createElement('button', { type: 'button', onClick: () => { entries++ } },
+    React.createElement(WelcomeGlass, { theme }), React.createElement('span', null, 'Enter Lumen'))
   act(() => {
-    renderer = create(React.createElement('button', { type: 'button', onClick: () => { entries++ } },
-      React.createElement(WelcomeGlass), React.createElement('span', null, 'Enter Lumen')),
+    renderer = create(buttonTree(),
     { createNodeMock: () => ({ closest: () => welcome }) })
   })
   return {
@@ -52,6 +53,7 @@ function harness({ reduced = false, hidden = false, loader, autoReady = true } =
     get loads() { return loads }, get cleanups() { return cleanups }, get entries() { return entries },
     setHidden(value) { act(() => { document.hidden = value; document.dispatchEvent(new Event('visibilitychange')) }) },
     setReduced(value) { act(() => { media.matches = value; media.dispatchEvent(new Event('change')) }) },
+    setTheme(value) { act(() => { theme = value; renderer.update(buttonTree()) }) },
     click() { act(() => renderer.root.findByType('button').props.onClick()) },
     async load() { await act(async () => { resolve({ FluidGlassButton: Scene }); await pending }) },
     dispose() {
@@ -63,6 +65,25 @@ function harness({ reduced = false, hidden = false, loader, autoReady = true } =
     },
   }
 }
+
+test('Light uses the CSS material without loading a dark renderer; switching disposes the old surface', async () => {
+  const h = harness({ theme: 'light' })
+  try {
+    assert.equal(h.loads, 0)
+    assert.equal(h.renderer.root.findAllByType('canvas').length, 0)
+    h.click(); assert.equal(h.entries, 1)
+    h.setTheme('dark'); await h.load()
+    assert.equal(h.loads, 1)
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], true)
+    h.setTheme('light')
+    assert.equal(h.renderer.root.findAllByType('canvas').length, 0)
+    assert.equal(h.cleanups, 1)
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], false)
+    h.setTheme('dark')
+    assert.equal(h.loads, 1, 'reuse the loaded module, not a second download')
+    assert.equal(h.renderer.root.findByType('canvas').props['data-active'], true)
+  } finally { h.dispose() }
+})
 
 test('entry remains immediately usable while the separate renderer chunk loads', async () => {
   const h = harness()

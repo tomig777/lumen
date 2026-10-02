@@ -15,6 +15,16 @@ export default defineConfig({
   define: { __LUMEN_RELEASE__: JSON.stringify(release) },
   plugins: [react(), {
     name: 'lumen-isolated-layout-diagnostic',
+    configurePreviewServer(server) {
+      // Opt-in local QA controls are never emitted into the published shell.
+      if (process.env.LUMEN_THEME_TEST !== '1') return
+      server.middlewares.use((request, response, next) => {
+        if (request.method !== 'GET' || request.url !== '/screen-layout-test.html?theme-controls=1') return next()
+        response.setHeader('Content-Type', 'text/html; charset=utf-8')
+        response.setHeader('Cache-Control', 'no-store')
+        response.end(readFileSync(new URL('./tests/fixtures/theme-controls.html', import.meta.url), 'utf8'))
+      })
+    },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' || new URL(request.url ?? '/', 'http://localhost').pathname !== `/${DIAGNOSTIC_FILE}`) return next()

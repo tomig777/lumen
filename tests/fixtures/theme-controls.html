@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lumen appearance test controls</title></head>
+<body>
+  <h1>Local appearance test</h1>
+  <p>Sets only lumen-appearance-v1 on this local preview origin. No personal records are edited.</p>
+  <button type="button" data-theme="dark">Use Dark theme</button>
+  <button type="button" data-theme="light">Use Light theme</button>
+  <p role="status">Choose a theme, then open the app in a separate tab on this preview origin.</p>
+  <script>
+    document.querySelectorAll('[data-theme]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        localStorage.setItem('lumen-appearance-v1', button.dataset.theme);
+        document.querySelector('[role="status"]').textContent = 'Saved ' + button.dataset.theme + ' appearance for this local preview.';
+      });
+    });
+  </script>
+</body>
+</html>

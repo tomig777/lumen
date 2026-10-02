@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-lumen-launch="dark">
+<html lang="en" data-lumen-launch="dark" data-lumen-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,13 +9,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Lumen" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <!-- Paint the welcome theme before CSS/modules or device data finish loading.
-         React removes this guard after the first real screen is committed;
-         existing page-specific themes then take over. Never size the viewport here. -->
+    <!-- Appearance is a tiny device preference, separate from personal records.
+         Resolve it before CSS/modules; denied/corrupt storage defaults to Dark.
+         Never change viewport geometry or native Apple status-bar metadata here. -->
+    <script id="lumen-theme-bootstrap">
+      (function () {
+        var theme = 'dark';
+        try { if (localStorage.getItem('lumen-appearance-v1') === 'light') theme = 'light'; } catch (_) {}
+        var root = document.documentElement;
+        root.setAttribute('data-lumen-theme', theme);
+        root.setAttribute('data-lumen-launch', theme);
+        root.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'light' ? '#f7f3ed' : '#24211e');
+      })();
+    </script>
     <style id="lumen-launch-theme">
       html[data-lumen-launch="dark"] { background: #24211e; color-scheme: dark; }
       html[data-lumen-launch="dark"] body,
       html[data-lumen-launch="dark"] #root { background: #24211e; }
+      html[data-lumen-launch="light"] { background: #f7f3ed; color-scheme: light; }
+      html[data-lumen-launch="light"] body,
+      html[data-lumen-launch="light"] #root { background: #f7f3ed; }
     </style>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="./lumen-icon-v2-32.png" />

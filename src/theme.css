@@ -1,0 +1,326 @@
+/* Global appearance layer. Imported last; no viewport/geometry changes here.
+   Role-specific selectors bridge legacy page styles without filtering media. */
+html[data-lumen-theme] {
+  --lumen-bg: #24211e;
+  --lumen-surface: #302b26;
+  --lumen-surface-raised: #3b332b;
+  --lumen-text: #e8d9c7;
+  --lumen-text-secondary: #c6ab8d;
+  --lumen-text-muted: #b09a84;
+  --lumen-accent: #d89c53;
+  --lumen-on-accent: #24211e;
+  --lumen-control-edge: #9b836b;
+  --lumen-line: rgba(232,217,199,.12);
+  --lumen-focus: #e8d9c7;
+  --lumen-glint: #ffedd0;
+  --lumen-glow: rgba(216,156,83,.18);
+  --lumen-scrim: rgba(12,10,8,.64);
+  --lumen-danger: #ffc0ae;
+  --lumen-danger-bg: #512b23;
+  --lumen-success: #c4ddb5;
+  --lumen-success-bg: #2c3b27;
+  --lumen-warning: #f0d29e;
+  --lumen-warning-bg: #493821;
+  --lumen-selection: #e8d9c7;
+  --lumen-on-selection: #24211e;
+  --lumen-graph-line: rgba(232,217,199,.14);
+  --lumen-graph-point: #e8d9c7;
+  --lumen-graph-selected: #d89c53;
+  --lumen-shadow: 0 8px 24px rgba(0,0,0,.12);
+  --lumen-welcome-glass-base: rgba(44,38,32,.76);
+  --lumen-welcome-glass-tint: rgba(232,217,199,.17);
+  color-scheme: dark;
+}
+html[data-lumen-theme='light'] {
+  --lumen-bg: #f7f3ed;
+  --lumen-surface: #eee6dc;
+  --lumen-surface-raised: #e3d6c5;
+  --lumen-text: #24211e;
+  --lumen-text-secondary: #65574b;
+  --lumen-text-muted: #6e5b49;
+  --lumen-accent: #85521f;
+  --lumen-on-accent: #f7f3ed;
+  --lumen-control-edge: #8c7157;
+  --lumen-line: rgba(75,56,40,.14);
+  --lumen-focus: #85521f;
+  --lumen-glint: #ffffff;
+  --lumen-glow: rgba(216,156,83,.12);
+  --lumen-scrim: rgba(36,33,30,.36);
+  --lumen-danger: #83352b;
+  --lumen-danger-bg: #f3dfd8;
+  --lumen-success: #36552c;
+  --lumen-success-bg: #e0e9d9;
+  --lumen-warning: #68461e;
+  --lumen-warning-bg: #efe0c3;
+  --lumen-selection: #65513f;
+  --lumen-on-selection: #f7f3ed;
+  --lumen-graph-line: rgba(36,33,30,.19);
+  --lumen-graph-point: #65513f;
+  --lumen-graph-selected: #85521f;
+  --lumen-shadow: 0 8px 24px rgba(65,44,27,.065);
+  --lumen-welcome-glass-base: rgba(227,214,197,.92);
+  --lumen-welcome-glass-tint: rgba(255,255,255,.3);
+  color-scheme: light;
+}
+/* Compatibility aliases: ink is foreground only. Never use it for a surface
+   in this layer. Their former page-specific inversions no longer own mode. */
+html[data-lumen-theme] {
+  --lumen-ink: var(--lumen-text);
+  --lumen-muted: var(--lumen-text-muted);
+  --lumen-paper: var(--lumen-bg);
+  --lumen-welcome: var(--lumen-bg);
+  --lumen-card: var(--lumen-surface);
+  --lumen-page-top: var(--lumen-bg);
+  --lumen-page-bottom: var(--lumen-bg);
+  --lumen-page-gradient: linear-gradient(var(--lumen-bg), var(--lumen-bg));
+  --lumen-people-top: var(--lumen-bg);
+  --lumen-people-bottom: var(--lumen-bg);
+  --lumen-people-gradient: linear-gradient(var(--lumen-bg), var(--lumen-bg));
+  --paper: var(--lumen-bg);
+  --warm: var(--lumen-surface);
+  --ink: var(--lumen-text);
+  --muted: var(--lumen-text-muted);
+  --line: var(--lumen-line);
+  --line-strong: var(--lumen-control-edge);
+  --accent: var(--lumen-accent);
+  --dark: var(--lumen-selection);
+  --color-paper: var(--lumen-bg);
+  --color-felt-gray: var(--lumen-text-muted);
+  --color-obsidian: var(--lumen-text);
+  color: var(--lumen-text);
+  background: var(--lumen-bg);
+}
+html[data-lumen-theme] body,
+html[data-lumen-theme] #root,
+html[data-lumen-theme] :is(.phone-app, .phone-screen, .storage-loading-screen) {
+  color: var(--lumen-text);
+  background-color: var(--lumen-bg);
+  color-scheme: inherit;
+}
+html[data-lumen-theme] .phone-app :is(.screen-scroll, .people-page, .people-screen,
+  .focus-player-screen, .focus-player, .workout-screen, .onboarding-page, .image-viewer) {
+  color: var(--lumen-text);
+  background: var(--lumen-bg);
+  --color-obsidian: var(--lumen-text);
+  color-scheme: inherit;
+}
+/* Reset legacy text colors by element role. Decorative SVG/media fill colors
+   are not changed; state/category/semantic labels are handled below. */
+html[data-lumen-theme] .phone-app :is(h1,h2,h3,h4,strong,p,label,button,input,textarea,select) {
+  color: var(--lumen-text);
+}
+html[data-lumen-theme] .phone-app :is(small, .eyebrow, .section-label,
+  .section-count, .home-save-state, .home-task-summary, .home-task-index,
+  .home-task-card-foot, .home-liquid-caption, .home-liquid-heading > span,
+  .backup-intro, .backup-local-status, .backup-status-row > span,
+  .backup-update-time, .backup-counts, .backup-icon-preview span,
+  .backup-panel p, .backup-panel .eyebrow, .backup-layout-report,
+  .daily-task-group > .eyebrow, .daily-task-row > small, .sheet-footer > span,
+  .sheet-option-label, .brain-note-copy > span, .brain-collection-count,
+  .brain-search-result-kind, .brain-search-results-label, .brain-search-results-foot,
+  .brain-inline-empty, .brain-library-empty, .brain-quick-empty,
+  .brain-command-shortcut, .brain-search-no-results, .brain-library-card-copy > span,
+  .brain-library-card-top, .brain-library-card-foot, .project-stack-card-copy span,
+  .projects-pulse-copy p, .projects-pulse-stats small, .activity-list,
+  .health-daily-meta, .health-library-count, .health-builder-empty,
+  .health-rest-art, .health-wellness-meter-center span, .health-wellness-meter-center small,
+  .focus-player-heading p, .focus-progress-labels, .exercise-preview-meta,
+  .exercise-preview-description, .exercise-instructions, .workout-bottom,
+  .skincare-routine-empty, .skincare-empty, .memory-empty, .gallery-empty,
+  .inline-empty, .collection-empty, .external-copy, .flow-note,
+  .onboarding-login-footnote, .onboarding-login-version, .next-track-row,
+  .spotify-scrubber, .viewer-bottom p, .viewer-links span,
+  .skincare-section-heading > span, .skincare-daily-toggles > div > span,
+  .journal-entry-top, .journal-entry-meta, .health-builder-copy > span,
+  .health-calendar-head > div > span, .health-month-head > div > span,
+  .health-month-weekdays, .exercise-guide-label, .workout-guide-credits,
+  .inspiration-intro > span, .journal-modes > span:not(.is-active),
+  .journal-entry-meta i, .detail-progress > span) {
+  color: var(--lumen-text-muted);
+}
+html[data-lumen-theme] .phone-app :is(.page-header p, .brain-note-copy small,
+  .home-task-empty, .health-daily-copy p, .health-builder-copy p,
+  .exercise-library-copy p, .wellness-detail-copy p, .person-notes p,
+  .journal-entry p, .memory-block p, .onboarding-login-content p,
+  .spotify-track-copy p, .pin-copy p, .music-copy span) {
+  color: var(--lumen-text-secondary);
+}
+html[data-lumen-theme] .phone-app :is(.lumen-start-subtitle, .lumen-start-kicker) { color: var(--lumen-text-secondary); }
+html[data-lumen-theme] .phone-app :is(.status-bar, .status-time, .status-icons) { color: var(--lumen-text); }
+html[data-lumen-theme] .phone-app :is(.health-wellness-title, .skincare-product,
+  .collection-card-foot span, .journal-modes .is-active) { color: var(--lumen-text); }
+html[data-lumen-theme] .phone-app :is(.bottom-nav, .nav-action-menu, .bottom-sheet,
+  .brain-category-editor, .brain-search-results, .health-month-panel,
+  .exercise-preview-panel, .backup-preview, .wellness-detail-tabs) {
+  color: var(--lumen-text);
+  background: var(--lumen-surface-raised);
+  border-color: var(--lumen-line);
+  color-scheme: inherit;
+}
+html[data-lumen-theme] .phone-app :is(.home-task-card, .daily-task-group,
+  .backup-panel, .backup-counts span, .brain-pinned-card, .brain-quick-note-row,
+  .brain-note-library-card, .brain-library-card, .brain-library-add-card,
+  .brain-inline-search, .brain-command-input, .project-detail-hero, .detail-task,
+  .project-note, .health-wellness-card, .exercise-library-row, .health-builder-row,
+  .health-builder-fields, .wellness-detail-panel, .skincare-routine-card,
+  .skincare-daily-card, .skincare-upload-card, .skincare-product, .memory-block,
+  .journal-entry, .collection-card, .set-panel, .rest-card, .pinterest-demo,
+  .music-player, .mail-empty-art, .brain-category-preview, .health-calendar,
+  .health-builder, .skincare-empty, .skincare-photo-list article, .collection-preview) {
+  color: var(--lumen-text);
+  background: var(--lumen-surface);
+  border-color: var(--lumen-line);
+  box-shadow: var(--lumen-shadow);
+}
+/* Do not overwrite covers/portraits/uploaded artwork. Only their surrounding
+   frame/layers and copy use the neutral theme. */
+html[data-lumen-theme] .phone-app :is(.project-stack-layer, .project-stack-add-front-icon,
+  .brain-note-icon, .brain-quick-note-icon, .brain-library-card-icon,
+  .brain-search-result-icon, .mail-lines span, .focus-orbit-core) {
+  color: var(--lumen-text-secondary);
+  background-color: var(--lumen-surface-raised);
+  border-color: var(--lumen-line);
+}
+html[data-lumen-theme] .phone-app :is(.projects-pulse-strip, .home-liquid-state,
+  .project-stack-cover-add .project-stack-front, .status-pill, .active-status) {
+  color: var(--lumen-text);
+  background: var(--lumen-surface-raised);
+  border-color: var(--lumen-line);
+}
+html[data-lumen-theme] .phone-app :is(.sheet-layer, .brain-category-layer,
+  .health-month-layer, .exercise-preview-layer) { background: var(--lumen-scrim); }
+html[data-lumen-theme] .phone-app :is(button, .icon-button, .back-button) {
+  color: var(--lumen-text);
+  background-color: var(--lumen-surface);
+  border-color: var(--lumen-control-edge);
+}
+/* A palette switch is atomic. Interpolating text/background independently
+   briefly produces unreadable colors midway between Dark and Light. */
+html[data-lumen-theme] .phone-app :is(button, input, textarea, select) {
+  transition-property: transform, scale, opacity;
+}
+html[data-lumen-theme] .phone-app :is(.nav-item, .text-action, .daily-task-row > button,
+  .detail-task-main, .brain-quick-note-main, .home-task-card-edit,
+  .focus-player-back, .health-month-close, .workout-bottom button,
+  .spotify-controls button, .next-track-row, .thought-action-sheet > button) {
+  background-color: transparent;
+}
+html[data-lumen-theme] .phone-app :is(.nav-item, .nav-action-icon, .nav-action-item,
+  .home-task-controls button, .brain-section-nav button, .choice-row button,
+  .journal-modes button, .wellness-detail-tabs button, .health-day-picker button,
+  .health-daily-edit, .health-daily-gallery, .health-builder-controls button,
+  .people-bottom-switch, .focus-player-controls button, .viewer-links button) {
+  color: var(--lumen-text-secondary);
+}
+html[data-lumen-theme] .phone-app :is(.dark-button, .nav-capture,
+  .health-start-button, .backup-primary, .complete-set-button, .save-pin-button,
+  .brain-category-save, .exercise-preview-add, .remember-button,
+  .onboarding-login-submit, .focus-player-play, .spotify-controls .spotify-play,
+  .nav-action-item.is-primary, .home-save-retry,
+  .brain-section-nav button.is-active, .choice-row button.is-selected,
+  .energy-picker button.is-selected, .journal-modes button.is-active,
+  .wellness-detail-tabs button.is-active, .health-skincare-toggle.is-active,
+  .health-month-grid button.is-selected, .health-week-strip button.is-selected,
+  .nav-item.is-active, .viewer-links button.is-active) {
+  color: var(--lumen-on-selection);
+  background: var(--lumen-selection);
+  border-color: transparent;
+}
+html[data-lumen-theme] .phone-app .nav-active-bubble { background: var(--lumen-selection); }
+html[data-lumen-theme] .phone-app .bottom-nav .nav-item.is-active { background: transparent; }
+html[data-lumen-theme] .phone-app .nav-item.is-active .nav-icon-wrap { color: var(--lumen-on-selection); }
+html[data-lumen-theme] .phone-app .nav-action-item.is-primary .nav-action-icon {
+  color: var(--lumen-on-selection); background: transparent;
+}
+html[data-lumen-theme] .phone-app :is(.health-week-strip, .health-month-grid) button small { color: inherit; }
+html[data-lumen-theme] .phone-app .home-task-check.is-done {
+  color: var(--lumen-on-selection); background: var(--lumen-selection);
+}
+html[data-lumen-theme] .phone-app .skincare-daily-toggles .health-skincare-toggle.is-done {
+  color: var(--lumen-success); background: var(--lumen-success-bg);
+}
+html[data-lumen-theme] .phone-app :is(input, textarea, select) {
+  color: var(--lumen-text);
+  caret-color: var(--lumen-text);
+  background: var(--lumen-surface);
+  border-color: var(--lumen-control-edge);
+  color-scheme: inherit;
+  accent-color: var(--lumen-accent);
+}
+html[data-lumen-theme] .phone-app :is(input, textarea)::placeholder { color: var(--lumen-text-muted); opacity: 1; }
+html[data-lumen-theme] .phone-app :is(input, textarea, select):focus {
+  background: var(--lumen-surface-raised); border-color: var(--lumen-focus);
+}
+html[data-lumen-theme] .phone-app :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--lumen-focus); outline-offset: 3px;
+}
+html[data-lumen-theme] .phone-app :is(.task-check, .home-task-check, .progress-track,
+  .workout-progress, .focus-progress-track, .spotify-scrubber > div) {
+  border-color: var(--lumen-control-edge); background-color: var(--lumen-surface-raised);
+}
+html[data-lumen-theme] .phone-app :is(.progress-track i, .workout-progress i,
+  .focus-progress-track i, .focus-progress-track b, .spotify-scrubber i,
+  .sheet-handle, .activity-dot) { background: var(--lumen-accent); }
+html[data-lumen-theme] .phone-app .health-wellness-meter-track { stroke: var(--lumen-control-edge); }
+html[data-lumen-theme] .phone-app .health-dumbbell-icon { color: var(--lumen-text); }
+html[data-lumen-theme] .phone-app .exercise-guide-visual { background: var(--lumen-surface); }
+html[data-lumen-theme] .phone-app .exercise-guide-visual::before { background: none; }
+/* Only the supplied monochrome exercise diagrams, never portraits/photos. */
+html[data-lumen-theme='light'] .phone-app .exercise-guide-frame { filter: brightness(.18); }
+html[data-lumen-theme] .phone-app .health-daily-art .exercise-guide-visual { background: transparent; }
+html[data-lumen-theme] .phone-app :is(.focus-orbit-ring, .viewer-links, .activity-list li,
+  .daily-task-row, .detail-task, .thought-action-sheet > button, .next-track-row,
+  .home-task-card-foot, .projects-pulse-stats > span) { border-color: var(--lumen-line); }
+html[data-lumen-theme] .phone-app :is(.danger-row, .danger-sheet-button, .backup-danger,
+  .health-remove-button, .storage-error-banner, .backup-feedback.is-error) {
+  color: var(--lumen-danger); background: var(--lumen-danger-bg);
+}
+html[data-lumen-theme] .phone-app .home-save-state.is-error { color: var(--lumen-danger); }
+html[data-lumen-theme] .phone-app :is(.backup-feedback:not(.is-error), .toast) {
+  color: var(--lumen-success); background: var(--lumen-success-bg);
+}
+html[data-lumen-theme] .phone-app .storage-error-banner button {
+  color: var(--lumen-on-selection); background: var(--lumen-selection);
+}
+html[data-lumen-theme] .phone-app .toast svg { color: inherit; }
+html[data-lumen-theme] .phone-app .brain-map { background: transparent; }
+html[data-lumen-theme] .phone-app .home-task-card::before,
+html[data-lumen-theme] .phone-app .home-task-card::after { background: none; }
+html[data-lumen-theme] .phone-app .people-home-indicator { background: var(--lumen-text); }
+html[data-lumen-theme] .phone-app .people-cloud { background: transparent; }
+html[data-lumen-theme] .phone-app .workout-guide-credits a { color: var(--lumen-accent); }
+html[data-lumen-theme] .storage-loading-screen { color-scheme: inherit; }
+html[data-lumen-theme] .storage-loading-screen p { color: var(--lumen-text-secondary); }
+html[data-lumen-theme] .storage-loading-screen button {
+  color: var(--lumen-on-selection); background: var(--lumen-selection);
+}
+/* Welcome retains its accepted layout, dark glint/glow and single surface.
+   Light uses the CSS material; no dark GPU backing against a cream page. */
+html[data-lumen-theme] .lumen-start {
+  --welcome-cream: var(--lumen-text);
+  --welcome-sand: var(--lumen-text-secondary);
+  color: var(--lumen-text); background: var(--lumen-bg); color-scheme: inherit;
+}
+html[data-lumen-theme] .phone-app .lumen-enter-button { background: transparent; color: var(--lumen-text); border: 0; box-shadow: none; }
+html[data-lumen-theme='light'] .lumen-enter-button::before {
+  background: radial-gradient(ellipse at 25% 0%, rgba(255,255,255,.45), transparent 65%),
+    linear-gradient(150deg, var(--lumen-welcome-glass-tint), rgba(198,171,141,.045) 60%),
+    var(--lumen-welcome-glass-base);
+}
+/* The artwork is unchanged. In Light, show it on a deliberate round espresso
+   medallion instead of pretending its opaque brown pixels are transparent. */
+html[data-lumen-theme='light'] .lumen-start-emblem {
+  border-radius: 50%; background: #24211e;
+  -webkit-mask-image: none; mask-image: none;
+}
+@media (hover: hover) {
+  html[data-lumen-theme] .phone-app :is(.icon-button, .back-button, .backup-secondary,
+    .nav-action-item:not(.is-primary), .brain-library-card, .home-task-card):hover {
+    color: var(--lumen-text); background-color: var(--lumen-surface-raised);
+  }
+  html[data-lumen-theme] .phone-app :is(.nav-capture, .dark-button, .health-start-button):hover {
+    color: var(--lumen-on-selection); background: var(--lumen-selection);
+  }
+}
+html[data-lumen-theme] .phone-app button:disabled { opacity: 1; color: var(--lumen-text-muted); background-color: var(--lumen-surface); }
+html[data-lumen-theme] .phone-app ::selection { color: var(--lumen-on-selection); background: var(--lumen-selection); }

@@ -1,38 +1,14 @@
 /* Installed app only. The desktop handset preview keeps its own frame rules. */
 html:has(.deployed-app-root) {
-  --lumen-surface-color: var(--lumen-page-bottom);
-  --lumen-surface-background: var(--lumen-page-gradient);
-  color-scheme: light;
+  --lumen-surface-color: var(--lumen-bg);
+  --lumen-surface-background: var(--lumen-bg);
+  color-scheme: inherit;
   background: var(--lumen-surface-color);
   overscroll-behavior: none;
 }
 
-/* Follow the visible layer, not the requested route: outgoing pages remain in
-   the DOM during their exit animation. Image viewing takes precedence. */
-html:has(.deployed-app-root .storage-loading-screen) {
-  --lumen-surface-color: var(--lumen-welcome);
-  --lumen-surface-background: var(--lumen-welcome);
-  color-scheme: dark;
-}
-html:has(.deployed-app-root .lumen-start) {
-  --lumen-surface-color: var(--lumen-welcome);
-  --lumen-surface-background: var(--lumen-welcome);
-  color-scheme: dark;
-}
-html:has(.deployed-app-root .people-screen) {
-  --lumen-surface-color: var(--lumen-people-bottom);
-  --lumen-surface-background: var(--lumen-people-gradient);
-}
-html:has(.deployed-app-root :is(.brain-screen, .health-screen, .focus-player-screen)) {
-  --lumen-surface-color: var(--lumen-ink);
-  --lumen-surface-background: var(--lumen-ink);
-  color-scheme: dark;
-}
-html:has(.deployed-app-root .image-viewer) {
-  --lumen-surface-color: var(--color-obsidian);
-  --lumen-surface-background: var(--color-obsidian);
-  color-scheme: dark;
-}
+/* The persistent global appearance owns colors, including outgoing route
+   layers and overlays. Geometry below remains independent of theme. */
 
 html:has(.deployed-app-root) body,
 html:has(.deployed-app-root) #root {
@@ -125,7 +101,7 @@ html:has(.deployed-app-root) #root {
   padding-top: max(12px, env(safe-area-inset-top));
 }
 .deployed-app-screen .bottom-sheet {
-  color-scheme: light;
+  color-scheme: inherit;
   max-height: 100%;
   padding-bottom: max(22px, calc(var(--lumen-editor-safe-bottom) + 12px));
   overscroll-behavior-y: contain;
@@ -140,7 +116,7 @@ html:has(.deployed-app-root) #root {
 .deployed-app-screen .quick-capture-sheet { max-height: 100%; overflow-y: auto; padding-bottom: 20px; }
 
 .deployed-app-screen .brain-category-layer {
-  color-scheme: light;
+  color-scheme: inherit;
   padding-top: max(52px, calc(env(safe-area-inset-top) + 12px));
   padding-right: max(18px, calc(env(safe-area-inset-right) + 12px));
   padding-bottom: max(28px, calc(var(--lumen-editor-safe-bottom) + 12px));

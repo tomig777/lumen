@@ -99,7 +99,8 @@ test('palette, effects and responsive rules remain scoped to welcome', () => {
 test('the accepted full-height iPhone drawing fix and app metadata are preserved', async () => {
   assert.match(mobile, /@media \(display-mode: standalone\)[\s\S]*min-height: 100vh;[\s\S]*min-height: 100lvh/)
   assert.match(mobile, /\.deployed-app-root \{\s*bottom: auto;\s*height: 100vh;\s*height: 100lvh/)
-  assert.match(mobile, /html:has\(\.deployed-app-root \.lumen-start\) \{[^}]*color-scheme: dark/)
+  assert.doesNotMatch(mobile, /html:has\(\.deployed-app-root \.lumen-start\) \{/)
+  assert.match(main, /import '\.\/theme.css'/)
   assert.doesNotMatch(css, /\.deployed-app-root\s*\{|100dvh|100lvh/)
   const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8')
   assert.match(html, /viewport-fit=cover/)
