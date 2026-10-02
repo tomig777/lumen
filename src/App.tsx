@@ -882,7 +882,8 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveStat
   }
   return (
     <div className="screen-scroll home-screen home-minimal-screen home-theme-preview home-redesigned" aria-label="Home" tabIndex={-1}>
-      <div className="minimal-home-top"><span className={`home-save-state is-${saveState.kind}`} role="status">{saveState.kind === 'saved' && <Check size={12} aria-hidden="true" />}{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : saveState.kind === 'loading' ? 'Checking device storage…' : 'Not saved'}</span>{saveState.kind === 'error' && <button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button>}</div>
+      <span className="home-save-announcement" role="status" aria-live="polite">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : saveState.kind === 'loading' ? 'Checking device storage…' : ''}</span>
+      {saveState.kind === 'error' && <div className="minimal-home-top"><span className="home-save-state is-error" role="status">Not saved</span><button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button></div>}
 
       <section className="home-liquid-focus" aria-label="Your day">
         <div className="home-liquid-heading">
@@ -900,7 +901,17 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveStat
       </section>
 
       <section className="home-section home-task-section">
-        <div className="home-task-heading"><div className="home-task-heading-copy"><h2><time dateTime={today}>{formatLongDate(today)}</time></h2><span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span></div><div className="home-task-controls"><button type="button" className="home-task-control" onClick={onAddTask} aria-label="Add task"><Plus size={17} /></button><button type="button" className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task" disabled={!tasks.length}><ChevronLeft size={17} /></button><button type="button" className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task" disabled={!tasks.length}><ChevronRight size={17} /></button></div></div>
+        <div className="home-task-heading">
+          <div className="home-task-heading-row">
+            <h2><time dateTime={today}>{formatLongDate(today)}</time></h2>
+            <div className="home-task-controls">
+              <button type="button" className="home-task-control" onClick={onAddTask} aria-label="Add task"><Plus size={17} /></button>
+              <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task" disabled={!tasks.length}><ChevronLeft size={17} /></button>
+              <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task" disabled={!tasks.length}><ChevronRight size={17} /></button>
+            </div>
+          </div>
+          <span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span>
+        </div>
         {totalTasks > 0 && openTasks.length === 0 && <p className="home-day-complete" role="status"><Check size={15} aria-hidden="true" /> Everything is complete for today.</p>}
         {tasks.length ? <motion.div layoutScroll className={`home-task-carousel ${departingTaskId ? 'is-reordering' : ''}`} ref={taskCarouselRef} role="group" aria-label="Today's tasks">
           {tasks.map((task, index) => {

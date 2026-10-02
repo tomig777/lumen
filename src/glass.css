@@ -1,5 +1,5 @@
 /* Shared CSS-only material. Opaque bases make contrast independent of whatever
-   scrolls behind a control. Diagonal shading, one LOCAL top glint, no lower rim.
+   scrolls behind a control. Quiet diagonal shading, no decorative edge lights.
    Keep shell/safe-area geometry in mobile.css and the accepted welcome separate. */
 html[data-lumen-theme] {
   --lumen-glass-top: #45382c;
@@ -64,29 +64,6 @@ html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
   gap: 8px;
   padding: 12px 16px;
 }
-/* Only two prominent pill families emit above-edge light, never beneath them. */
-html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary)::before {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  left: 20%;
-  right: 20%;
-  top: -20px;
-  height: 20px;
-  background: radial-gradient(ellipse at 50% 100%, var(--lumen-glow), transparent 72%);
-}
-html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
-  .nav-capture, .bottom-nav)::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  top: 0;
-  left: calc(50% - 28px);
-  width: 56px;
-  height: 2px;
-  background: radial-gradient(ellipse at center, var(--lumen-glint), transparent 72%);
-  opacity: .65;
-}
 html[data-lumen-theme] .phone-app.phone-app .bottom-nav {
   border-color: transparent;
   color: var(--lumen-text);
@@ -97,7 +74,6 @@ html[data-lumen-theme] .phone-app.phone-app .bottom-nav {
 }
 /* Capture retains its existing absolute anchor; only the glyph rotates. */
 html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-capture { position: absolute; transform: none; }
-html[data-lumen-theme] .phone-app.phone-app .nav-capture::after { left: calc(50% - 12px); width: 24px; }
 html[data-lumen-theme] .phone-app.phone-app .nav-capture-icon { display: inline-flex; }
 html[data-lumen-theme] .phone-app.phone-app .bottom-nav .nav-item {
   min-width: 44px;
@@ -146,7 +122,7 @@ html[data-lumen-theme] .phone-app.phone-app .nav-action-item .nav-action-icon {
 html[data-lumen-theme] .phone-app.phone-app .nav-action-item > span:last-child { width: auto; min-width: 0; overflow-wrap: anywhere; }
 html[data-lumen-theme] .phone-app.phone-app .home-task-heading { flex-wrap: wrap; gap: 12px; }
 html[data-lumen-theme] .phone-app.phone-app .health-start-button { flex: 1; max-width: 240px; }
-/* Never fade a disabled label below readable contrast or leave a bright glint. */
+/* Never fade a disabled label below readable contrast. */
 html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
   .complete-set-button, .save-pin-button, .remember-button, .onboarding-login-submit,
   .home-save-retry, .nav-capture, .nav-action-item, .focus-player-play,
@@ -158,8 +134,6 @@ html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
   scale: 1;
   cursor: not-allowed;
 }
-html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary, .nav-capture):disabled::before,
-html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary, .nav-capture):disabled::after { display: none; }
 @media (hover: hover) and (pointer: fine) {
   html[data-lumen-theme] .phone-app.phone-app :is(.dark-button, .backup-primary,
     .nav-capture, .nav-action-item.is-primary, .health-start-button):not(:disabled):hover {

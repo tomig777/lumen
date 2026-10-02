@@ -22,7 +22,18 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state {
   color: var(--lumen-text-muted);
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state.is-error { color: var(--lumen-danger); }
+.home-redesigned .home-save-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus {
+  /* Deliberate hero spacing replaces the former visible 16px save-status row. */
+  padding-top: 24px;
   margin-bottom: 24px;
   overflow: visible;
   transition: none;
@@ -30,7 +41,7 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus 
 /* At normal text size this remains the baseline 49.39px heading, leaving the
    stage at y=145.4 in the 390/320/844-wide browser baselines. Larger text is
    allowed to expand naturally rather than clipping or overlaying the hero. */
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { margin: 0 5px; min-height: 49.4px; align-items: center; flex-wrap: wrap; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { margin: 0 5px; min-height: 49.4px; align-items: flex-start; flex-wrap: wrap; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading > div { gap: 2px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading h1 {
   margin: 0;
@@ -75,12 +86,12 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character {
   isolation: isolate;
   pointer-events: none;
   /* Lighting/eyes in this CSS fallback remain useful without a GPU. */
-  background: radial-gradient(ellipse at 28% 22%, #745339, #35271d 45%, #171411 82%);
+  background: radial-gradient(ellipse at 28% 22%, #fff1dc, #e8d9c7 45%, #b59f87 82%);
 }
 .home-character-fallback { position: absolute; inset: 0; }
-.home-character-fallback i { position: absolute; top: 35%; width: 10px; height: 27px; border-radius: 999px; background: #f4e7d5; }
-.home-character-fallback i:first-child { left: 36%; transform: rotate(-3deg); }
-.home-character-fallback i:last-child { right: 36%; transform: rotate(3deg); }
+.home-character-fallback i { position: absolute; top: 33%; width: 13px; height: 34px; border-radius: 999px; background: #302b26; }
+.home-character-fallback i:first-child { left: calc(50% - 32px); transform: rotate(-3deg); }
+.home-character-fallback i:last-child { right: calc(50% - 32px); transform: rotate(3deg); }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character[data-ready="true"] { background: transparent; }
 .home-character[data-ready="true"] .home-character-fallback { visibility: hidden; }
 .home-character > div { position: absolute !important; inset: 0; }
@@ -97,10 +108,11 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-captio
   margin-top: 7px;
   font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading { margin-bottom: 16px; gap: 12px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading-copy { min-width: 0; gap: 4px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading h2 { margin: 0; color: var(--lumen-text); font: 400 28px/1.15 Georgia, 'Times New Roman', serif; letter-spacing: -.035em; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-summary { color: var(--lumen-text-muted); font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading { margin-bottom: 16px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading h2 { margin: 0; max-width: 100%; overflow-wrap: anywhere; color: var(--lumen-text); font: 500 26px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.035em; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading time { font: inherit; white-space: normal; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-summary { color: var(--lumen-text-muted); text-align: start; font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls { flex-shrink: 0; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { gap: 10px; margin-bottom: 0; padding-bottom: 8px; scroll-padding: 4px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-wrap {

@@ -24,7 +24,7 @@ const text = node => typeof node === 'string' ? node : Array.isArray(node) ? nod
 const task = (id, fields = {}) => ({ id, title: `Task ${id}`, priority: 'medium', completed: false, ...fields })
 const date = '2026-10-03'
 
-function harness(tasks, { reduced = false, save = 'saved' } = {}) {
+function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) {
   const old = globalThis.window
   let nextId = 1, retries = 0, adds = 0
   const timers = new Map(), frames = new Map(), toggles = [], edits = [], scrolls = []
@@ -37,7 +37,7 @@ function harness(tasks, { reduced = false, save = 'saved' } = {}) {
   const module = { exports: {} }
   new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './HomeCharacter' ? { HomeCharacter: () => React.createElement('div', { 'aria-hidden': true }) } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
   const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), scrollBy: options => scrolls.push(options) }
-  const props = { data: { tasks }, today: date, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
+  const props = { data: { tasks }, today, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
     toggles.push(id); props.data = { tasks: props.data.tasks.map(item => item.id === id ? daily.toggleTaskForDate(item,props.today,`${date}T12:00:00Z`) : item) }; render()
   } }
   let view
@@ -128,11 +128,48 @@ test('save feedback/retry remain reachable; long titles are complete DOM text, w
   const h = harness([task('long',{dueDate:date,title})],{save:'error'})
   try {
     assert.ok(text(h.view.toJSON()).includes('Not saved')); h.click('Retry'); assert.equal(h.retries,1)
+    assert.equal(text(h.view.root.findByProps({className:'home-save-state is-error'})), 'Not saved')
+    assert.equal(h.view.root.findAllByProps({className:'minimal-home-top'}).length, 1)
     assert.equal(text(h.view.root.findByProps({role:'meter'})),'0%')
     const edit = h.view.root.findByProps({'aria-label':`Edit ${title}`})
     assert.equal(edit.type,'button'); assert.equal(edit.props.type,'button'); assert.ok(text(h.view.toJSON()).includes(title))
     h.click(`Edit ${title}`); assert.deepEqual(h.edits,['long']); assert.deepEqual(h.toggles,[])
   } finally { h.dispose() }
+})
+
+test('successful and pending saves are polite announcements without a visible status row or checkmark', () => {
+  for (const [save, message] of [['saved','Saved on this device'],['saving','Saving…'],['loading','Checking device storage…']]) {
+    const h = harness([], {save})
+    try {
+      const announcement = h.view.root.findByProps({className:'home-save-announcement'})
+      assert.equal(announcement.props.role, 'status'); assert.equal(announcement.props['aria-live'], 'polite')
+      assert.equal(text(announcement), message); assert.equal(announcement.findAllByType('svg').length, 0)
+      assert.equal(h.view.root.findAllByProps({className:'minimal-home-top'}).length, 0)
+      assert.equal(h.view.root.findAllByProps({className:'home-save-retry'}).length, 0)
+    } finally { h.dispose() }
+  }
+  assert.match(css, /home-save-announcement[\s\S]*position: absolute;[\s\S]*width: 1px;[\s\S]*clip-path: inset\(50%\)/)
+  assert.match(css, /home-liquid-focus[\s\S]*padding-top: 24px/)
+})
+
+test('single/double-digit dates and long months share a dedicated control row, with counts below', () => {
+  for (const [today, expected] of [['2026-10-03','October 3'],['2026-10-13','October 13'],['2026-09-30','September 30']]) {
+    const h = harness([], {today})
+    try {
+      const row = h.view.root.findByProps({className:'home-task-heading-row'})
+      assert.equal(text(row.findByType('time')), expected); assert.equal(row.findByType('time').props.dateTime, today)
+      assert.equal(row.findAllByType('button').length, 3)
+      assert.equal(row.findAllByProps({className:'home-task-summary'}).length, 0)
+      assert.equal(text(h.view.root.findByProps({className:'home-task-summary'})), '0 open · 0 done')
+    } finally { h.dispose() }
+  }
+  assert.match(css, /home-task-heading-row[^}]*align-items: center;[^}]*flex-wrap: wrap/)
+  assert.match(css, /home-task-heading h2[^}]*500 26px\/1.2[^}]*lining-nums tabular-nums/)
+  assert.match(css, /home-task-heading time \{ font: inherit; white-space: normal/)
+  assert.match(css, /home-task-heading h2[^}]*max-width: 100%; overflow-wrap: anywhere/)
+  assert.match(css, /home-task-summary[^}]*text-align: start/)
+  assert.match(css, /home-liquid-heading \{[^}]*align-items: flex-start/)
+  assert.doesNotMatch(css, /Georgia|Times New Roman/)
 })
 
 test('Home material preserves static 216px/270px stage, unbounded title wrapping, quiet cards and nav-safe scrolling', () => {

@@ -133,12 +133,10 @@ test('actual glass gradients and hover composites keep readable labels and selec
   })
 })
 
-test('shared glass is CSS-only, local above-edge decoration; preserves welcome and shell geometry', () => {
+test('shared glass has no decorative edge lights; preserves welcome separation and shell geometry', () => {
   assert.ok(main.indexOf("'./glass.css'") > main.indexOf("'./settings.css'"))
   assert.match(css, /min-width: 44px;[\s\S]*min-height: 44px/)
-  assert.match(css, /pointer-events: none/)
-  assert.match(css, /top: -20px;\s*height: 20px/)
-  assert.match(css, /width: 56px;\s*height: 2px/)
+  assert.doesNotMatch(css, /::before|::after|--lumen-glow|--lumen-glint/)
   assert.match(css, /backdrop-filter: none/)
   assert.match(css, /\.bottom-nav \.nav-capture \{ position: absolute; transform: none; \}/)
   assert.match(css, /:disabled[\s\S]*opacity: 1/)

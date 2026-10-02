@@ -213,6 +213,82 @@ These bounds/tests do not establish GPU timing, Airplane Mode or visual approval
 on the iPhone. Inspect this static appearance and responsiveness there before
 tuning/adding Phase 7 motion. No character interactions or data changes added.
 
+## 6a. Pre-animation visual refinement — implemented; phone check pending
+
+User checked 0.1.16 on the phone and requested these changes before idle eyes.
+Implemented in 0.1.17. This supersedes the earlier main-app glint, serif date and bronze-body choices;
+welcome remains unchanged. No phone GPU timing claim follows from that feedback.
+
+1. Remove main-app above-edge glints/glows at their shared CSS source.
+   - Remove the decorative `::after` glints on nav, + and shared primary pills,
+     and the `::before` glow on shared primary/backup buttons.
+   - Keep the warm glass gradients, readable selection, press/focus/disabled
+     states, all targets and existing nav anchors. Do not blanket-remove icon
+     pseudo-elements. Preserve welcome's separate top shine/light spread.
+2. Remove the normal visible Home save-status label/checkmark.
+   - Retain polite accessible saving/saved feedback and existing save services.
+   - Keep failures and Retry visibly reachable; do not hide errors or imply
+     that a local save is an external backup. Details stay in Settings.
+   - Use deliberate page spacing rather than a hidden empty status-row spacer;
+     preserve accepted safe areas and the character's measured slot.
+3. Correct the two Home header rows structurally.
+   - Replace Georgia on the date with medium-weight local system sans-serif
+     and lining numerals. Keep month/day together in the same text style.
+   - Put date and +/previous/next in one vertically aligned row; put task counts
+     beneath, so counts no longer influence the controls' vertical position.
+   - Top-align the signal label and state pill instead of centering the pill
+     against the entire label/percentage stack. The state remains a badge,
+     not a new clickable button. Verify visible glyph edges as well as boxes.
+   - Preserve real dates/progress and control actions. Long months, larger text
+     and small screens must wrap deliberately without clipped controls; retain
+     44px targets and the normal right-hand control layout when space allows.
+4. Revise the static character, including its no-GPU fallback.
+   - Try warm cream `#e8d9c7` with gentle champagne/taupe shading, lower
+     metallicity and softer lighting; avoid turning the lower hemisphere black.
+   - Recommend deep espresso eyes (`#302b26`) for contrast against cream.
+     Keep the pill shape and face arrangement; increase width/height about 25%.
+   - Recheck surface attachment for the larger geometry. Mirror/loading/error
+     fallback must match the cream body, dark eyes and new proportions.
+   - Keep the 216px sphere, position, lazy/demand rendering, DPR cap and pause/
+     failure/disposal guards. No blink/gaze timers or new graphics dependency.
+5. Verify and publish this visual-only revision before Phase 7.
+   - Extend tests for no shared shine, no visible success label, retained retry,
+     lining-date/header layout and updated eye/fallback geometry.
+   - Inspect both themes at reference viewports; test single/double-digit dates,
+     long month names, overflow, reduced motion, editors and nav clearance.
+   - Run the complete regressions/build, publish through the existing guarded
+     update flow, and verify the exact public version/build.
+   - Ask for a phone appearance check of the cream character and alignment
+     before proceeding to idle animation. No record migrations/reset required.
+
+Verification for 0.1.17 (2026-10-03): production build and all 142 tests pass.
+The shared material retains its gradients/contrast/focus/press states but no
+longer authors decorative pseudo-element edge lights. Welcome files are unchanged.
+Home success/pending save feedback is a clipped polite live region; only a failed
+save adds the visible Not saved/Retry row. Existing persistence is untouched.
+
+Signal label and state badge both start at y=76. Date and 44px controls share
+a centered row; counts are left-aligned underneath. System lining numerals
+replace Georgia. The normal 216px sphere remains at y=145.39 and x=87/52/314
+in 390/320/844-wide browser layouts. Low-metallicity cream, warm hemisphere
+fill and softer key/rim lights replace bronze; espresso capsule eyes are 25%
+larger and attached at radius 1.03. CSS mirror/loading/failure eyes are 13 × 34px.
+No animation timers, renderer budget, lifecycle or shell/safe-area changes.
+
+Browser QA checked both themes and narrow/portrait/landscape layouts without
+horizontal document overflow; nav and + computed decoration is none. Shared
+primary editor buttons also have no before/after light. The editor paused the
+character without creating a task; scrolling off-screen paused it and the final
+task row remained above nav. Actual completion/undo changed progress 0 → 50 → 0.
+Safe local updates retained the demo records; browser logs had no errors.
+
+A disposable, non-published fixture using the production header CSS checked
+October 3, October 13, September 30 and 200% date/count text at 320px: long rows
+wrap controls, and enlarged date text wraps without horizontal document overflow.
+That fixture does not prove iOS Dynamic Type behavior. It was removed before
+the release build. Physical iPhone appearance, larger text and native status/safe
+area acceptance remain pending; ask the user to approve before Phase 7 motion.
+
 ## 7. Idle eyes
 
 - [ ] Add randomized quiet gaze/blink sequencing with short bounded animations.

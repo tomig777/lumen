@@ -26,19 +26,19 @@ function CharacterModel({ theme, active, onReady, onFailure }: HomeCharacterScen
   }, 1)
 
   return <>
-    <hemisphereLight args={['#ffe9cc', '#1c1611', 1.5]} />
-    <directionalLight position={[-3, 5, 3]} color="#ffe6bd" intensity={4} />
+    <hemisphereLight args={['#fff0da', '#b59f87', 1.5]} />
+    <directionalLight position={[-3, 5, 3]} color="#ffe6bd" intensity={2} />
     <directionalLight position={[3, 1, 3]} color="#e8d9c7" intensity={theme === 'dark' ? .65 : .5} />
-    <pointLight position={[2.4, .5, -1.2]} color="#d89c53" intensity={8} distance={8} decay={2} />
+    <pointLight position={[2.4, .5, -1.2]} color="#d89c53" intensity={3} distance={8} decay={2} />
     <mesh>
       <sphereGeometry args={[1, 48, 32]} />
-      <meshPhysicalMaterial color="#483326" metalness={.18} roughness={.48} specularIntensity={.5} clearcoat={.3} clearcoatRoughness={.55} />
+      <meshPhysicalMaterial color="#e8d9c7" metalness={.03} roughness={.55} specularIntensity={.35} clearcoat={.2} clearcoatRoughness={.55} />
     </mesh>
     {[-.23, .23].map(x => {
       const pose = eyePose(x, .18)
       return <mesh key={x} position={pose.position} quaternion={pose.quaternion}>
-        <capsuleGeometry args={[.047, .16, 6, 12]} />
-        <meshBasicMaterial color="#f4e7d5" />
+        <capsuleGeometry args={[.05875, .2, 6, 12]} />
+        <meshBasicMaterial color="#302b26" />
       </mesh>
     })}
   </>
