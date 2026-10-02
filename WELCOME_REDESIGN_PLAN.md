@@ -25,6 +25,39 @@ rules. The accepted `100lvh` ancestor/app heights, safe-area navigation offsets,
 manifest/Apple status-bar metadata and storage code must not change. The later
 startup refinement below adds only temporary first-paint colour hints.
 
+## Single glass surface · 0.1.10
+
+- The user's iPhone confirms the native status icons now appear white, but a
+  second lower button edge remains. Isolated browser comparisons of the actual
+  0.1.9 build (both layers, WebGL-only, CSS-only) show that disabling its CSS
+  backing removes the extra rim. The existing lens was also 1.5 CSS pixels
+  smaller than the HTML capsule. This is evidence for duplicated painting, not
+  proof of an iOS/WebKit defect or physical-phone acceptance of this fix.
+- Keep the real HTML button transparent. Put the complete CSS fallback on one
+  pseudo-element and stop painting it only once the current canvas is ready.
+  Preserve the exact approved top-centre glint and label above either surface.
+  No crossfade briefly combines both surfaces. Remove backdrop blur, reset
+  native button appearance, and use only the HTML button's rounded clipping.
+- Match the procedural capsule to its canvas without an inset. Keep capped
+  DPR, demand-only rendering, two transmission samples, lazy loading and GPU
+  disposal unchanged; no new dependency, renderer, animation loop or asset.
+- A canvas session owns its readiness. Reduce Motion remounts wait for a new
+  first frame; late callbacks from a disposed/failed canvas cannot hide the
+  fallback. Entry stays enabled while loading or after a renderer failure.
+- Do not change layout, artwork, palette, launch/status metadata, installed
+  full-height rules, storage, installation identity or update mechanics.
+
+Preflight: production build and all 102 tests passed. The real production UI
+was checked at 390 × 844, 320 × 568 and 844 × 390: canvas/button boxes match,
+the loaded glass has no painted CSS backing, blur or outer shadow, label centre
+error is under 0.01px, and no horizontal overflow appears. A new-origin probe
+that denies the actual renderer chunk verifies the visible CSS fallback and
+keyboard entry. Leaving welcome disposes the canvas and restores light Home.
+The local normal update from cached 0.1.6 to 0.1.10 preserves 450 notes, 2 journal
+entries, 3 projects, 9 tasks, 0 embedded images and the last local save time.
+No browser/device storage was cleared. The user's physical iPhone edge check
+remains the final acceptance step after publication.
+
 ## Welcome shine and launch contrast · 0.1.9
 
 - Keep the approved capsule, artwork, type, label alignment and subtle float.

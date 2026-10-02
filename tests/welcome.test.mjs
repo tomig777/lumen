@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { transformSync } from 'esbuild'
+import * as THREE from 'three'
 
 const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const css = await readFile(new URL('../src/welcome.css', import.meta.url), 'utf8')
@@ -149,4 +150,35 @@ test('a top-centre shine sits above either glass fallback without a below-button
   assert.doesNotMatch(shine, /animation:|filter:|box-shadow:|border:/)
   assert.match(css, /\.lumen-enter-label[^\n]+z-index: 3/)
   for (const shadow of css.matchAll(/box-shadow:\s*([^;]+);/g)) assert.equal(shadow[1], 'none')
+})
+
+test('only one glass surface paints, with no native appearance or rounded backdrop-blur layer', () => {
+  const button = css.match(/\.lumen-enter-button \{([^}]+)\}/)[1]
+  const fallback = css.match(/\.lumen-enter-button::before \{([^}]+)\}/)[1]
+  const glass = css.match(/\.lumen-enter-glass \{([^}]+)\}/)[1]
+  assert.match(button, /-webkit-appearance: none;/)
+  assert.match(button, /appearance: none;/)
+  assert.match(button, /background: transparent;/)
+  assert.match(fallback, /linear-gradient/)
+  assert.match(fallback, /opacity: 1;/)
+  assert.match(css, /\.lumen-enter-button:has\(\.lumen-enter-glass\[data-ready='true'\]\)::before \{ opacity: 0; \}/)
+  assert.doesNotMatch(css, /backdrop-filter:/)
+  assert.doesNotMatch(glass, /overflow:|border-radius:/, 'one rounded clipping owner: the HTML button')
+})
+
+test('the procedural glass silhouette exactly matches its canvas in portrait, narrow and landscape layouts', async () => {
+  const renderer = await readFile(new URL('../src/components/FluidGlassButton.tsx', import.meta.url), 'utf8')
+  assert.match(renderer, /capsuleGeometry\(viewport.width, viewport.height\)/)
+  const geometrySource = renderer.slice(renderer.indexOf('function capsuleGeometry('), renderer.indexOf('/** Small local studio'))
+  const { code } = transformSync(geometrySource, { loader: 'ts', format: 'cjs' })
+  const capsuleGeometry = new Function('THREE', `${code}\nreturn capsuleGeometry`)(THREE)
+  for (const [width, height] of [[286, 58], [264, 54], [274, 54]]) {
+    const geometry = capsuleGeometry(width / 100, height / 100)
+    try {
+      geometry.computeBoundingBox()
+      const size = geometry.boundingBox.getSize(new THREE.Vector3())
+      assert.ok(Math.abs(size.x * 100 - width) < .001, 'not an inset lens exposing a second backing rim')
+      assert.ok(Math.abs(size.y * 100 - height) < .001)
+    } finally { geometry.dispose() }
+  }
 })

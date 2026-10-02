@@ -72,7 +72,9 @@ function GlassScene({ active, onReady, onFailure }: WelcomeGlassSceneProps) {
     depthBuffer: false, type: THREE.UnsignedByteType,
   })
   const backdrop = useMemo(() => new THREE.Scene(), [])
-  const geometry = useMemo(() => capsuleGeometry(viewport.width - .015, viewport.height - .015), [viewport.width, viewport.height])
+  // Match the HTML capsule exactly: an inset lens exposed the fallback as a
+  // second lower rim. The button clips its canvas and owns the silhouette.
+  const geometry = useMemo(() => capsuleGeometry(viewport.width, viewport.height), [viewport.width, viewport.height])
   const uniforms = useMemo(() => ({
     shift: { value: 0 }, brown: { value: new THREE.Color('#302923') }, sand: { value: new THREE.Color('#c6ab8d') },
   }), [])

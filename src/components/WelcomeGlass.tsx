@@ -1,4 +1,4 @@
-import React, { Component, useCallback, useEffect, useRef, useState } from 'react'
+import React, { Component, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 
 export interface WelcomeGlassSceneProps {
@@ -14,6 +14,21 @@ class GlassBoundary extends Component<{ children: ReactNode; onFailure: () => vo
   render() { return this.state.failed ? null : this.props.children }
 }
 
+/** Readiness belongs to this canvas mount, never to a previous GPU session. */
+function GlassSession({ Scene, active, onReady, onFailure, onReset }: WelcomeGlassSceneProps & {
+  Scene: ComponentType<WelcomeGlassSceneProps>
+  onReset: () => void
+}) {
+  const mounted = useRef(false)
+  useLayoutEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; onReset() }
+  }, [onReset])
+  const ready = useCallback(() => { if (mounted.current) onReady() }, [onReady])
+  const failure = useCallback(() => { if (mounted.current) onFailure() }, [onFailure])
+  return <Scene active={active} onReady={ready} onFailure={failure} />
+}
+
 /** The real button and its CSS fallback never depend on loading WebGL. */
 export function WelcomeGlass() {
   const host = useRef<HTMLSpanElement>(null)
@@ -23,6 +38,7 @@ export function WelcomeGlass() {
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const onReady = useCallback(() => setReady(true), [])
+  const onReset = useCallback(() => setReady(false), [])
   const onFailure = useCallback(() => { setReady(false); setFailed(true) }, [])
 
   useEffect(() => {
@@ -57,7 +73,7 @@ export function WelcomeGlass() {
     <span ref={host} className="lumen-enter-glass" aria-hidden="true" data-ready={ready && !failed && !reduced}>
       {Scene && !failed && !reduced && (
         <GlassBoundary onFailure={onFailure}>
-          <Scene active={visible} onReady={onReady} onFailure={onFailure} />
+          <GlassSession Scene={Scene} active={visible} onReady={onReady} onFailure={onFailure} onReset={onReset} />
         </GlassBoundary>
       )}
     </span>

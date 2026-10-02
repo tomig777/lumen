@@ -16,7 +16,7 @@ class Target extends EventTarget {
   removeEventListener(type, listener) { this.listeners.delete(listener); super.removeEventListener(type, listener) }
 }
 
-function harness({ reduced = false, hidden = false, loader } = {}) {
+function harness({ reduced = false, hidden = false, loader, autoReady = true } = {}) {
   const originalWindow = globalThis.window, originalDocument = globalThis.document
   const document = new Target()
   document.hidden = hidden
@@ -32,8 +32,13 @@ function harness({ reduced = false, hidden = false, loader } = {}) {
     createRequire(import.meta.url), module, module.exports, () => { loads++; return loader ? loader() : pending },
   )
   const WelcomeGlass = module.exports.WelcomeGlass
+  const readyCallbacks = []
   function Scene({ active, onReady }) {
-    React.useEffect(() => { onReady(); return () => { cleanups++ } }, [onReady])
+    React.useEffect(() => {
+      readyCallbacks.push(onReady)
+      if (autoReady) onReady()
+      return () => { cleanups++ }
+    }, [onReady])
     return React.createElement('canvas', { 'data-active': active })
   }
   let renderer
@@ -43,7 +48,7 @@ function harness({ reduced = false, hidden = false, loader } = {}) {
     { createNodeMock: () => ({ closest: () => welcome }) })
   })
   return {
-    renderer, welcome, document, media, Scene, resolve, reject,
+    renderer, welcome, document, media, Scene, resolve, reject, readyCallbacks,
     get loads() { return loads }, get cleanups() { return cleanups }, get entries() { return entries },
     setHidden(value) { act(() => { document.hidden = value; document.dispatchEvent(new Event('visibilitychange')) }) },
     setReduced(value) { act(() => { media.matches = value; media.dispatchEvent(new Event('change')) }) },
@@ -139,4 +144,48 @@ test('an in-flight load cannot mount a renderer after welcome is left', async ()
   h.dispose()
   await act(async () => { h.resolve({ FluidGlassButton: h.Scene }); await Promise.resolve() })
   assert.equal(h.cleanups, 0, 'the late renderer was never mounted')
+})
+
+test('the CSS surface stays visible until this canvas has actually rendered its first frame', async () => {
+  const h = harness({ autoReady: false })
+  try {
+    await h.load()
+    assert.equal(h.renderer.root.findAllByType('canvas').length, 1)
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], false)
+    h.click()
+    assert.equal(h.entries, 1)
+    act(() => h.readyCallbacks[0]())
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], true)
+  } finally { h.dispose() }
+})
+
+test('Reduce Motion remounts cannot hide the fallback using a previous canvas readiness callback', async () => {
+  const h = harness({ autoReady: false })
+  try {
+    await h.load()
+    const oldReady = h.readyCallbacks[0]
+    act(() => oldReady())
+    h.setReduced(true)
+    h.setReduced(false)
+    assert.equal(h.cleanups, 1)
+    assert.equal(h.loads, 1, 'reuse the loaded chunk, but wait for the new canvas')
+    act(() => oldReady())
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], false)
+    act(() => h.readyCallbacks[1]())
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], true)
+  } finally { h.dispose() }
+})
+
+test('a late first-frame callback cannot hide the fallback after a context failure', async () => {
+  const h = harness({ autoReady: false })
+  try {
+    await h.load()
+    const oldReady = h.readyCallbacks[0]
+    act(() => h.renderer.root.findByType(h.Scene).props.onFailure())
+    act(() => oldReady())
+    assert.equal(h.renderer.root.findAllByType('canvas').length, 0)
+    assert.equal(h.renderer.root.findByProps({ className: 'lumen-enter-glass' }).props['data-ready'], false)
+    h.click()
+    assert.equal(h.entries, 1)
+  } finally { h.dispose() }
 })
