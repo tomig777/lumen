@@ -73,8 +73,7 @@
   max-height: 100%;
   aspect-ratio: 1;
   object-fit: contain;
-  /* Fade the empty brown margins only, not the glass silhouette. No tile,
-     color filter, new artwork or per-frame 3D renderer is needed. */
+  /* Fade empty brown margins only; keep the exact approved artwork. */
   -webkit-mask-image: radial-gradient(circle closest-side, #000 78%, transparent 100%);
   mask-image: radial-gradient(circle closest-side, #000 78%, transparent 100%);
   pointer-events: none;
@@ -99,54 +98,69 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
+  display: inline-grid;
+  place-items: center;
   width: min(100%, 286px);
   min-width: 0;
   min-height: 58px;
   padding: 15px 24px;
-  border: 1px solid rgba(232, 217, 199, .32);
+  border: 0;
   border-radius: 999px;
   color: var(--welcome-cream);
-  background: linear-gradient(160deg, rgba(232, 217, 199, .16), rgba(198, 171, 141, .045) 70%), rgba(44, 38, 32, .76);
-  box-shadow: inset 0 1px 0 rgba(255, 239, 215, .25), inset 0 -1px 0 rgba(0, 0, 0, .2), 0 12px 28px rgba(0, 0, 0, .2);
+  background: linear-gradient(150deg, rgba(232, 217, 199, .17), rgba(198, 171, 141, .045) 60%), rgba(44, 38, 32, .76);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .2);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   font: 500 15px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: .01em;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
 .lumen-enter-button::before {
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   inset: 0;
   content: '';
   border-radius: inherit;
-  background: radial-gradient(ellipse at 20% 0%, rgba(255, 237, 208, .12), transparent 60%);
+  background: radial-gradient(ellipse at 25% 0%, rgba(255, 237, 208, .16), transparent 65%);
   pointer-events: none;
 }
-.lumen-enter-button svg { flex: 0 0 auto; color: var(--welcome-sand); }
+.lumen-enter-label { position: relative; z-index: 2; pointer-events: none; }
+.lumen-enter-glass {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.lumen-enter-glass > div { width: 100%; height: 100%; opacity: 0; }
+.lumen-enter-glass[data-ready='true'] > div { opacity: 1; }
+.lumen-enter-glass canvas { display: block; pointer-events: none; }
 @media (hover: hover) {
   .lumen-enter-button:hover {
     transform: translateY(-2px);
-    border-color: rgba(232, 217, 199, .55);
-    box-shadow: inset 0 1px 0 rgba(255, 239, 215, .38), inset 0 -1px 0 rgba(0, 0, 0, .2), 0 16px 32px rgba(0, 0, 0, .23);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, .23);
   }
 }
 .lumen-enter-button:active { transform: translateY(1px) scale(.98); }
 .lumen-enter-button:focus-visible { outline: 2px solid var(--welcome-cream); outline-offset: 5px; }
 
-/* Short, finite entrance only. The button is enabled from the first render. */
+/* Separate layers prevent the finite entrance and gentle float competing
+   for the same transform. The button is enabled from the first render. */
 @media (prefers-reduced-motion: no-preference) {
   .lumen-start-copy { animation: lumen-welcome-arrive .55s ease-out both; }
-  .lumen-start-emblem { animation: lumen-welcome-arrive .7s .04s ease-out both; }
+  .lumen-start-hero { animation: lumen-welcome-arrive .7s .04s ease-out both; }
+  .lumen-start-emblem { animation: lumen-welcome-float 6s .8s ease-in-out infinite; }
   .lumen-start-subtitle { animation: lumen-welcome-arrive .55s .1s ease-out both; }
   .lumen-start-actions { animation: lumen-welcome-arrive .5s .14s ease-out both; }
 }
+@keyframes lumen-welcome-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.lumen-start[data-motion-paused='true'] .lumen-start-emblem { animation-play-state: paused; }
 @keyframes lumen-welcome-arrive {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

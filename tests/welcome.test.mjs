@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ArrowUpRight } from 'lucide-react'
 import { transformSync } from 'esbuild'
 
 const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
@@ -18,7 +17,9 @@ const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
 const source = app.slice(app.indexOf('function WelcomeScreen('), app.indexOf('\nfunction LoginScreen('))
 assert.ok(source.startsWith('function WelcomeScreen('))
 const { code } = transformSync(source, { loader: 'tsx', jsx: 'transform' })
-const WelcomeScreen = new Function('React', 'ArrowUpRight', `${code}\nreturn WelcomeScreen`)(React, ArrowUpRight)
+// Exercise the actual glass wrapper's loading/visibility lifecycle separately.
+const WelcomeGlass = () => React.createElement('span', { className: 'lumen-enter-glass', 'aria-hidden': true })
+const WelcomeScreen = new Function('React', 'WelcomeGlass', `${code}\nreturn WelcomeScreen`)(React, WelcomeGlass)
 
 function elements(node) {
   if (!React.isValidElement(node)) return []
@@ -53,19 +54,30 @@ test('the single real entry button is immediately enabled and calls the existing
   assert.equal(tree.props.onClick, undefined, 'background taps do not enter the app')
   assert.equal(buttons[0].props.type, 'button')
   assert.equal(buttons[0].props.disabled, undefined)
+  assert.equal(buttons[0].props.children[1].props.children, 'Enter Lumen')
+  assert.doesNotMatch(renderToStaticMarkup(tree), /<svg|ArrowUpRight/)
   assert.equal(entered, 0)
   buttons[0].props.onClick()
   assert.equal(entered, 1)
   assert.match(app, /case 'welcome': return <WelcomeScreen onContinue=\{\(\) => navigate\('home'\)\}/)
 })
 
-test('welcome artwork is already in the verified offline shell; no new network font or renderer is added', () => {
+test('welcome artwork and the lazy glass chunk are in the offline shell without a remote font or model', async () => {
   const files = JSON.parse(worker.match(/^const FILES = (\[.*\])$/m)[1])
   assert.ok(files.includes('lumen-icon-v2-512.png'))
   assert.ok(!files.some((file) => file.includes('lumen-icon-v2-source')))
+  assert.ok(files.some((file) => /^assets\/FluidGlassButton-[\w-]+\.js$/.test(file)))
+  assert.ok(files.includes('licenses/react-bits.txt'))
   assert.match(css, /font-family: Georgia, 'Times New Roman', serif/)
   assert.doesNotMatch(css, /@import|https?:\/\/|@font-face/)
   assert.doesNotMatch(source, /canvas|requestAnimationFrame|setTimeout|setInterval|useEffect|useState|localStorage|indexedDB/)
+  const renderer = await readFile(new URL('../src/components/FluidGlassButton.tsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(renderer, /https?:\/\/|useGLTF|ScrollControls|useScroll|localStorage|indexedDB|requestAnimationFrame|setInterval/)
+  assert.match(renderer, /frameloop=\{props.active \? 'demand' : 'never'\}/)
+  assert.match(renderer, /dpr=\{\[1, 1.5\]\}/)
+  assert.match(renderer, /samples=\{2\}/)
+  assert.match(renderer, /webglcontextlost/)
+  assert.match(renderer, /environment.dispose\(\)/)
 })
 
 test('palette, effects and responsive rules remain scoped to welcome', () => {
@@ -93,10 +105,14 @@ test('the accepted full-height iPhone drawing fix and app metadata are preserved
   assert.match(html, /apple-mobile-web-app-status-bar-style" content="black-translucent/)
 })
 
-test('entrance motion is finite, opacity/transform-only, and disabled for reduced motion', () => {
+test('a tiny CSS float follows a separate finite entrance and respects reduced motion/visibility', () => {
   assert.match(css, /@media \(prefers-reduced-motion: no-preference\)/)
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/)
-  assert.doesNotMatch(css, /infinite|animation-iteration-count|will-change/)
+  assert.doesNotMatch(css, /animation-iteration-count|will-change/)
+  assert.match(css, /\.lumen-start-hero \{ animation: lumen-welcome-arrive/)
+  assert.match(css, /\.lumen-start-emblem \{ animation: lumen-welcome-float 6s .8s ease-in-out infinite/)
+  assert.match(css, /50% \{ transform: translateY\(-3px\); \}/)
+  assert.match(css, /data-motion-paused='true'[^\n]+animation-play-state: paused/)
   const keyframes = css.match(/@keyframes lumen-welcome-arrive \{\s*from \{([^}]+)\}\s*to \{([^}]+)\}/)
   assert.ok(keyframes)
   for (const declarations of keyframes.slice(1)) {
@@ -104,4 +120,17 @@ test('entrance motion is finite, opacity/transform-only, and disabled for reduce
   }
   assert.match(css, /\.lumen-enter-button:focus-visible/)
   assert.match(css, /min-height: 58px/)
+})
+
+test('the label is centred independently of the decorative glass, with no resting or hover stroke', () => {
+  const button = css.match(/\.lumen-enter-button \{([^}]+)\}/)[1]
+  assert.match(button, /display: inline-grid/)
+  assert.match(button, /place-items: center/)
+  assert.match(button, /border: 0;/)
+  assert.doesNotMatch(button, /inset 0|border-color/)
+  assert.doesNotMatch(css, /border-color:|inset 0 [^;]+rgba/)
+  assert.match(css, /\.lumen-enter-label[^\n]+z-index: 2/)
+  assert.match(css, /\.lumen-enter-glass \{[^}]*pointer-events: none/)
+  assert.match(css, /\.lumen-enter-glass > div[^\n]+opacity: 0/)
+  assert.match(css, /data-ready='true'[^\n]+opacity: 1/)
 })

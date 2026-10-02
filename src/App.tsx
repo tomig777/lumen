@@ -48,6 +48,7 @@ import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
 import { ScreenLayoutCheck } from './components/ScreenLayoutCheck'
+import { WelcomeGlass } from './components/WelcomeGlass'
 import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
@@ -788,7 +789,8 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
       <p className="lumen-start-subtitle">A little space for a clearer day.</p>
       <div className="lumen-start-actions">
         <button className="lumen-enter-button" type="button" onClick={onContinue}>
-          <span>Enter Lumen</span><ArrowUpRight size={17} aria-hidden="true" />
+          <WelcomeGlass />
+          <span className="lumen-enter-label">Enter Lumen</span>
         </button>
       </div>
     </main>

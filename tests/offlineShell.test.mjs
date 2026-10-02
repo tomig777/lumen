@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile, readdir } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { join, relative } from 'node:path'
 import { runInNewContext } from 'node:vm'
 
 const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
@@ -71,8 +73,10 @@ function harness(indexHtml = currentIndex, diagnosticHtml = currentDiagnostic, a
 
 test('release precaches every output asset and serves the matching shell offline', async () => {
   const app = harness()
-  const actual = await readdir(new URL('../dist/', import.meta.url), { recursive: true })
-  const outputFiles = actual.filter((name) => !name.endsWith('sw.js') && !name.endsWith('assets') && !name.endsWith('.vite')).map((name) => name.replaceAll('\\', '/')).sort()
+  const root = fileURLToPath(new URL('../dist/', import.meta.url))
+  const actual = await readdir(root, { recursive: true, withFileTypes: true })
+  const outputFiles = actual.filter((entry) => entry.isFile() && entry.name !== 'sw.js')
+    .map((entry) => relative(root, join(entry.parentPath, entry.name)).replaceAll('\\', '/')).sort()
   assert.deepEqual([...app.files].sort(), outputFiles)
   await app.dispatch('install')
   assert.equal(app.stores.size, 1)
