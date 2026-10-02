@@ -1044,6 +1044,17 @@ function BackupScreen({ data, onBack, onRestore, onPortableState, saveState, ver
       {offlineShell.updateAvailable && saveState.kind !== 'saved' && <p>Finish saving your changes before updating.</p>}
     </section>
 
+    <section className="backup-panel backup-icon-panel" aria-label="Home Screen icon artwork">
+      <span className="eyebrow">APP IDENTITY</span>
+      <h2>Home Screen icon</h2>
+      <div className="backup-icon-preview">
+        <img src="./lumen-icon-v2-180.png" width="72" height="72" alt="Lumen’s amber glass loop on dark brown" />
+        <div><strong>Lumen · Glass loop</strong><span>The icon supplied by this version.</span></div>
+      </div>
+      <p>iOS controls the installed icon. An older Home Screen icon may stay unchanged after an app update.</p>
+      <p>To check the new artwork, open Lumen’s website in Safari and inspect Share → Add to Home Screen. You can cancel without installing. Keep your existing Lumen installation and data.</p>
+    </section>
+
     <ScreenLayoutCheck canLeave={saveState.kind === 'saved'} />
 
     <section className="backup-panel backup-status-panel" aria-label="Storage settings and status">

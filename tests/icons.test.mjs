@@ -4,11 +4,8 @@ import { test } from 'node:test'
 import { inflateSync } from 'node:zlib'
 
 const scope = new URL('https://example.test/lumen/')
-const background = [36, 33, 30]
-const cream = [232, 217, 199]
-const accent = [198, 171, 141]
-const sizes = [180, 192, 512]
-const filename = (size) => `lumen-icon-v1-${size}.png`
+const sizes = [32, 180, 192, 512]
+const filename = (size) => `lumen-icon-v2-${size}.png`
 const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8')
 const manifest = JSON.parse(await readFile(new URL('../dist/manifest.webmanifest', import.meta.url), 'utf8'))
 
@@ -60,31 +57,36 @@ function scopedUrl(path, base = scope) {
   return url
 }
 
-test('square opaque icons preserve the palette and keep the mark inside the maskable safe zone', async () => {
-  const svg = await readFile(new URL('../public/lumen-icon.svg', import.meta.url), 'utf8')
-  assert.match(svg, /viewBox="0 0 512 512"/)
-  assert.match(svg, /<title[^>]*>Lumen<\/title>/)
+test('glassy PNG icons stay opaque, warm, legible and inside the maskable safe zone', async () => {
   for (const size of sizes) {
     const bytes = await readFile(new URL(`../public/${filename(size)}`, import.meta.url))
     const png = decodeRgbPng(bytes)
     assert.equal(png.width, size)
     assert.equal(png.height, size)
     for (const [x, y] of [[0, 0], [size - 1, 0], [0, size - 1], [size - 1, size - 1]]) {
-      assert.deepEqual(png.pixel(x, y), background, 'opaque dark-brown square corners; the platform applies its own mask')
+      const [r, g, b] = png.pixel(x, y)
+      assert.ok(Math.max(r, g, b) < 50 && Math.min(r, g, b) > 15 && r >= g && g >= b,
+        'full-bleed dark-brown corners, not transparent or baked-in white corners')
     }
-    const sourcePixel = (x, y) => png.pixel(Math.floor(x * size / 512), Math.floor(y * size / 512))
-    assert.deepEqual(sourcePixel(186, 220), cream, 'cream L stem')
-    assert.deepEqual(sourcePixel(285, 354), cream, 'cream L foot')
-    assert.deepEqual(sourcePixel(332, 158), accent, 'warm point of light')
+    let highlights = 0, warmHighlights = 0
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const offset = (y * size + x) * 3
-        const isBackground = background.every((channel, i) => png.pixels[offset + i] === channel)
-        if (!isBackground) {
-          assert.ok(Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) <= size * 0.4, 'foreground stays inside the central 80%-diameter maskable safe circle')
+        const [r, g, b] = png.pixels.subarray(offset, offset + 3)
+        // The raster has subtle background shading. Test the high-contrast
+        // glass silhouette, rather than requiring every shaded pixel to be
+        // an exact flat color as the previous vector artwork was.
+        if (Math.max(r, g, b) > 100) {
+          highlights++
+          if (r >= g && g >= b) warmHighlights++
+          assert.ok(Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) <= size * 0.4,
+            'visible emblem stays inside the central 80%-diameter maskable safe circle')
         }
       }
     }
+    assert.ok(highlights / (size * size) > .15 && highlights / (size * size) < .4,
+      'a distinct high-contrast shape with enough breathing room, including at favicon size')
+    assert.ok(warmHighlights / highlights > .97, 'cream/amber/brown palette, not unrelated cool colors')
     assert.deepEqual(await readFile(new URL(`../dist/${filename(size)}`, import.meta.url)), bytes, 'build copies the exact exported PNG')
   }
 })
@@ -97,7 +99,7 @@ test('iPhone metadata and manifest declare PNG icons that resolve beneath /lumen
   const touchPath = touchIcons[0].match(/\bhref="([^"]+)"/)[1]
   assert.equal(scopedUrl(touchPath).pathname, `/lumen/${filename(180)}`)
   assert.match(html, /<meta\b[^>]*\bname="apple-mobile-web-app-title"[^>]*\bcontent="Lumen"/)
-  assert.match(html, /<link\b[^>]*\brel="icon"[^>]*\bhref="\.\/lumen-icon\.svg"/)
+  assert.match(html, /<link\b[^>]*\brel="icon"[^>]*\btype="image\/png"[^>]*\bsizes="32x32"[^>]*\bhref="\.\/lumen-icon-v2-32\.png"/)
   const manifestPath = html.match(/<link\b[^>]*\brel="manifest"[^>]*\bhref="([^"]+)"/)[1]
   const manifestUrl = scopedUrl(manifestPath)
   assert.equal(manifest.short_name, 'Lumen')
@@ -112,10 +114,35 @@ test('iPhone metadata and manifest declare PNG icons that resolve beneath /lumen
   }
 })
 
-test('the production offline shell includes the editable logo and all PNG icons', async () => {
+test('the production offline shell includes all new PNG icons and the conventional touch fallback, not the large master', async () => {
   const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
   const files = JSON.parse(worker.match(/^const FILES = (\[[^\n]+\])/m)[1])
-  for (const asset of ['lumen-icon.svg', 'manifest.webmanifest', ...sizes.map(filename)]) {
+  for (const asset of ['apple-touch-icon.png', 'manifest.webmanifest', ...sizes.map(filename)]) {
     assert.ok(files.includes(asset), `offline shell includes ${asset}`)
+  }
+  assert.ok(!files.some((asset) => asset.includes('source.png')), 'authoring master is not a deployed asset')
+})
+
+test('install metadata is PNG-only and retains the existing app identity and full-screen mode', () => {
+  assert.equal(manifest.icons.length, 2)
+  for (const icon of manifest.icons) {
+    assert.equal(icon.type, 'image/png')
+    assert.match(icon.src, /^\.\/lumen-icon-v2-\d+\.png$/)
+    assert.doesNotMatch(icon.src, /svg|\?|https?:/i)
+  }
+  assert.doesNotMatch(html, /rel="(?:icon|apple-touch-icon)"[^>]*svg/i)
+  assert.equal(manifest.name, 'Lumen — Your personal space')
+  assert.equal(manifest.start_url, './')
+  assert.equal(manifest.scope, './')
+  assert.equal(manifest.display, 'standalone')
+  assert.equal(manifest.id, undefined, 'do not change the effective existing start-URL identity')
+  assert.match(html, /viewport-fit=cover/)
+  assert.match(html, /apple-mobile-web-app-status-bar-style" content="black-translucent/)
+})
+
+test('conventional touch fallback is exactly the new opaque 180px artwork', async () => {
+  const versioned = await readFile(new URL(`../public/${filename(180)}`, import.meta.url))
+  for (const directory of ['public', 'dist']) {
+    assert.deepEqual(await readFile(new URL(`../${directory}/apple-touch-icon.png`, import.meta.url)), versioned)
   }
 })

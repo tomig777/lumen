@@ -9,22 +9,16 @@
   "theme_color": "#24211e",
   "icons": [
     {
-      "src": "./lumen-icon-v1-192.png",
+      "src": "./lumen-icon-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./lumen-icon-v1-512.png",
+      "src": "./lumen-icon-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "./lumen-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ]
 }

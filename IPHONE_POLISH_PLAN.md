@@ -1,6 +1,6 @@
 # Lumen: iPhone bottom edge and Home Screen icon
 
-Status: the original implementation/release history is recorded below. **The 0.1.3 sizing/background changes failed the physical bottom-strip check.** The subsequent actual installed-iPhone A/B/C comparison (0.1.4 / 789fb93) supports B: explicit outer-document minimums restore bottom painting while the app/nav stay in place. The user confirmed dark/rotation stability and authorized integrating/publishing B. The **0.1.5** correction is locally verified; final main-app/native acceptance remains open. See [IPHONE_LAYOUT_BASELINE.md](IPHONE_LAYOUT_BASELINE.md) and the successor [bottom-strip correction plan](IPHONE_BOTTOM_STRIP_FIX_PLAN.md); desktop geometry is not proof of a production fix.
+Status: the original implementation/release history is recorded below. The original 0.1.3 changes failed; the diagnostic comparison supported B, published as **0.1.5 / 1d96983**. The user now confirms the main app's bottom edge is finally working. Preserve that accepted layout. Individual unreported stability checks remain documented in the successor plan. The user requests a new glassy abstract icon and correction of the still-grey installed icon; this next release addresses icon artwork/discovery without touching layout or data.
 
 Target: Lumen installed from GitHub Pages on the iPhone 13 Pro. The previously specified OS is iOS 17.3; record the actual installed version during device verification. Compare the installed Home Screen app with Safari because they expose different viewport behavior.
 

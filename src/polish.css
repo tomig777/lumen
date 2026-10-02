@@ -546,6 +546,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .backup-status-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(72, 54, 39, .12); font-size: 11px; }
 .backup-status-row span { color: #716356; }
 .backup-status-row strong { color: #2a241f; text-align: right; font-weight: 650; }
+.backup-icon-preview { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.backup-icon-preview img { flex: 0 0 72px; width: 72px; height: 72px; border-radius: 17px; box-shadow: 0 8px 18px rgba(36, 33, 30, .16); }
+.backup-icon-preview div { display: grid; gap: 7px; min-width: 0; }
+.backup-icon-preview strong { font-size: 13px; color: #2a241f; }
+.backup-icon-preview span { font-size: 11px; color: #716356; line-height: 1.45; }
 .backup-update-status { padding: 11px 13px; border-radius: 13px; background: #ebe0d3; color: #4d4034; font-size: 11px; line-height: 1.4; }
 .backup-panel .backup-update-time { margin: 8px 0; font-size: 10px; }
 .backup-layout-report {
