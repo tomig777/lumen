@@ -1,15 +1,30 @@
 export type GazeTarget = { x: number; y: number } | null
-export type GazeInput = { subscribe: (listener: (target: GazeTarget) => void) => () => void }
+export type CharacterReaction = 'happy' | 'all-done' | 'undo'
+export type GazeInput = {
+  subscribe: (listener: (target: GazeTarget) => void) => () => void
+  subscribeReaction?: (listener: (reaction: CharacterReaction) => void) => () => void
+  subscribeActivity?: (listener: () => void) => () => void
+}
 
 /** Presentation-only channel: no React updates or retained pointer after suspension. */
 export function createGazeInput() {
   const listeners = new Set<(target: GazeTarget) => void>()
+  const reactions = new Set<(reaction: CharacterReaction) => void>()
+  const activities = new Set<() => void>()
   return {
     subscribe(listener: (target: GazeTarget) => void) {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
     emit(target: GazeTarget) { listeners.forEach(listener => listener(target)) },
+    subscribeReaction(listener: (reaction: CharacterReaction) => void) {
+      reactions.add(listener); return () => { reactions.delete(listener) }
+    },
+    subscribeActivity(listener: () => void) {
+      activities.add(listener); return () => { activities.delete(listener) }
+    },
+    react(reaction: CharacterReaction) { reactions.forEach(listener => listener(reaction)) },
+    wake() { activities.forEach(listener => listener()) },
   }
 }
 

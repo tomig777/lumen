@@ -12,6 +12,18 @@ async function load(path) {
 const {pointerGaze, bindHomeGaze, createGazeInput} = await load('../src/components/characterPointer.ts')
 const {createIdleEyes} = await load('../src/components/characterAnimation.ts')
 
+test('reaction/activity channels discard unsubscribed and pre-resume events without retaining a queue',()=>{
+  const input=createGazeInput(),reactions=[];let activities=0
+  input.react('happy');input.wake()
+  const stopReaction=input.subscribeReaction(kind=>reactions.push(kind))
+  const stopActivity=input.subscribeActivity(()=>activities++)
+  assert.deepEqual(reactions,[]);assert.equal(activities,0)
+  input.react('all-done');input.wake();assert.deepEqual(reactions,['all-done']);assert.equal(activities,1)
+  stopReaction();stopActivity();input.react('undo');input.wake()
+  const resumed=input.subscribeReaction(kind=>reactions.push(kind))
+  assert.deepEqual(reactions,['all-done']);assert.equal(activities,1);resumed()
+})
+
 test('gaze maps relative to sphere center with bounded curved movement and inverted screen Y', () => {
   for(const size of [80,216,300]) {
     const rect={left:40,top:120,width:size,height:size}

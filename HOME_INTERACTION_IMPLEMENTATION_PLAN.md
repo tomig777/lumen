@@ -1,11 +1,11 @@
 # Lumen · fixed Home, task dialogs and character interactions
 
 Planning baseline: 0.1.19 / 99a866a, 2026-10-03.
-Status: Phases 1–5 implementation/local verification complete; Phase 5 follow-up
-fixes are in 0.1.24. The user accepted the Phase 2 keyboard fix, Phase 3 drawer and
+Status: Phases 1–6 implementation/local verification complete; Phase 5 follow-up
+fixes are in 0.1.24 and Phase 6 personality is in 0.1.25. The user accepted the Phase 2 keyboard fix, Phase 3 drawer and
 Phase 4 primary Home layout on their iPhone. Their Phase 5 drag/long-press feedback
 has been addressed locally; physical retest and detailed device edge cases remain
-pending. Phase 6 personality is not implemented; Phases 7–8 are final testing/handoff.
+pending. Phase 6 physical feel remains pending; Phases 7–8 are final testing/handoff.
 
 This plan extends the completed theme/Home/idle-eye work in
 `LUMEN_REDESIGN_IMPLEMENTATION_PLAN.md`. Later user-approved appearance changes
@@ -256,21 +256,21 @@ pending; no global touch prevention, shell/data changes or personality work.
 
 Timing below is a starting point for phone tuning, not a fixed visual commitment.
 
-- [ ] Greeting: one short double blink when returning to Home, with a cooldown
+- [x] Greeting: one short double blink when returning to Home, with a cooldown
   so transient editor dismissals do not cause repeated greetings.
-- [ ] Sleepy/wake: after roughly 30–45 seconds of visible, uncovered inactivity,
+- [x] Sleepy/wake: after roughly 30–45 seconds of visible, uncovered inactivity,
   ease into half-lidded eyes and slower blinks; wake gently on eligible interaction.
   No wall-clock catch-up or surprise sleep immediately after background resume.
-- [ ] Happy: a brief soft squint on a real user-triggered task completion. Use the
+- [x] Happy: a brief soft squint on a real user-triggered task completion. Use the
   current rounded eyes; a curved happy silhouette is optional only if it blends
   naturally. Undo, data load, restore and midnight rollover do not trigger delight.
-- [ ] All done: a slightly longer happy response only on a user action taking a
+- [x] All done: a slightly longer happy response only on a user action taking a
   nonempty day from incomplete to complete. No text insertion or layout movement.
-- [ ] Rate-limit/coalesce reactions during rapid completion. Direct gaze wins;
+- [x] Rate-limit/coalesce reactions during rapid completion. Direct gaze wins;
   do not queue a long series of expressions to play later.
-- [ ] Keep body, palette, lighting, size and numerical progress unchanged. Do not
+- [x] Keep body, palette, lighting, size and numerical progress unchanged. Do not
   add sad/guilt reactions to inactivity or overdue tasks; puzzled moods are deferred.
-- [ ] Expressions remain transient presentation state, not stored personal data.
+- [x] Expressions remain transient presentation state, not stored personal data.
   Keep cancellation/reset and Reduce Motion behavior shared with idle/touch motion.
 
 Tests: transition/priority matrix, one reaction per qualifying event, empty-day
@@ -279,6 +279,20 @@ bounded timers/rendering and neutral fallback/cleanup.
 
 Gate: the character feels supportive and quiet, never delays task actions, and
 does not need continuous settled rendering or alter task semantics.
+
+Phase 6 implementation/local verification is recorded in
+`HOME_CHARACTER_PERSONALITY_VERIFICATION.md` (0.1.25, 2026-10-03): production build,
+181/181 automated tests and 826/826 browser layout invariants pass. The real renderer
+was checked for sleepy/wake, direct gaze priority, all-done squint and static Reduce
+Motion in Light. Production Home completion/undo, reload persistence, stable geometry
+and the applied final-completion squint were checked on disposable localhost data.
+Greeting lasts 480ms with a 60s in-memory cooldown; sleep begins after 40s visible
+inactivity, settles at .48 openness, and wakes over 280ms. Happy/all-done are finite
+920/1520ms expressions with a 1500ms rate limit and an immediate happy-to-all-done
+upgrade. Held expressions use timers rather than continuous draws. No reactions
+are queued on restore/load/resume; no appearance, shell, storage or task-semantic
+changes. Native iPhone performance/feel and the integrated Phase 7 checks remain
+pending; local success is not a physical-device pass.
 
 ## Phase 7 · Integrated regression and physical-phone acceptance
 

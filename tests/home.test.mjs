@@ -19,15 +19,18 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Circle, Plus, ChevronLeft, ChevronRight, Pencil, RotateCcw } from 'lucide-react';
 import { classifyTasks, taskIsComplete } from './daily';
 import { HomeCharacter } from './HomeCharacter';
+import { createGazeInput } from './components/characterPointer';
 ${helpers}\n${source}\nexport { HomeScreen };`, { loader: 'tsx', format: 'cjs', jsx: 'transform' })
 const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children?.map(text).join('') ?? ''
 const task = (id, fields = {}) => ({ id, title: `Task ${id}`, priority: 'medium', completed: false, ...fields })
+const pointerModule = { exports: {} }
+new Function('module','exports',transformSync(await readFile(new URL('../src/components/characterPointer.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs'}).code)(pointerModule,pointerModule.exports)
 const date = '2026-10-03'
 
 function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) {
   const old = globalThis.window
   let nextId = 1, retries = 0, adds = 0, historyOpens = 0
-  const timers = new Map(), frames = new Map(), toggles = [], edits = [], scrolls = []
+  const timers = new Map(), frames = new Map(), toggles = [], edits = [], scrolls = [], reactions = []
   globalThis.window = { setTimeout: fn => { const id = nextId++; timers.set(id,fn); return id }, clearTimeout: id => timers.delete(id), requestAnimationFrame: fn => { const id = nextId++; frames.set(id,fn); return id }, cancelAnimationFrame: id => frames.delete(id) }
   const components = new Map()
   const motion = new Proxy({}, { get: (_,tag) => {
@@ -35,7 +38,7 @@ function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) 
     return components.get(tag)
   } })
   const module = { exports: {} }
-  new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './HomeCharacter' ? { HomeCharacter: () => React.createElement('div', { 'aria-hidden': true }) } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
+  new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './components/characterPointer' ? pointerModule.exports : name === './HomeCharacter' ? { HomeCharacter: ({input}) => { React.useLayoutEffect(()=>input.subscribeReaction(value=>reactions.push(value)),[input]);return React.createElement('div', { 'aria-hidden': true }) } } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
   const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), querySelectorAll: () => [...props.data.tasks.filter(item=>daily.taskScheduledOn(item,props.today)&&!daily.taskIsComplete(item,props.today)),...props.data.tasks.filter(item=>daily.taskScheduledOn(item,props.today)&&daily.taskIsComplete(item,props.today))].map((item,index)=>({dataset:{homeTaskId:item.id},offsetLeft:index*254})), scrollBy: options => scrolls.push(options) }
   const props = { data: { tasks }, today, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onOpenTaskHistory: () => historyOpens++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
     toggles.push(id); props.data = { tasks: props.data.tasks.map(item => item.id === id ? daily.toggleTaskForDate(item,props.today,`${date}T12:00:00Z`) : item) }; render()
@@ -43,7 +46,7 @@ function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) 
   let view
   const render = () => view.update(React.createElement(module.exports.HomeScreen,props))
   act(() => { view = create(React.createElement(module.exports.HomeScreen,props),{ createNodeMock: element => element.props.className?.includes('home-task-carousel') ? carousel : null }) })
-  return { view,props,timers,frames,toggles,edits,scrolls,carousel,
+  return { view,props,timers,frames,toggles,edits,scrolls,carousel,reactions,
     get retries() { return retries }, get adds() { return adds }, get historyOpens() { return historyOpens },
     click(label) { const button = view.root.findAllByType('button').find(node => node.props['aria-label'] === label || text(node) === label); assert.ok(button,label); act(() => button.props.onClick()) },
     flushTimers() { act(() => { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn=>fn()) }) },
@@ -109,6 +112,31 @@ test('completion is single-shot, reorders open before done, and restores carouse
     assert.deepEqual(cards.map(node=>node.props['aria-label']),['Mark Task two complete','Mark Task one incomplete'])
     h.click('Next task'); assert.deepEqual(h.scrolls,[{left:254,behavior:'smooth'}])
   } finally { h.dispose() }
+})
+
+test('Home reactions require an applied user completion; reload/restore/rollover and undo do not celebrate',()=>{
+  const h=harness([task('one',{dueDate:date}),task('two',{dueDate:date})])
+  try {
+    assert.deepEqual(h.reactions,[])
+    h.click('Mark Task one complete');assert.deepEqual(h.reactions,[])
+    h.flushTimers();h.flushFrames();assert.deepEqual(h.reactions,['happy'])
+    h.click('Mark Task two complete');h.flushTimers();h.flushFrames();assert.deepEqual(h.reactions,['happy','all-done'])
+    h.click('Mark Task two incomplete');assert.deepEqual(h.reactions,['happy','all-done','undo'])
+    h.props.data={tasks:[task('restored',{dueDate:date,completed:true})]}
+    act(()=>h.view.update(React.createElement(h.view.root.type,h.props)))
+    h.props.today='2026-10-04';act(()=>h.view.update(React.createElement(h.view.root.type,h.props)))
+    assert.deepEqual(h.reactions,['happy','all-done','undo'])
+  }finally{h.dispose()}
+  const ignored=harness([task('one',{dueDate:date})])
+  try {
+    ignored.props.onToggleTask=()=>{} // no applied state transition
+    act(()=>ignored.view.update(React.createElement(ignored.view.root.type,ignored.props)))
+    ignored.click('Mark Task one complete');ignored.flushTimers();ignored.flushFrames()
+    assert.deepEqual(ignored.reactions,[])
+    ignored.props.data={tasks:[task('one',{dueDate:date,completed:true})]}
+    act(()=>ignored.view.update(React.createElement(ignored.view.root.type,ignored.props)))
+    assert.deepEqual(ignored.reactions,[],'late unrelated load cannot celebrate a refused action')
+  }finally{ignored.dispose()}
 })
 
 test('Reduce Motion completes immediately without timer, frame, smooth scroll or layout travel', () => {

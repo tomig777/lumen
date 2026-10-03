@@ -37,7 +37,7 @@ function harness({ edit = false, reduced = false, kind = 'task' } = {}) {
     return components.get(tag)
   }})
   const module={exports:{}}
-  new Function('require','module','exports',code)(name=>name==='framer-motion'?{motion,useReducedMotion:()=>reduced}:name==='./daily'?{}:name==='./components/HomeCharacter'?{}:require(name),module,module.exports)
+  new Function('require','module','exports',code)(name=>name==='framer-motion'?{motion,useReducedMotion:()=>reduced}:name==='./daily'?{}:name==='./components/HomeCharacter'||name==='./components/characterPointer'?{}:require(name),module,module.exports)
   const props={sheet:{kind,...edit?{id:'today'}:{}},data:baselineData('many'),taskDraft:{title:'Draft title',projectId:'',dueDate:baselineDate,recurrence:'once'},
     noteDraft:{title:'',body:''},setSheet:value=>closes.push(value),setTaskDraft:value=>changes.push(value),
     saveTask:event=>saves.push(event),onDeleteTask:id=>deletes.push(id)}

@@ -44,6 +44,7 @@ import { PeopleScreen } from './components/PeopleScreen'
 import { AppOverlay } from './components/AppOverlay'
 import { buildBrainGraph, isSampleGraphNote } from './brainGraph'
 import { classifyTasks, localDateKey, selectedDateAfterRollover, taskCanToggleOn, taskIsComplete, toggleTaskForDate } from './daily'
+import { createGazeInput } from './components/characterPointer'
 import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
@@ -855,6 +856,9 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
   const completionTimerRef = useRef<number | undefined>(undefined)
   const completionFrameRef = useRef<number | undefined>(undefined)
   const pendingTaskRef = useRef<string | null>(null)
+  const characterInput = useRef(createGazeInput()).current
+  const pendingReactionRef = useRef<{ id: string; day: string } | null>(null)
+  const [reactionAttempt, setReactionAttempt] = useState(0)
   const reducedMotion = useReducedMotion()
   const [departingTaskId, setDepartingTaskId] = useState<string | null>(null)
   const performance = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0
@@ -876,6 +880,16 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     if (completionFrameRef.current) window.cancelAnimationFrame(completionFrameRef.current)
   }, [])
   useLayoutEffect(() => {
+    const reaction = pendingReactionRef.current
+    if (reaction) {
+      pendingReactionRef.current = null
+      const confirmed = data.tasks.find(task => task.id === reaction.id)
+      if (!mirror && characterActive && reaction.day === today && confirmed && taskIsComplete(confirmed, today) && groups.today.some(task => task.id === confirmed.id)) {
+        characterInput.react(totalTasks > 0 && openTasks.length === 0 ? 'all-done' : 'happy')
+      }
+    }
+  }, [data.tasks, today, characterActive, mirror, characterInput, reactionAttempt])
+  useLayoutEffect(() => {
     const carousel = taskCarouselRef.current
     if (!carousel) return
     if (carouselScrollLeftRef.current !== null) carousel.scrollLeft = carouselScrollLeftRef.current
@@ -891,6 +905,9 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     if (pendingTaskRef.current) return
     if (taskIsComplete(task, today) || reducedMotion) {
       carouselScrollLeftRef.current = taskCarouselRef.current?.scrollLeft ?? 0
+      pendingReactionRef.current = taskIsComplete(task, today) ? null : { id: task.id, day: today }
+      setReactionAttempt(attempt => attempt + 1)
+      if (taskIsComplete(task, today)) characterInput.react('undo')
       onToggleTask(task.id)
       return
     }
@@ -898,6 +915,10 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     pendingTaskRef.current = task.id
     setDepartingTaskId(task.id)
     completionTimerRef.current = window.setTimeout(() => {
+      pendingReactionRef.current = { id: task.id, day: today }
+      // Consume the ticket in this action's commit, even if the parent rejects
+      // the change. A later restore/reload must never celebrate a stale action.
+      setReactionAttempt(attempt => attempt + 1)
       onToggleTask(task.id)
       completionFrameRef.current = window.requestAnimationFrame(() => {
         const carousel = taskCarouselRef.current
@@ -909,7 +930,8 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     }, 300)
   }
   return (
-    <div className="screen-scroll home-screen home-minimal-screen home-theme-preview home-redesigned home-fixed" aria-label="Home" tabIndex={-1}>
+    <div className="screen-scroll home-screen home-minimal-screen home-theme-preview home-redesigned home-fixed" aria-label="Home" tabIndex={-1}
+      onPointerDownCapture={() => { if (!mirror) characterInput.wake() }} onKeyDownCapture={() => { if (!mirror) characterInput.wake() }}>
       <span className="home-save-announcement" role="status" aria-live="polite">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : saveState.kind === 'loading' ? 'Checking device storage…' : ''}</span>
       <span className="home-completion-announcement" role="status" aria-live="polite" aria-atomic="true">{totalTasks > 0 && openTasks.length === 0 ? 'All scheduled tasks complete.' : ''}</span>
 
@@ -923,7 +945,7 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
         </div>
         {saveState.kind === 'error' && <div className="minimal-home-top"><span className="home-save-state is-error" role="status">Not saved</span><button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button></div>}
         <div className="liquid-bowl-stage">
-          <HomeCharacter theme={theme} active={characterActive} mirror={mirror} />
+          <HomeCharacter theme={theme} active={characterActive} mirror={mirror} input={characterInput} />
           <span className="liquid-bowl-shadow" aria-hidden="true" />
         </div>
         <p className="home-liquid-caption">Your day, a little clearer.</p>

@@ -18,6 +18,7 @@ export function extractHomeBaseline(source) {
     take(/import \{\r?\n[^]*?\} from 'lucide-react'/, 'icons'),
     "import { classifyTasks, taskIsComplete } from './daily'",
     "import { HomeCharacter } from './components/HomeCharacter'",
+    "import { createGazeInput } from './components/characterPointer'",
     ...helpers,
     take(/function HomeScreen[^]*?(?=\nfunction BackupCounts)/, 'HomeScreen'),
     take(/function SheetFrame[^]*?(?=\nfunction ImageViewer)/, 'SheetFrame/RenderSheet'),

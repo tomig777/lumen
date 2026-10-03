@@ -25,7 +25,7 @@ function Fixture() {
     movingFrame.current = requestAnimationFrame(step)
   }
   return <main style={{minHeight:'100vh',boxSizing:'border-box',padding:24,background:theme==='dark'?'#24211e':'#faf7f2',color:theme==='dark'?'#e8d9c7':'#302b26',font:'15px/1.5 system-ui'}}>
-    <h1 style={{fontSize:22}}>Finger gaze · renderer QA</h1>
+    <h1 style={{fontSize:22}}>Character · renderer QA</h1>
     <p>Real scene; button-supplied gaze. Native iPhone gestures remain a separate check.</p>
     <div style={{width:216,height:216,margin:'60px auto'}}>
       <HomeCharacterScene theme={theme} active={active} reducedMotion={reducedMotion} gazeInput={input}
@@ -37,6 +37,10 @@ function Fixture() {
       <button onClick={()=>target(.22,-.14)}>Look lower right</button>
       <button onClick={runMove}>Run moving gaze</button>
       <button onClick={()=>{cancelMove();input.emit(null);setStatus('Released; returning to idle')}}>Release gaze</button>
+      <button onClick={()=>{input.react('happy');setStatus('Applied completion: happy')}}>Happy</button>
+      <button onClick={()=>{input.react('all-done');setStatus('Applied final completion: all done')}}>All done</button>
+      <button onClick={()=>{input.react('undo');setStatus('Completion undone')}}>Undo</button>
+      <button onClick={()=>{input.wake();setStatus('Activity: fresh 40-second sleep deadline')}}>Wake activity</button>
       <button onClick={()=>{cancelMove();setActive(!active)}}>{active?'Pause scene':'Resume scene'}</button>
       <button onClick={()=>setTheme(theme==='dark'?'light':'dark')}>Switch theme</button>
       <button onClick={()=>{cancelMove();setReduced(!reducedMotion)}}>{reducedMotion?'Enable motion':'Reduce Motion'}</button>

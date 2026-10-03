@@ -1,6 +1,10 @@
 import React, { Component, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { bindHomeGaze, createGazeInput, type GazeInput } from './characterPointer'
+import type { EyeSession } from './characterAnimation'
+
+// Presentation-only cooldown across quick Home route hops, never saved as data.
+const eyeSession: EyeSession = { lastGreetingAt: -Infinity, lastReactionAt: -Infinity }
 
 export interface HomeCharacterSceneProps {
   theme: 'dark' | 'light'
@@ -9,6 +13,7 @@ export interface HomeCharacterSceneProps {
   onReady: () => void
   onFailure: () => void
   gazeInput?: GazeInput
+  eyeSession?: EyeSession
 }
 
 class CharacterBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
@@ -33,11 +38,12 @@ function CharacterSession({ Scene, onReady, onFailure, onReset, ...props }: Home
 }
 
 /** Decoration only: tasks, storage and navigation never wait for this scene. */
-export function HomeCharacter({ theme = 'dark', active = true, mirror = false }: {
-  theme?: 'dark' | 'light'; active?: boolean; mirror?: boolean
+export function HomeCharacter({ theme = 'dark', active = true, mirror = false, input }: {
+  theme?: 'dark' | 'light'; active?: boolean; mirror?: boolean; input?: ReturnType<typeof createGazeInput>
 }) {
   const host = useRef<HTMLDivElement>(null)
-  const gazeInput = useRef(createGazeInput()).current
+  const ownInput = useRef(createGazeInput()).current
+  const gazeInput = input ?? ownInput
   const [Scene, setScene] = useState<ComponentType<HomeCharacterSceneProps> | null>(null)
   const [visible, setVisible] = useState(false)
   const [inView, setInView] = useState(false)
@@ -92,7 +98,7 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
     data-ready={ready && !failed && !mirror} data-active={eligible} data-failed={failed}>
     <span className="home-character-fallback"><i /><i /></span>
     {Scene && !failed && !mirror && <CharacterBoundary onFailure={onFailure}>
-      <CharacterSession Scene={Scene} theme={theme} active={eligible} reducedMotion={reducedMotion} gazeInput={gazeInput} onReady={onReady} onFailure={onFailure} onReset={onReset} />
+      <CharacterSession Scene={Scene} theme={theme} active={eligible} reducedMotion={reducedMotion} gazeInput={gazeInput} eyeSession={eyeSession} onReady={onReady} onFailure={onFailure} onReset={onReset} />
     </CharacterBoundary>}
   </div>
 }

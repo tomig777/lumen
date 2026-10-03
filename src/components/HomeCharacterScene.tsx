@@ -5,11 +5,12 @@ import type { HomeCharacterSceneProps } from './HomeCharacter'
 import { eyePose } from './characterGeometry'
 import { createIdleEyes, type EyeState } from './characterAnimation'
 
-function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gazeInput }: HomeCharacterSceneProps) {
+function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gazeInput, eyeSession }: HomeCharacterSceneProps) {
   const { gl, invalidate } = useThree()
   const firstFrame = useRef(true)
   const eyes = useRef<(THREE.Mesh | null)[]>([])
   const animation = useRef<ReturnType<typeof createIdleEyes> | null>(null)
+  const ownSession = useRef({ lastGreetingAt: -Infinity, lastReactionAt: -Infinity })
   useEffect(() => {
     const apply = ({ x, y, openness }: EyeState) => {
       eyes.current.forEach((eye, index) => {
@@ -24,23 +25,26 @@ function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gaze
     if (!active || reducedMotion || document.hidden) return
     const controller = createIdleEyes({ now: () => performance.now(), random: Math.random,
       setTimer: (callback, delay) => window.setTimeout(callback, delay),
-      clearTimer: id => window.clearTimeout(id), requestDraw: invalidate, apply })
+      clearTimer: id => window.clearTimeout(id), requestDraw: invalidate, apply }, { personality: true, session: eyeSession ?? ownSession.current })
     animation.current = controller
     controller.start()
     const unsubscribe = gazeInput?.subscribe(target => {
       if (target) controller.follow(target.x, target.y)
       else controller.release()
     })
+    const stopReactions = gazeInput?.subscribeReaction?.(controller.react)
+    const stopActivity = gazeInput?.subscribeActivity?.(controller.activity)
     // Cancel immediately on hiding, before the wrapper's React update arrives.
     const hidden = () => { if (document.hidden) controller.stop() }
     document.addEventListener('visibilitychange', hidden)
     return () => {
       document.removeEventListener('visibilitychange', hidden)
       unsubscribe?.()
+      stopReactions?.(); stopActivity?.()
       controller.stop()
       if (animation.current === controller) animation.current = null
     }
-  }, [active, reducedMotion, invalidate, gazeInput])
+  }, [active, reducedMotion, invalidate, gazeInput, eyeSession])
   useEffect(() => {
     const canvas = gl.domElement
     const lost = (event: Event) => { event.preventDefault(); animation.current?.stop(); onFailure() }

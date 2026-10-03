@@ -1,7 +1,8 @@
 # Phase 5 · Finger-following eyes
 
 Current release: 0.1.24 · 2026-10-03; initial implementation was 0.1.23.
-Phase 6 expressions are not implemented.
+Phase 6 expressions are not included in these Phase 5 releases; the later 0.1.25
+work is recorded in `HOME_CHARACTER_PERSONALITY_VERIFICATION.md`.
 
 ## Behavior and boundaries
 
