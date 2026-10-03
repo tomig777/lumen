@@ -38,10 +38,13 @@ test('direct gaze wins over idle, coalesces input and stops drawing under a stat
   assert.equal(draws,before+1);assert.equal(timers.size,0)
   stale.forEach(callback=>callback());assert.equal(draws,before+1)
   now+=80;controller.frame();assert.ok(pose.x>0 && pose.x<.22)
-  now+=80;controller.frame();assert.deepEqual(pose,{x:.22,y:-.14,openness:1})
+  for(let i=0;i<30;i++){now+=16;controller.frame()}
+  assert.deepEqual(pose,{x:.22,y:-.14,openness:1})
   const settled=draws
   for(let i=0;i<100;i++){controller.follow(.22,-.14);controller.frame()}
   assert.equal(draws,settled);assert.equal(timers.size,0)
+  now+=3000;controller.frame();assert.equal(draws,settled)
+  assert.deepEqual(pose,{x:.22,y:-.14,openness:1},'long hold keeps the exact target with no idle timers')
   controller.follow(NaN,Infinity);assert.equal(draws,settled)
   controller.release();now+=210;controller.frame();assert.ok(pose.x>0 && pose.x<.22)
   now+=210;controller.frame();assert.deepEqual(pose,{x:0,y:0,openness:1})
@@ -114,4 +117,38 @@ test('input channel retains no gesture for a newly resumed scene', () => {
   const unsubscribe=input.subscribe(pose=>poses.push(pose));assert.equal(poses.length,0)
   input.emit({x:.1,y:0});input.emit(null);assert.equal(poses.length,2)
   unsubscribe();input.emit({x:.2,y:.1});assert.equal(poses.length,2)
+})
+
+test('continuous moves immediately before each render still advance gaze at 30, 60 and 120 Hz', () => {
+  for(const fps of [30,60,120]) {
+    let now=0,pose,draws=0
+    const controller=createIdleEyes({now:()=>now,random:()=>.5,setTimer:()=>1,clearTimer:()=>{},
+      requestDraw:()=>draws++,apply:value=>{pose=value}})
+    controller.start();controller.frame()
+    controller.follow(0,0)
+    for(let i=1;i<=fps;i++) {
+      now=i*1000/fps
+      // Matches input arriving immediately before R3F's demand frame. Retargeting
+      // must not reset the smoothing clock and leave elapsed time at zero.
+      controller.follow(.2*i/fps,.1*i/fps)
+      controller.frame()
+    }
+    assert.ok(pose.x>.18 && pose.y>.09, `${fps}Hz gaze advances during the drag, not only after it`)
+    assert.ok(pose.x<=.2 && pose.y<=.1)
+    const beforeTurn=pose.x
+    now+=1000/fps;controller.follow(-.2,-.1);controller.frame()
+    assert.ok(pose.x<beforeTurn && pose.x>-.2,'reversing during a drag advances smoothly on the next frame')
+    controller.stop()
+  }
+})
+
+test('selection prevention is scoped to Home with explicit editable exceptions, without a global touch blocker', async () => {
+  const css=await readFile(new URL('../src/home.css',import.meta.url),'utf8')
+  assert.match(css,/\.home-fixed \* \{[^}]*-webkit-user-select: none;[^}]*user-select: none;[^}]*-webkit-touch-callout: none;/)
+  assert.match(css,/\.home-fixed :is\(input, textarea, \[contenteditable="true"\], \[contenteditable=""\]\)[^]*?user-select: text;[^}]*-webkit-touch-callout: initial;/)
+  assert.match(css,/\.home-liquid-focus \{[^}]*touch-action: pinch-zoom;/)
+  assert.match(css,/touch-action: pan-x pinch-zoom;/)
+  assert.match(css,/\.home-character \* \{ pointer-events: none !important; \}/,'R3F inline pointer-events:auto cannot create a separate gesture surface')
+  const pointerSource=await readFile(new URL('../src/components/characterPointer.ts',import.meta.url),'utf8')
+  assert.doesNotMatch(pointerSource,/preventDefault\(|touchstart|touchmove/)
 })

@@ -16,6 +16,7 @@ export function createIdleEyes(runtime: Runtime) {
   let running = false, generation = 0
   let following = false, drawPending = false
   let x = 0, y = 0, openness = 1
+  let touchTarget = { x: 0, y: 0 }, followFrameAt = 0
   let gaze: Gaze | null = null, blinkAt: number | null = null
   const timers = new Set<number>()
   const random = () => Math.min(1, Math.max(0, runtime.random()))
@@ -41,6 +42,7 @@ export function createIdleEyes(runtime: Runtime) {
   const stop = () => {
     running = false; following = false; drawPending = false; cancelTimers()
     gaze = null; blinkAt = null; x = 0; y = 0; openness = 1
+    touchTarget = { x: 0, y: 0 }; followFrameAt = 0
     runtime.apply({ x, y, openness })
   }
   return {
@@ -54,10 +56,13 @@ export function createIdleEyes(runtime: Runtime) {
     follow(targetX: number, targetY: number) {
       if (!running || !Number.isFinite(targetX) || !Number.isFinite(targetY)) return
       const toX = Math.max(-.22, Math.min(.22, targetX)), toY = Math.max(-.14, Math.min(.14, targetY))
-      if (!following) { following = true; cancelTimers(); blinkAt = null; openness = 1 }
-      if (gaze?.direct && gaze.toX === toX && gaze.toY === toY) return
-      if (!gaze && Math.abs(x - toX) < .0001 && Math.abs(y - toY) < .0001) return
-      gaze = { fromX: x, fromY: y, toX, toY, at: runtime.now(), duration: 160, returning: false, direct: true }
+      if (!following) {
+        following = true; cancelTimers(); gaze = null; blinkAt = null; openness = 1
+        followFrameAt = runtime.now()
+      } else if (touchTarget.x === toX && touchTarget.y === toY) return
+      // Input updates the destination only. Restarting a transition timestamp
+      // here starves animation when moves arrive immediately before each draw.
+      touchTarget = { x: toX, y: toY }
       requestDraw()
     },
     release() {
@@ -70,6 +75,17 @@ export function createIdleEyes(runtime: Runtime) {
       drawPending = false
       if (!running) return
       const now = runtime.now()
+      let trackingUnsettled = false
+      if (following) {
+        // Frame-rate independent smoothing; bounded elapsed time prevents jumps.
+        const elapsed = Math.min(64, Math.max(0, now - followFrameAt))
+        followFrameAt = now
+        const amount = 1 - Math.exp(-elapsed / 35)
+        x += (touchTarget.x - x) * amount
+        y += (touchTarget.y - y) * amount
+        trackingUnsettled = Math.max(Math.abs(touchTarget.x - x), Math.abs(touchTarget.y - y)) > .0001
+        if (!trackingUnsettled) { x = touchTarget.x; y = touchTarget.y }
+      }
       if (gaze) {
         const current = gaze, progress = (now - current.at) / current.duration, amount = ease(progress)
         x = current.fromX + (current.toX - current.fromX) * amount
@@ -92,7 +108,7 @@ export function createIdleEyes(runtime: Runtime) {
         if (elapsed >= 200) { openness = 1; blinkAt = null; nextBlink() }
       }
       runtime.apply({ x, y, openness })
-      if (gaze || blinkAt !== null) requestDraw()
+      if (trackingUnsettled || gaze || blinkAt !== null) requestDraw()
     },
   }
 }

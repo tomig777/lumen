@@ -359,7 +359,8 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     const scheduled=[...clock.timers.values()].map(timer=>timer.at)
     render({theme:'light'}); assert.deepEqual([...clock.timers.values()].map(timer=>timer.at),scheduled)
     draw(); assert.ok(Math.abs(meshes[0].position.x-(-.23+.025)*1.04)<1e-9)
-    gazeInput.emit({x:.22,y:-.14}); clock.advance(160); draw()
+    gazeInput.emit({x:.22,y:-.14})
+    for(let i=0;i<30;i++){clock.advance(16);draw()}
     assert.equal(clock.timers.size,0)
     assert.ok(Math.abs(meshes[0].position.x-(-.23+.22)*1.04)<1e-9)
     meshes.forEach(mesh=>assert.ok(Math.abs(mesh.position.length()-1.04)<1e-9))

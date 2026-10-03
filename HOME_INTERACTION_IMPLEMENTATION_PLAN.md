@@ -1,10 +1,11 @@
 # Lumen · fixed Home, task dialogs and character interactions
 
 Planning baseline: 0.1.19 / 99a866a, 2026-10-03.
-Status: Phases 1–4 implementation/local verification complete.
-The user confirmed the Phase 2 keyboard fix and Phase 3 drawer work on their
-iPhone. Phase 4 physical layout acceptance and detailed device edge cases remain
-pending; Phases 5–8 untouched.
+Status: Phases 1–5 implementation/local verification complete; Phase 5 follow-up
+fixes are in 0.1.24. The user accepted the Phase 2 keyboard fix, Phase 3 drawer and
+Phase 4 primary Home layout on their iPhone. Their Phase 5 drag/long-press feedback
+has been addressed locally; physical retest and detailed device edge cases remain
+pending. Phase 6 personality is not implemented; Phases 7–8 are final testing/handoff.
 
 This plan extends the completed theme/Home/idle-eye work in
 `LUMEN_REDESIGN_IMPLEMENTATION_PLAN.md`. Later user-approved appearance changes
@@ -237,6 +238,19 @@ per-pointer React update or persistent interaction state. Hidden/overlay/failure
 and Reduce Motion suspend input and animation; theme changes preserve gaze.
 Physical gesture feel and system-edge behavior remain pending. Sleep/wake and
 brief expressions are Phase 6, not part of this release.
+
+Phase 5 physical-feedback follow-up (0.1.24, 2026-10-03): user reported drag not
+following and selection/copy UI on long holds. Continuous input before each render
+reproduced the controller's retarget-clock starvation; input now updates only the
+target while a frame-owned 35ms exponential smoothing clock advances the pose.
+An inspected production Canvas also overrode pointer-events:none with inline auto
+on an overflow:hidden wrapper. All decorative renderer descendants are now
+click-through, so hero pinch-zoom policy remains the gesture surface. Home-only
+user-select/touch-callout rules suppress selection, with editable exceptions;
+other routes/dialogs keep their defaults. Stationary gaze settles at .0001 tolerance
+without continuous draws. Release remains 420ms with fresh idle timing. Build,
+172/172 tests and 826/826 browser invariants pass. Real iPhone drag/hold retest is
+pending; no global touch prevention, shell/data changes or personality work.
 
 ## Phase 6 · Add restrained personality states
 

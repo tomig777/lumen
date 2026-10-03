@@ -78,6 +78,7 @@ const box = (selector: string) => {
     scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, scrollTop: node.scrollTop,
     scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
     overflowY: css.overflowY, position: css.position, transform: css.transform, fontSize: css.fontSize, lineHeight: css.lineHeight,
+    userSelect: css.userSelect, webkitUserSelect: css.getPropertyValue('-webkit-user-select'), touchAction: css.touchAction,
     paddingTop: parseFloat(css.paddingTop), paddingBottom: parseFloat(css.paddingBottom) }
 }
 const homeSnapshot = () => Object.fromEntries([
@@ -135,6 +136,7 @@ try {
     check(states.dismissedStillFocused.keyboardAttribute === null && states.dismissedStillFocused.layer.height === profile.height
       && states.dismissedStillFocused.focused === 'What needs doing?', `${kind}: dismissal recovers while still focused`)
     check(states.closed.projectChoices === (kind === 'many' ? 25 : 4), `${kind}: expected project fixture loaded`)
+    check(['auto','text'].includes(states.closed.title.userSelect) && ['auto','text'].includes(states.keyboard.title.userSelect), `${kind}: task editor keeps text selection with Home callouts disabled`)
     check(states.keyboard.title.y >= states.keyboard.content.y
       && states.keyboard.title.bottom <= states.keyboard.content.bottom,
       `${kind}: complete focused title visible above keyboard`)
@@ -149,6 +151,8 @@ try {
   }
   for (const [kind, snapshot] of Object.entries(report.homes) as [string, any][]) {
     check(snapshot.home.overflowY === 'hidden' && snapshot.home.scrollHeight <= snapshot.home.clientHeight + 1, `${kind}: Home has no vertical overflow`)
+    check(snapshot.home.userSelect === 'none' && snapshot.character.userSelect === 'none'
+      && (!snapshot.taskTitle || snapshot.taskTitle.userSelect === 'none'), `${kind}: Home/character/card are not selectable`)
     check(snapshot.slot.bottom <= snapshot.nav.y - 20 && snapshot.slot.y >= snapshot.dateControls.bottom, `${kind}: task slot clears controls and nav`)
     check(snapshot.character.width > 0 && snapshot.character.y >= snapshot.heading.bottom && snapshot.character.bottom <= snapshot.stage.bottom, `${kind}: character remains within its stage`)
     check(snapshot.carousel ? snapshot.carousel.y === snapshot.slot.y && Math.abs(snapshot.carousel.height - snapshot.slot.height) < 1 : snapshot.empty.y === snapshot.slot.y && Math.abs(snapshot.empty.height - snapshot.slot.height) < 1, `${kind}: cards/empty occupy the allocated slot`)
@@ -170,6 +174,17 @@ try {
   const fixedHome = document.querySelector<HTMLElement>('.home-screen')!
   fixedHome.scrollTop = 100; await settle()
   check(fixedHome.scrollTop === 0, 'Home cannot be vertically scrolled')
+  // Reproduce R3F's inline pointer-events:auto + overflow:hidden wrapper inside
+  // the static mirror. It must not cut gesture arbitration off before the hero.
+  const character = document.querySelector<HTMLElement>('.home-character')!
+  const rendererHitSurface = document.createElement('div')
+  rendererHitSurface.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:auto'
+  const canvas = document.createElement('canvas');canvas.style.cssText = 'width:100%;height:100%'
+  rendererHitSurface.appendChild(canvas);character.appendChild(rendererHitSurface)
+  const characterBox = character.getBoundingClientRect()
+  const hit = document.elementFromPoint(characterBox.x+characterBox.width/2,characterBox.y+characterBox.height/2)
+  check(!!hit?.closest('.home-liquid-focus') && !hit.closest('.home-character'), 'renderer inline auto cannot intercept the Home gaze gesture surface')
+  rendererHitSurface.remove()
   check(!document.querySelector('.daily-task-group'), 'lower Home groups removed without removing drawer access')
   const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('.home-task-controls button'))
   check(controls.map(button=>button.getAttribute('aria-label')).join('|') === 'Add task|Yesterday and all tasks|Previous task|Next task', 'Replay between Add and Previous')
