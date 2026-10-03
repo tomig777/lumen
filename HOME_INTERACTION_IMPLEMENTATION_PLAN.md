@@ -2,10 +2,11 @@
 
 Planning baseline: 0.1.19 / 99a866a, 2026-10-03.
 Status: Phases 1–6 implementation/local verification complete; Phase 5 follow-up
-fixes are in 0.1.24 and Phase 6 personality is in 0.1.25. The user accepted the Phase 2 keyboard fix, Phase 3 drawer and
+fixes are in 0.1.24 and revised Phase 6 personality is in 0.1.26. The user accepted the Phase 2 keyboard fix, Phase 3 drawer and
 Phase 4 primary Home layout on their iPhone. Their Phase 5 drag/long-press feedback
 has been addressed locally; physical retest and detailed device edge cases remain
-pending. Phase 6 physical feel remains pending; Phases 7–8 are final testing/handoff.
+pending. Phase 6 sleepy behavior is physically accepted; revised smiling eyes
+remain pending. Phases 7–8 are final testing/handoff.
 
 This plan extends the completed theme/Home/idle-eye work in
 `LUMEN_REDESIGN_IMPLEMENTATION_PLAN.md`. Later user-approved appearance changes
@@ -27,7 +28,8 @@ The new fixed Home and interactions supersede the old scrolling/no-touch scope.
   everything planned then. No invented dates for legacy boolean completions.
   Historical title/schedule snapshots and deleted-task recovery are out of scope.
 - Correct the task editor's keyboard placement and dismissal transitions.
-- Extend existing eyes with direct gaze, sleepy/wake, happy and greeting states.
+- Extend existing eyes with direct gaze, sleepy/wake and happy states. Greeting
+  was subsequently removed following the user's 0.1.26 appearance feedback.
   No sadness based on missed tasks, chat, mouth, limbs, audio or body bouncing.
 - Preserve global Dark/Light, warm brown/cream/sand/amber, quiet glass finishes,
   current eye proportions and the normal iPhone portrait character composition.
@@ -256,8 +258,8 @@ pending; no global touch prevention, shell/data changes or personality work.
 
 Timing below is a starting point for phone tuning, not a fixed visual commitment.
 
-- [x] Greeting: one short double blink when returning to Home, with a cooldown
-  so transient editor dismissals do not cause repeated greetings.
+- [x] Greeting: removed entirely following the user's feedback on 0.1.25.
+  Home entry/return now stays neutral; ordinary idle blinks remain.
 - [x] Sleepy/wake: after roughly 30–45 seconds of visible, uncovered inactivity,
   ease into half-lidded eyes and slower blinks; wake gently on eligible interaction.
   No wall-clock catch-up or surprise sleep immediately after background resume.
@@ -293,6 +295,15 @@ upgrade. Held expressions use timers rather than continuous draws. No reactions
 are queued on restore/load/resume; no appearance, shell, storage or task-semantic
 changes. Native iPhone performance/feel and the integrated Phase 7 checks remain
 pending; local success is not a physical-device pass.
+
+Phase 6 physical-feedback follow-up (0.1.26): the user accepted sleepy behavior,
+found greeting unnecessary, and reported that happy squints also looked sleepy.
+Greeting is removed; happy/all-done now morph into rounded lifted arches rather
+than compressing eyelids. Neutral capsule vertices and sleepy timing are preserved.
+Added cylinder subdivisions permit smooth bending, with one precomputed target
+and no extra meshes/loops. Existing expression durations, touch priority, neutral
+Reduce Motion and cleanup remain. Revised appearance needs an iPhone retest;
+broader Phase 7 acceptance has not been completed.
 
 ## Phase 7 · Integrated regression and physical-phone acceptance
 

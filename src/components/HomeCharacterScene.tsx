@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { HomeCharacterSceneProps } from './HomeCharacter'
-import { eyePose } from './characterGeometry'
+import { eyePose, addHappyEyeMorph } from './characterGeometry'
 import { createIdleEyes, type EyeState } from './characterAnimation'
 
 function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gazeInput, eyeSession }: HomeCharacterSceneProps) {
@@ -10,15 +10,17 @@ function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gaze
   const firstFrame = useRef(true)
   const eyes = useRef<(THREE.Mesh | null)[]>([])
   const animation = useRef<ReturnType<typeof createIdleEyes> | null>(null)
-  const ownSession = useRef({ lastGreetingAt: -Infinity, lastReactionAt: -Infinity })
+  const ownSession = useRef({ lastReactionAt: -Infinity })
   useEffect(() => {
-    const apply = ({ x, y, openness }: EyeState) => {
+    const apply = ({ x, y, openness, smile = 0 }: EyeState) => {
       eyes.current.forEach((eye, index) => {
         if (!eye) return
         const pose = eyePose((index ? .23 : -.23) + x, .18 + y)
         eye.position.fromArray(pose.position)
         eye.quaternion.fromArray(pose.quaternion)
         eye.scale.set(1, openness, 1)
+        if (!eye.morphTargetInfluences) eye.updateMorphTargets()
+        if (eye.morphTargetInfluences?.length) eye.morphTargetInfluences[0] = smile
       })
     }
     apply({ x: 0, y: 0, openness: 1 })
@@ -76,7 +78,7 @@ function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gaze
     {[-.23, .23].map((x, index) => {
       const pose = eyePose(x, .18)
       return <mesh key={x} ref={eye => { eyes.current[index] = eye }} position={pose.position} quaternion={pose.quaternion}>
-        <capsuleGeometry args={[.076, .204, 6, 12]} />
+        <capsuleGeometry args={[.076, .204, 6, 12]} onUpdate={addHappyEyeMorph} />
         <meshBasicMaterial color="#302b26" />
       </mesh>
     })}

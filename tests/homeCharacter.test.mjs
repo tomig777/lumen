@@ -321,6 +321,30 @@ test('all gaze extremes stay attached to the sphere and keep the eye pair separa
   }
 })
 
+test('happy morph preserves the neutral capsule and forms finite, rounded upward arches',()=>{
+  const geometry=new THREE.CapsuleGeometry(.076,.204,6,12)
+  const before=geometry.getAttribute('position').array.slice()
+  geometryModule.exports.addHappyEyeMorph(geometry)
+  const target=geometry.morphAttributes.position[0],base=geometry.getAttribute('position')
+  const neutral=new Set(Array.from({length:base.count},(_,i)=>[base.getX(i),base.getY(i),base.getZ(i)].join(',')))
+  for(let i=0;i<before.length;i+=3)assert.ok(neutral.has([before[i],before[i+1],before[i+2]].join(',')),'original capsule points remain; added points only subdivide the cylinder')
+  assert.equal(target.count,base.count)
+  let centerTop=-Infinity,endTop=-Infinity,minX=Infinity,maxX=-Infinity
+  for(let i=0;i<target.count;i++){
+    const x=target.getX(i),y=target.getY(i),z=target.getZ(i)
+    assert.ok(Number.isFinite(x)&&Number.isFinite(y)&&Number.isFinite(z))
+    minX=Math.min(minX,x);maxX=Math.max(maxX,x)
+    if(Math.abs(x)<.025)centerTop=Math.max(centerTop,y)
+    if(Math.abs(x)>.10)endTop=Math.max(endTop,y)
+  }
+  assert.ok(centerTop-endTop>.035,'centres lift visibly above both ends, unlike flat sleepy lids')
+  assert.ok(maxX-minX>.22&&maxX-minX<.30,'smile widens gently without spanning the whole face')
+  geometryModule.exports.addHappyEyeMorph(geometry)
+  assert.equal(geometry.morphAttributes.position[0],target,'morph is allocated once, not per draw/theme update')
+  const mesh=new THREE.Mesh(geometry);assert.deepEqual(mesh.morphTargetInfluences,[0])
+  geometry.dispose()
+})
+
 test('actual animated scene updates mesh refs, then cancels on pause, Reduce Motion, hide, context loss and unmount', () => {
   const oldDocument = globalThis.document, oldWindow = globalThis.window
   const oldPerformance = Object.getOwnPropertyDescriptor(globalThis, 'performance'), oldRandom = Math.random
@@ -346,14 +370,15 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     act(()=>{view=create(React.createElement(module.exports.HomeCharacterScene,props),{createNodeMock:element=>{
       if(element.type!=='mesh') return null
       const index=element.props.position[0]<0?0:1
-      return meshes[index] ?? (meshes[index]=new THREE.Mesh())
+      if(!meshes[index]) {
+        const geometry=new THREE.CapsuleGeometry(.076,.204,6,12)
+        geometryModule.exports.addHappyEyeMorph(geometry)
+        meshes[index]=new THREE.Mesh(geometry)
+      }
+      return meshes[index]
     }})})
     assert.equal(meshes.length,2); assert.equal(clock.timers.size,3)
-    draw(); clock.advance(80); draw()
-    meshes.forEach(mesh=>assert.ok(Math.abs(mesh.scale.y-.08)<1e-9))
-    clock.advance(280); draw()
-    meshes.forEach(mesh=>assert.ok(Math.abs(mesh.scale.y-.08)<1e-9))
-    clock.advance(120); draw()
+    draw(); clock.advance(480); draw()
     meshes.forEach(mesh=>assert.equal(mesh.scale.y,1))
     clock.fire(); clock.advance(80); draw()
     meshes.forEach(mesh=>assert.ok(Math.abs(mesh.scale.y-.08)<1e-9))
@@ -375,9 +400,9 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     assert.ok(Math.abs(meshes[0].position.x-(-.23+.22)*1.04)<1e-9)
     gazeInput.emit(null); clock.advance(420); draw(); assert.equal(clock.timers.size,3)
     gazeInput.react('happy'); clock.advance(160); draw()
-    meshes.forEach(mesh=>assert.equal(mesh.scale.y,.36))
+    meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.equal(mesh.morphTargetInfluences[0],1)})
     gazeInput.react('undo'); clock.advance(280); draw()
-    clock.advance(140); draw(); meshes.forEach(mesh=>assert.equal(mesh.scale.y,1))
+    clock.advance(140); draw(); meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.equal(mesh.morphTargetInfluences[0],0)})
     assert.equal(clock.timers.size,3)
     const stale=[...clock.timers.values()].map(timer=>timer.callback)
     render({active:false}); assert.equal(clock.timers.size,0)
@@ -386,7 +411,7 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     const resumed=requests; stale.forEach(callback=>callback()); assert.equal(requests,resumed)
     render({reducedMotion:true}); assert.equal(clock.timers.size,0)
     const reducedRequests=requests; gazeInput.emit({x:.22,y:.14}); gazeInput.react('happy'); gazeInput.wake(); assert.equal(requests,reducedRequests)
-    meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.ok(Math.abs(Math.abs(mesh.position.x)-.23*1.04)<1e-9)})
+    meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.equal(mesh.morphTargetInfluences[0],0);assert.ok(Math.abs(Math.abs(mesh.position.x)-.23*1.04)<1e-9)})
     render({}); assert.equal(clock.timers.size,3)
     document.hidden=true; document.dispatchEvent(new Event('visibilitychange')); assert.equal(clock.timers.size,0)
     const suspendedRequests=requests; gazeInput.emit({x:.22,y:.14}); gazeInput.react('all-done'); gazeInput.wake(); assert.equal(requests,suspendedRequests)
@@ -397,6 +422,7 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})); assert.equal(failures,2);assert.equal(clock.timers.size,0)
   } finally {
     act(()=>view?.unmount()); assert.equal(clock.timers.size,0)
+    meshes.forEach(mesh=>mesh.geometry.dispose())
     assert.equal(document.listeners.size,0); assert.equal(canvas.listeners.size,0)
     globalThis.document=oldDocument;globalThis.window=oldWindow;Math.random=oldRandom
     Object.defineProperty(globalThis,'performance',oldPerformance)

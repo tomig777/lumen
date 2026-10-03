@@ -4,7 +4,7 @@ import { bindHomeGaze, createGazeInput, type GazeInput } from './characterPointe
 import type { EyeSession } from './characterAnimation'
 
 // Presentation-only cooldown across quick Home route hops, never saved as data.
-const eyeSession: EyeSession = { lastGreetingAt: -Infinity, lastReactionAt: -Infinity }
+const eyeSession: EyeSession = { lastReactionAt: -Infinity }
 
 export interface HomeCharacterSceneProps {
   theme: 'dark' | 'light'
