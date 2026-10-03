@@ -307,23 +307,35 @@ broader Phase 7 acceptance has not been completed.
 
 ## Phase 7 · Integrated regression and physical-phone acceptance
 
-- [ ] Run production build and all existing tests, plus new Home/history/editor/
+- [x] Run production build and all existing tests, plus new Home/history/editor/
   interaction tests. Update deliberately superseded assertions without removing
   storage, daily-date, viewport or lifecycle safety coverage.
-- [ ] Check Dark/Light at 390 × 844, 320 × 568, 844 × 390, keyboard-like heights,
+- [x] Check Dark/Light at 390 × 844, 320 × 568, 844 × 390, keyboard-like heights,
   long titles/many tasks, larger text, fallback scene and Reduce Motion.
 - [ ] On the actual iPhone Home Screen app: cold launch, resume, real keyboard open/
   hide/refocus, date picker, rotation, task swipe/edit/complete/undo, history and
   All tasks. Confirm no pale strip, clipped nav or hidden Save action.
-- [ ] Check save failure/retry, safe update refusal with unsaved work, and offline
+- [x] Check save failure/retry, safe update refusal with unsaved work, and offline
   access. Use disposable profiles for export/restore tests, never reset user data.
 - [ ] Check character feel, responsiveness and active/settled/background GPU work
   on the phone. If expensive, lower animation/draw cost; do not mask lag with timers.
-- [ ] Record what was browser-tested, automated-tested and physically confirmed
+- [x] Record what was browser-tested, automated-tested and physically confirmed
   separately. Outstanding device checks remain explicitly pending.
 
 Gate: core tasks are reliable with or without animation; fixed layout and keyboard
 behavior pass physical testing, or the exact remaining limitation is reported.
+
+Phase 7 local results (2026-10-03, runtime 0.1.26 / `2fc408a`) are recorded in
+`HOME_INTEGRATED_VERIFICATION.md`: build passed, 185/185 tests and 826/826 browser
+invariants passed. New storage-hook queue/failure/boot-retry tests join CI. Real
+production Home create/edit/completion/undo, nested drawer return, theme switching,
+cached graph/character loading and server-unavailable edit/reload persistence
+passed on disposable localhost data. Backup download UI reached its confirmation,
+but the saved file was not confirmed by browser automation; export integrity and
+clean-repository restore passed automated tests, not a phone Files drill. Native
+keyboard/rotation/drag, revised smiling-eye feel, airplane mode and phone GPU checks
+remain pending. No runtime changes or version bump were needed; Phase 8 remains
+separate.
 
 ## Phase 8 · Controlled releases and handoff
 

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "icons:generate": "node scripts/generate-icons.mjs",
     "test:backup": "node --test tests/backup.test.mjs",
-    "test:storage": "node --test tests/storage.test.mjs",
+    "test:storage": "node --test tests/storage.test.mjs tests/appStorage.test.mjs",
     "test:brain": "node --test tests/brainGraph.test.mjs",
     "test:daily": "node --test tests/daily.test.mjs tests/workoutSession.test.mjs",
     "test:offline": "node --test tests/offlineShell.test.mjs",
