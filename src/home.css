@@ -46,6 +46,9 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state.is
   white-space: nowrap;
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus {
+  /* Background gaze owns no pan. Card swipes remain in their separate region;
+     pinch zoom and iOS system-edge gestures remain native. */
+  touch-action: pinch-zoom;
   display: flex;
   flex-direction: column;
   min-height: 0;

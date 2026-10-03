@@ -75,7 +75,11 @@ not native iOS gesture/paint/keyboard evidence. No installed-phone data, cache,
 service worker or saved records was cleared. Only disposable localhost data was
 used for production UI verification.
 
-## Physical Home acceptance · pending
+## Physical Home acceptance · primary layout accepted
+
+On 2026-10-03 the user confirmed the fixed Home looks good on their iPhone and
+authorized Phase 5. Keep the detailed checklist below for broader Phase 7 testing;
+their confirmation does not explicitly report every edge case.
 
 Update through + → Settings → App & updates and confirm 0.1.22.
 
@@ -86,6 +90,5 @@ Update through + → Settings → App & updates and confirm 0.1.22.
 4. Check portrait/rotation, both themes, long titles and real keyboard opening.
    Confirm no pale bottom strip or nav/Save regression.
 
-The user already accepted the Phase 2 keyboard fix and Phase 3 drawer. That does
-not substitute for testing the new fixed Home on the actual iPhone. Later phases
-remain untouched until requested.
+The user accepted the Phase 2 keyboard fix, Phase 3 drawer and primary Phase 4
+fixed Home. Later phase/device acceptance is recorded independently.

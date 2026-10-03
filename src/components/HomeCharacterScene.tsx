@@ -5,7 +5,7 @@ import type { HomeCharacterSceneProps } from './HomeCharacter'
 import { eyePose } from './characterGeometry'
 import { createIdleEyes, type EyeState } from './characterAnimation'
 
-function CharacterModel({ theme, active, reducedMotion, onReady, onFailure }: HomeCharacterSceneProps) {
+function CharacterModel({ theme, active, reducedMotion, onReady, onFailure, gazeInput }: HomeCharacterSceneProps) {
   const { gl, invalidate } = useThree()
   const firstFrame = useRef(true)
   const eyes = useRef<(THREE.Mesh | null)[]>([])
@@ -27,15 +27,20 @@ function CharacterModel({ theme, active, reducedMotion, onReady, onFailure }: Ho
       clearTimer: id => window.clearTimeout(id), requestDraw: invalidate, apply })
     animation.current = controller
     controller.start()
+    const unsubscribe = gazeInput?.subscribe(target => {
+      if (target) controller.follow(target.x, target.y)
+      else controller.release()
+    })
     // Cancel immediately on hiding, before the wrapper's React update arrives.
     const hidden = () => { if (document.hidden) controller.stop() }
     document.addEventListener('visibilitychange', hidden)
     return () => {
       document.removeEventListener('visibilitychange', hidden)
+      unsubscribe?.()
       controller.stop()
       if (animation.current === controller) animation.current = null
     }
-  }, [active, reducedMotion, invalidate])
+  }, [active, reducedMotion, invalidate, gazeInput])
   useEffect(() => {
     const canvas = gl.domElement
     const lost = (event: Event) => { event.preventDefault(); animation.current?.stop(); onFailure() }

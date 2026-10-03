@@ -7,17 +7,20 @@ type Runtime = {
   requestDraw: () => void
   apply: (state: EyeState) => void
 }
-type Gaze = { fromX: number; fromY: number; toX: number; toY: number; at: number; duration: number; returning: boolean }
+type Gaze = { fromX: number; fromY: number; toX: number; toY: number; at: number; duration: number; returning: boolean; direct?: boolean }
 const ease = (t: number) => { const p = Math.min(1, Math.max(0, t)); return p * p * (3 - 2 * p) }
 
 /** Two quiet timer channels; only short transitions request another draw.
  * No RAF owner, React updates, wall-clock catch-up or work while stopped. */
 export function createIdleEyes(runtime: Runtime) {
   let running = false, generation = 0
+  let following = false, drawPending = false
   let x = 0, y = 0, openness = 1
   let gaze: Gaze | null = null, blinkAt: number | null = null
   const timers = new Set<number>()
   const random = () => Math.min(1, Math.max(0, runtime.random()))
+  const requestDraw = () => { if (!drawPending) { drawPending = true; runtime.requestDraw() } }
+  const cancelTimers = () => { generation++; timers.forEach(runtime.clearTimer); timers.clear() }
   const later = (callback: () => void, delay: number) => {
     const ticket = generation
     const id = runtime.setTimer(() => {
@@ -29,15 +32,14 @@ export function createIdleEyes(runtime: Runtime) {
   const nextGaze = (first = false) => later(() => {
     gaze = { fromX: x, fromY: y, toX: (random() * 2 - 1) * .10,
       toY: (random() * 2 - 1) * .06, at: runtime.now(), duration: 380, returning: false }
-    runtime.requestDraw()
+    requestDraw()
   }, first ? 2500 + random() * 2200 : 4500 + random() * 3500)
   const nextBlink = (first = false) => later(() => {
     blinkAt = runtime.now()
-    runtime.requestDraw()
+    requestDraw()
   }, first ? 1900 + random() * 1700 : 3500 + random() * 3500)
   const stop = () => {
-    running = false; generation++
-    timers.forEach(runtime.clearTimer); timers.clear()
+    running = false; following = false; drawPending = false; cancelTimers()
     gaze = null; blinkAt = null; x = 0; y = 0; openness = 1
     runtime.apply({ x, y, openness })
   }
@@ -45,11 +47,27 @@ export function createIdleEyes(runtime: Runtime) {
     start() {
       if (running) return
       running = true; generation++
-      runtime.apply({ x, y, openness }); runtime.requestDraw()
+      runtime.apply({ x, y, openness }); requestDraw()
       nextGaze(true); nextBlink(true)
     },
     stop,
+    follow(targetX: number, targetY: number) {
+      if (!running || !Number.isFinite(targetX) || !Number.isFinite(targetY)) return
+      const toX = Math.max(-.22, Math.min(.22, targetX)), toY = Math.max(-.14, Math.min(.14, targetY))
+      if (!following) { following = true; cancelTimers(); blinkAt = null; openness = 1 }
+      if (gaze?.direct && gaze.toX === toX && gaze.toY === toY) return
+      if (!gaze && Math.abs(x - toX) < .0001 && Math.abs(y - toY) < .0001) return
+      gaze = { fromX: x, fromY: y, toX, toY, at: runtime.now(), duration: 160, returning: false, direct: true }
+      requestDraw()
+    },
+    release() {
+      if (!running || !following) return
+      following = false; cancelTimers(); blinkAt = null; openness = 1
+      gaze = { fromX: x, fromY: y, toX: 0, toY: 0, at: runtime.now(), duration: 420, returning: true, direct: true }
+      requestDraw()
+    },
     frame() {
+      drawPending = false
       if (!running) return
       const now = runtime.now()
       if (gaze) {
@@ -58,10 +76,13 @@ export function createIdleEyes(runtime: Runtime) {
         y = current.fromY + (current.toY - current.fromY) * amount
         if (progress >= 1) {
           gaze = null
-          if (current.returning) nextGaze()
+          if (current.direct) {
+            if (!following) { nextGaze(true); nextBlink(true) }
+          }
+          else if (current.returning) nextGaze()
           else later(() => {
             gaze = { fromX: x, fromY: y, toX: 0, toY: 0, at: runtime.now(), duration: 420, returning: true }
-            runtime.requestDraw()
+            requestDraw()
           }, 900 + random() * 700)
         }
       }
@@ -71,7 +92,7 @@ export function createIdleEyes(runtime: Runtime) {
         if (elapsed >= 200) { openness = 1; blinkAt = null; nextBlink() }
       }
       runtime.apply({ x, y, openness })
-      if (gaze || blinkAt !== null) runtime.requestDraw()
+      if (gaze || blinkAt !== null) requestDraw()
     },
   }
 }

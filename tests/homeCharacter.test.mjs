@@ -18,6 +18,8 @@ new Function('require', 'module', 'exports', compile(await readFile(new URL('../
 const animationSource = await readFile(new URL('../src/components/characterAnimation.ts', import.meta.url), 'utf8')
 const animationModule = { exports: {} }
 new Function('require', 'module', 'exports', compile(animationSource))(require, animationModule, animationModule.exports)
+const pointerModule = { exports: {} }
+new Function('module', 'exports', compile(await readFile(new URL('../src/components/characterPointer.ts', import.meta.url), 'utf8')))(pointerModule, pointerModule.exports)
 
 class Target extends EventTarget {
   listeners = new Set()
@@ -25,11 +27,12 @@ class Target extends EventTarget {
   removeEventListener(type, listener) { this.listeners.delete(listener); super.removeEventListener(type, listener) }
 }
 
-function harness({ hidden = false, active = true, mirror = false, theme = 'dark', crash = false, reduced = false } = {}) {
+function harness({ hidden = false, active = true, mirror = false, theme = 'dark', crash = false, reduced = false, pointerRoot = null } = {}) {
   const oldDocument = globalThis.document, oldObserver = globalThis.IntersectionObserver
   const oldWindow = globalThis.window
   const preference = new Target(); preference.matches = reduced
-  globalThis.window = { matchMedia: () => preference }
+  const window = new Target(); window.matchMedia = () => preference
+  globalThis.window = window
   const document = new Target(); document.hidden = hidden
   globalThis.document = document
   let observer, loads = 0, cleanups = 0, disconnected = false
@@ -42,7 +45,7 @@ function harness({ hidden = false, active = true, mirror = false, theme = 'dark'
   const pending = new Promise((yes, no) => { resolve = yes; reject = no })
   const module = { exports: {} }
   new Function('require', 'module', 'exports', 'loadScene', compile(source).replace('import("./HomeCharacterScene")', 'loadScene()'))(
-    require, module, module.exports, () => { loads++; return pending },
+    name => name === './characterPointer' ? pointerModule.exports : require(name), module, module.exports, () => { loads++; return pending },
   )
   const callbacks = []
   function Scene(props) {
@@ -52,7 +55,7 @@ function harness({ hidden = false, active = true, mirror = false, theme = 'dark'
   }
   let view
   const render = () => React.createElement(module.exports.HomeCharacter, { active, mirror, theme })
-  act(() => { view = create(render(), { createNodeMock: () => ({}) }) })
+  act(() => { view = create(render(), { createNodeMock: () => ({ closest: () => pointerRoot }) }) })
   return {
     view, callbacks, document,
     get loads() { return loads }, get cleanups() { return cleanups },
@@ -68,7 +71,7 @@ function harness({ hidden = false, active = true, mirror = false, theme = 'dark'
       act(() => view.unmount()); assert.equal(document.listeners.size, 0)
       if (!mirror) assert.equal(disconnected, true)
       globalThis.document = oldDocument; globalThis.IntersectionObserver = oldObserver
-      assert.equal(preference.listeners.size, 0); globalThis.window = oldWindow
+      assert.equal(preference.listeners.size, 0); assert.equal(window.listeners.size, 0); globalThis.window = oldWindow
     },
   }
 }
@@ -95,6 +98,23 @@ test('Reduce Motion starts and changes to a still scene without losing the appro
     h.motion(true); assert.equal(h.view.root.findByType('canvas').props['data-reduced'], true)
     assert.equal(h.loads, 1); assert.equal(h.cleanups, 0)
   } finally { h.dispose() }
+})
+
+test('actual wrapper binds gaze only after readiness and detaches on overlay, hide, offscreen, reduced motion and failure', async () => {
+  const root=new Target(),h=harness({pointerRoot:root})
+  try {
+    assert.equal(root.listeners.size,0);h.visible(true);await h.load()
+    assert.equal(root.listeners.size,0)
+    act(()=>h.callbacks[0].onReady());assert.equal(root.listeners.size,3)
+    const input=h.callbacks[0].gazeInput
+    h.theme('light');assert.equal(root.listeners.size,3)
+    for(const change of [value=>h.active(value),value=>h.hidden(!value),value=>h.visible(value),value=>h.motion(!value)]) {
+      change(false);assert.equal(root.listeners.size,0)
+      change(true);assert.equal(root.listeners.size,3)
+    }
+    assert.equal(h.callbacks[0].gazeInput,input)
+    act(()=>h.callbacks[0].onFailure());assert.equal(root.listeners.size,0)
+  } finally {h.dispose();assert.equal(root.listeners.size,0)}
 })
 
 test('mirror never observes, fetches or mounts WebGL; initially covered Home defers loading', () => {
@@ -289,7 +309,7 @@ test('stop cancels timers and transitions; stale callbacks cannot restart even a
 })
 
 test('all gaze extremes stay attached to the sphere and keep the eye pair separation', () => {
-  for (const x of [-.1,0,.1]) for (const y of [-.06,0,.06]) {
+  for (const x of [-.22,0,.22]) for (const y of [-.14,0,.14]) {
     const poses = [-.23,.23].map(base=>geometryModule.exports.eyePose(base+x,.18+y))
     poses.forEach(pose=>{
       const normal = new THREE.Vector3(...pose.position).normalize()
@@ -318,7 +338,8 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
   const module = { exports: {} }
   new Function('require','module','exports',compile(sceneSource))(
     name=>name==='@react-three/fiber'?fiber:name==='./characterGeometry'?geometryModule.exports:name==='./characterAnimation'?animationModule.exports:require(name),module,module.exports)
-  const props = { active:true,reducedMotion:false,theme:'dark',onReady:()=>{},onFailure:()=>failures++ }
+  const gazeInput = pointerModule.exports.createGazeInput()
+  const props = { active:true,reducedMotion:false,theme:'dark',gazeInput,onReady:()=>{},onFailure:()=>failures++ }
   const render = changes=>act(()=>view.update(React.createElement(module.exports.HomeCharacterScene,{...props,...changes})))
   const draw = ()=>frame({gl,scene:{},camera:{}})
   try {
@@ -338,15 +359,25 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
     const scheduled=[...clock.timers.values()].map(timer=>timer.at)
     render({theme:'light'}); assert.deepEqual([...clock.timers.values()].map(timer=>timer.at),scheduled)
     draw(); assert.ok(Math.abs(meshes[0].position.x-(-.23+.025)*1.04)<1e-9)
+    gazeInput.emit({x:.22,y:-.14}); clock.advance(160); draw()
+    assert.equal(clock.timers.size,0)
+    assert.ok(Math.abs(meshes[0].position.x-(-.23+.22)*1.04)<1e-9)
+    meshes.forEach(mesh=>assert.ok(Math.abs(mesh.position.length()-1.04)<1e-9))
+    const directRequests=requests; draw(); assert.equal(requests,directRequests)
+    render({theme:'light'}); draw()
+    assert.ok(Math.abs(meshes[0].position.x-(-.23+.22)*1.04)<1e-9)
+    gazeInput.emit(null); clock.advance(420); draw(); assert.equal(clock.timers.size,2)
     const stale=[...clock.timers.values()].map(timer=>timer.callback)
     render({active:false}); assert.equal(clock.timers.size,0)
     const pausedDraws=draws; draw(); assert.equal(draws,pausedDraws)
     render({}); assert.equal(clock.timers.size,2)
     const resumed=requests; stale.forEach(callback=>callback()); assert.equal(requests,resumed)
     render({reducedMotion:true}); assert.equal(clock.timers.size,0)
+    const reducedRequests=requests; gazeInput.emit({x:.22,y:.14}); assert.equal(requests,reducedRequests)
     meshes.forEach(mesh=>{assert.equal(mesh.scale.y,1);assert.ok(Math.abs(Math.abs(mesh.position.x)-.23*1.04)<1e-9)})
     render({}); assert.equal(clock.timers.size,2)
     document.hidden=true; document.dispatchEvent(new Event('visibilitychange')); assert.equal(clock.timers.size,0)
+    const suspendedRequests=requests; gazeInput.emit({x:.22,y:.14}); assert.equal(requests,suspendedRequests)
     const hiddenDraws=draws; draw(); assert.equal(draws,hiddenDraws)
     render({active:false}); document.hidden=false; render({}); assert.equal(clock.timers.size,2)
     failDraw=true; draw(); assert.equal(failures,1);assert.equal(clock.timers.size,0)

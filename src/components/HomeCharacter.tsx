@@ -1,5 +1,6 @@
 import React, { Component, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
+import { bindHomeGaze, createGazeInput, type GazeInput } from './characterPointer'
 
 export interface HomeCharacterSceneProps {
   theme: 'dark' | 'light'
@@ -7,6 +8,7 @@ export interface HomeCharacterSceneProps {
   reducedMotion: boolean
   onReady: () => void
   onFailure: () => void
+  gazeInput?: GazeInput
 }
 
 class CharacterBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
@@ -35,6 +37,7 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
   theme?: 'dark' | 'light'; active?: boolean; mirror?: boolean
 }) {
   const host = useRef<HTMLDivElement>(null)
+  const gazeInput = useRef(createGazeInput()).current
   const [Scene, setScene] = useState<ComponentType<HomeCharacterSceneProps> | null>(null)
   const [visible, setVisible] = useState(false)
   const [inView, setInView] = useState(false)
@@ -77,11 +80,19 @@ export function HomeCharacter({ theme = 'dark', active = true, mirror = false }:
     return () => { cancelled = true }
   }, [eligible, Scene, onFailure])
 
+  useEffect(() => {
+    if (!eligible || !ready || reducedMotion) return
+    const element = host.current
+    const root = element?.closest<HTMLElement>('.home-fixed')
+    if (!element || !root) return
+    return bindHomeGaze(root, element, gazeInput.emit)
+  }, [eligible, ready, reducedMotion, gazeInput])
+
   return <div ref={host} className="liquid-glass-window home-placeholder-orb home-character" aria-hidden="true"
     data-ready={ready && !failed && !mirror} data-active={eligible} data-failed={failed}>
     <span className="home-character-fallback"><i /><i /></span>
     {Scene && !failed && !mirror && <CharacterBoundary onFailure={onFailure}>
-      <CharacterSession Scene={Scene} theme={theme} active={eligible} reducedMotion={reducedMotion} onReady={onReady} onFailure={onFailure} onReset={onReset} />
+      <CharacterSession Scene={Scene} theme={theme} active={eligible} reducedMotion={reducedMotion} gazeInput={gazeInput} onReady={onReady} onFailure={onFailure} onReset={onReset} />
     </CharacterBoundary>}
   </div>
 }

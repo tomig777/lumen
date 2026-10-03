@@ -1,7 +1,7 @@
 {
   "name": "personal-os",
   "private": true,
-  "version": "0.1.22",
+  "version": "0.1.23",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,7 @@
     "test:theme": "node --test tests/theme.test.mjs",
     "test:settings": "node --test tests/settings.test.mjs",
     "test:glass": "node --test tests/glassControls.test.mjs",
-    "test:home": "node --test tests/home.test.mjs tests/homeCharacter.test.mjs tests/homeBaseline.test.mjs tests/taskEditor.test.mjs tests/taskDrawer.test.mjs",
+    "test:home": "node --test tests/home.test.mjs tests/homeCharacter.test.mjs tests/characterPointer.test.mjs tests/homeBaseline.test.mjs tests/taskEditor.test.mjs tests/taskDrawer.test.mjs",
     "test:home-baseline": "node scripts/build-home-baseline.mjs",
     "test:updates": "node --test tests/offlineUpdates.test.mjs tests/appRelease.test.mjs"
   },

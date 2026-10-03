@@ -197,25 +197,27 @@ open and all-done task slots match; real production completion/undo does not mov
 the character, card slot or nav. Home alone cannot scroll vertically. Short-screen
 copy/stage yields to readable controls; landscape uses two columns. Full titles
 remain accessible in labels and the existing task editor. No records, shell,
-keyboard, storage or animation-controller changes. Physical Home acceptance is
-pending; finger gaze and personality remain later phases.
+keyboard, storage or animation-controller changes. The user subsequently confirmed
+the fixed Home looks good on their iPhone and authorized Phase 5. Detailed edge-case
+device checks remain separate; this acceptance is not a claim that every Phase 7
+check was performed.
 
 ## Phase 5 · Add finger-following eyes
 
 Primary areas: `HomeCharacter.tsx`, `HomeCharacterScene.tsx`,
 `characterAnimation.ts` and character/Home tests.
 
-- [ ] Extend the existing animation controller, rather than starting another loop.
+- [x] Extend the existing animation controller, rather than starting another loop.
   Priority: suspended/hidden/overlay > direct touch > brief expression > idle.
-- [ ] Track one primary pointer on the empty Home background only. Exclude controls,
+- [x] Track one primary pointer on the empty Home background only. Exclude controls,
   cards/carousel, fields, overlays and system-edge gestures; do not steal their taps.
-- [ ] Map pointer coordinates relative to the character into bounded curved-surface
+- [x] Map pointer coordinates relative to the character into bounded curved-surface
   gaze. Smooth movement and keep both eyes attached to the sphere.
-- [ ] On release/cancel/lost capture/route exit, blend to neutral and resume fresh
+- [x] On release/cancel/lost capture/route exit, blend to neutral and resume fresh
   idle timing. A touch waking sleepy eyes must not jump or replay old timers.
-- [ ] Use refs and coalesced draw requests, not React updates per pointer event/frame.
+- [x] Use refs and coalesced draw requests, not React updates per pointer event/frame.
   A stationary finger should settle without continuous rendering.
-- [ ] Keep the existing single lazy scene, DPR cap, static failure fallback and
+- [x] Keep the existing single lazy scene, DPR cap, static failure fallback and
   cleanup. Reduce Motion stays neutral/static; task controls remain independent.
 
 Tests: coordinate bounds, eye attachment, touch arbitration, pointer cancellation,
@@ -224,6 +226,17 @@ Reduce Motion and graphics failure.
 
 Gate: finger gaze feels smooth on the iPhone without interfering with card swipes
 or buttons, and stops doing work when settled/hidden.
+
+Phase 5 implementation/local verification recorded in
+`HOME_FINGER_GAZE_VERIFICATION.md` (0.1.23, 2026-10-03): production build,
+170/170 automated tests and 760/760 browser layout invariants pass. Empty hero
+background alone starts tracking; task region, controls and system edges are
+excluded. Direct gaze uses bounded .22/.14 surface offsets and finite 160ms easing;
+release returns over 420ms then schedules fresh idle delays. No extra loop, renderer,
+per-pointer React update or persistent interaction state. Hidden/overlay/failure
+and Reduce Motion suspend input and animation; theme changes preserve gaze.
+Physical gesture feel and system-edge behavior remain pending. Sleep/wake and
+brief expressions are Phase 6, not part of this release.
 
 ## Phase 6 · Add restrained personality states
 
