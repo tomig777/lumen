@@ -175,3 +175,22 @@ test('cleanup removes every observer and queued frame; missing VisualViewport is
   v.doc.emit('focusin'); v.flush(); v.clear()
   stopWithoutViewport()
 })
+
+test('task dialog keeps visible bounds when focus moves to Done, date/select, or body', () => {
+  const v = observedViewport()
+  const app = v.doc.querySelector()
+  let dialog = { inApp: true }
+  v.doc.querySelector = selector => selector.includes('task-editor-sheet') ? dialog : app
+  const stop = observeEditorViewport(v.win)
+  try {
+    v.viewport.height = 430; v.viewport.offsetTop = 80
+    for (const focused of [null, { tagName: 'BUTTON', inApp: true }, { ...v.field, type: 'date' }, { tagName: 'SELECT', inApp: true }]) {
+      v.doc.activeElement = focused; v.doc.emit('focusout'); v.viewport.emit('resize'); v.flush()
+      assert.equal(v.styles.get('--lumen-editor-height'), '430px')
+      assert.equal(v.styles.get('--lumen-editor-top'), '80px')
+    }
+    v.viewport.height = 797; v.viewport.offsetTop = 0; v.viewport.emit('resize'); v.flush(); v.clear()
+    v.viewport.height = 430; v.viewport.emit('resize'); v.flush()
+    dialog = null; v.doc.activeElement = null; v.doc.emit('focusout'); v.flush(); v.clear()
+  } finally { stop() }
+})

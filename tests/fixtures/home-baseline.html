@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Lumen Home interaction baseline</title>
+<style>body{margin:24px;background:#24211e;color:#e8d9c7;font:15px/1.5 system-ui}button{font:inherit;min-height:44px;padding:10px 18px;border:0;border-radius:24px}pre{white-space:pre-wrap;font:12px/1.5 monospace}iframe{border:0}p{max-width:75ch}</style></head>
+<body>
+<h1>Home interaction baseline · local QA only</h1>
+<p>Real Home, task dialog, navigation and CSS extracted into disposable test frames. No saved records, app storage, launch flow or service worker. Safe areas, standalone mode and keyboard metrics are simulated; these results do not prove native iOS behavior. Character geometry uses the existing static mirror fallback; renderer behavior is tested separately.</p>
+<button id="run">Run baseline matrix</button><h2 id="status">Not run</h2><pre id="summary"></pre><details><summary>Full measurements</summary><pre id="results"></pre></details>
+<script type="module">
+const run=document.querySelector('#run'),status=document.querySelector('#status'),results=document.querySelector('#results');
+run.addEventListener('click',async()=>{
+ run.disabled=true;results.textContent='';document.querySelector('#summary').textContent='';const reports=[];
+ try{
+  for(const profile of [0,1,2])for(const theme of ['dark','light']){
+   status.textContent=`Running profile ${profile+1}/3 · ${theme}`;
+   const frame=document.createElement('iframe');
+   const sizes=[[390,844],[320,568],[844,390]];frame.width=sizes[profile][0];frame.height=sizes[profile][1];
+   frame.style.cssText='position:absolute;left:-10000px;top:0';
+   frame.src=`./home-baseline-case.html?profile=${profile}&theme=${theme}`;document.body.appendChild(frame);
+   try{
+    const started=performance.now();
+    while(!frame.contentDocument?.querySelector('#case-report[data-ready],#case-report[data-error]')){
+     if(performance.now()-started>30000)throw new Error('Baseline case timed out');
+     await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    const node=frame.contentDocument.querySelector('#case-report');if(node.hasAttribute('data-error'))throw new Error(node.textContent);
+    const report=JSON.parse(node.textContent);reports.push(report);
+    results.textContent=JSON.stringify(reports,null,2);
+   }finally{frame.remove()}
+  }
+  const failed=reports.flatMap(report=>report.checks.filter(check=>!check.passed));
+  const checks=reports.reduce((count,report)=>count+report.checks.length,0);
+  status.textContent=`6/6 cases captured · ${checks-failed.length}/${checks} invariant checks pass`;
+  document.querySelector('#summary').textContent=reports.map(report=>{
+   const editor=report.editors.open.keyboard;
+   return `${report.profile.width} × ${report.profile.height} · ${report.theme}\n`+
+    `  Completion shifts cards ${report.homes.done.carousel.y-report.homes.open.carousel.y}px\n`+
+    `  Open Home content height ${report.homes.open.home.scrollHeight}px\n`+
+    `  Keyboard area ends at ${editor.layer.bottom}px; Save ends at ${editor.save.bottom}px\n`;
+  }).join('\n')+(failed.length?'\nFAILED: '+JSON.stringify(failed):'\nHome shift/overflow remain baseline defects for later phases. Keyboard measurements verify the updated task dialog in simulated viewports only.');
+ }catch(error){status.textContent='Capture failed';results.textContent+='\n'+String(error)}
+ finally{run.disabled=false}
+});
+</script>
+</body></html>

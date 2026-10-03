@@ -41,9 +41,13 @@ export function observeEditorViewport(win: Window): () => void {
     const textarea = active?.tagName === 'TEXTAREA' ? active as HTMLTextAreaElement : null
     const editableInput = input && !input.readOnly && !input.disabled
       && ['text', 'search', 'email', 'url', 'tel', 'password', 'number'].includes(input.type)
-    const editing = doc.visibilityState !== 'hidden' && !!active && !!app?.contains(active)
-      && !!(editableInput || (textarea && !textarea.readOnly && !textarea.disabled)
-        || (active as HTMLElement).isContentEditable)
+    const taskDialog = doc.querySelector('.deployed-app-root .task-editor-sheet')
+    // A keyboard can remain visible while focus moves to a dialog action/native
+    // picker. Do not drop its bounds until the visible viewport actually recovers.
+    const editing = doc.visibilityState !== 'hidden' && (
+      (!!taskDialog && !!app?.contains(taskDialog)) || (!!active && !!app?.contains(active)
+        && !!(editableInput || (textarea && !textarea.readOnly && !textarea.disabled)
+          || (active as HTMLElement).isContentEditable)))
     const bounds = app?.getBoundingClientRect()
     const editor = editing && viewport && bounds ? editorViewportFrame({
       editing, layoutTop: bounds.top, layoutHeight: bounds.height,

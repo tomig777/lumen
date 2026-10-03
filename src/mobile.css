@@ -110,6 +110,68 @@ html:has(.deployed-app-root) #root {
 }
 .deployed-app-screen .bottom-sheet button { min-height: 44px; }
 .deployed-app-screen .bottom-sheet .icon-button { min-width: 44px; }
+
+/* Only task dialogs use a persistent header/actions with a scrollable form.
+   The full-height shell and other editors retain their accepted geometry. */
+.sheet-head-actions { display: flex; align-items: center; gap: 6px; }
+.task-keyboard-done { display: none; min-height: 44px; padding: 0 10px; color: var(--lumen-text); background: transparent; }
+.bottom-sheet.task-editor-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px 20px 16px;
+}
+.task-editor-sheet > .sheet-handle,
+.task-editor-sheet > .sheet-head { flex: 0 0 auto; }
+.task-editor-sheet > .sheet-head { margin-bottom: 12px; }
+.bottom-sheet .task-editor-form { display: flex; flex-direction: column; gap: 0; min-height: 0; overflow: hidden; }
+.task-editor-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 12px;
+  padding: 4px 3px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.task-title-label { display: block; flex: 0 0 auto; }
+.task-title-label input { width: 100%; }
+.task-editor-content > :not(.task-title-label) { flex-shrink: 0; }
+.task-editor-sheet .sheet-footer { flex: 0 0 auto; margin: 0; padding-top: 12px; flex-wrap: wrap; }
+.task-editor-sheet .sheet-footer > span { flex: 1 1 70px; }
+.task-editor-sheet .sheet-footer button { min-height: 44px; }
+.task-editor-sheet .task-schedule-fields { margin: 0; }
+.task-editor-sheet .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.deployed-app-screen .task-editor-layer {
+  top: 0;
+  bottom: auto;
+  height: 100%;
+  padding-bottom: max(12px, var(--lumen-safe-bottom));
+  transition: top 180ms ease-out, height 180ms ease-out;
+}
+.deployed-app-screen .task-editor-sheet { border-radius: 24px; max-height: 100%; }
+html[data-lumen-keyboard='open'] .deployed-app-screen .task-editor-layer {
+  padding-top: max(12px, calc(env(safe-area-inset-top) - var(--lumen-editor-top, 0px)));
+  padding-bottom: 8px;
+  transition: none;
+}
+html[data-lumen-keyboard='open'] .task-keyboard-done { display: inline-flex; align-items: center; }
+@media (max-height: 480px) {
+  /* Landscape keyboard: spend the limited height on a complete editable field,
+     not the decorative handle/eyebrow. Actions still retain 44px targets. */
+  html[data-lumen-keyboard='open'] .deployed-app-screen .task-editor-sheet { padding: 8px 20px; }
+  html[data-lumen-keyboard='open'] .task-editor-sheet > .sheet-handle { display: none; }
+  html[data-lumen-keyboard='open'] .task-editor-sheet > .sheet-head { align-items: center; margin-bottom: 8px; }
+  html[data-lumen-keyboard='open'] .task-editor-sheet .sheet-head .eyebrow { display: none; }
+  html[data-lumen-keyboard='open'] .task-editor-sheet .sheet-head h2 { margin: 0; font-size: 20px; }
+  html[data-lumen-keyboard='open'] .task-editor-sheet .sheet-footer { padding-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deployed-app-screen .task-editor-layer { transition: none; }
+}
 .deployed-app-screen .quick-capture-layer {
   padding: max(14px, env(safe-area-inset-top)) 20px max(14px, var(--lumen-editor-safe-bottom));
 }
