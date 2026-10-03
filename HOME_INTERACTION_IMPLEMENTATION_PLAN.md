@@ -1,8 +1,9 @@
 # Lumen · fixed Home, task dialogs and character interactions
 
 Planning baseline: 0.1.19 / 99a866a, 2026-10-03.
-Status: Phase 1 baseline and Phase 2 implementation/local verification complete.
-Phase 2 physical iPhone keyboard acceptance is pending; later phases are untouched.
+Status: Phases 1–3 implementation/local verification complete.
+The user confirmed the Phase 2 keyboard fix works on their iPhone. Phase 3 phone
+acceptance and detailed keyboard edge cases remain pending; Phases 4–8 untouched.
 
 This plan extends the completed theme/Home/idle-eye work in
 `LUMEN_REDESIGN_IMPLEMENTATION_PLAN.md`. Later user-approved appearance changes
@@ -109,24 +110,28 @@ without saving/discarding the draft. The native keyboard/picker/predictive-text/
 hardware-keyboard/rotation checks above remain unchecked until physical testing.
 No storage migration, shell-height change, Home content removal or eye changes.
 
+Physical follow-up (2026-10-03): the user reported “okay it works, you can continue”
+after Phase 2. This accepts the main keyboard placement fix, not every native
+picker, predictive-text, hardware-keyboard or rotation case listed above.
+
 ## Phase 3 · Add Yesterday and preserve access to all tasks
 
 Primary areas: Home callbacks/overlay state in `src/App.tsx`, `src/daily.ts`,
 theme-aware dialog styles and Home/daily tests.
 
-- [ ] Add a fourth task-control button, using a circular-arrow/history icon with
+- [x] Add a fourth task-control button, using a circular-arrow/history icon with
   an accessible Yesterday label. Order: Add, Previous, Next, History.
-- [ ] Preserve heading/date/control alignment and touch sizes. Where four controls
+- [x] Preserve heading/date/control alignment and touch sizes. Where four controls
   cannot fit beside the full date, give the control row its own predictable space.
-- [ ] Open a task drawer on Yesterday, showing the full local date, recorded
+- [x] Open a task drawer on Yesterday, showing the full local date, recorded
   completions and a neutral empty state. History entries are read-only; opening
   them must not repeat, undo or reschedule a task.
-- [ ] Include an All tasks tab containing existing daily, overdue, unscheduled,
+- [x] Include an All tasks tab containing existing daily, overdue, unscheduled,
   future and completed tasks, with existing edit/complete actions where meaningful.
   A historical row must never silently toggle today's task state.
-- [ ] Use the existing date/recurrence helpers; update yesterday on local midnight
+- [x] Use the existing date/recurrence helpers; update yesterday on local midnight
   and return from background. Do not subtract a fixed 24 hours across DST changes.
-- [ ] Reuse centralized overlay ownership so the character pauses and underlying
+- [x] Reuse centralized overlay ownership so the character pauses and underlying
   Home is inert. Keep internal list scrolling, focus/close and draft-safe editor
   transitions; restore drawer tab/context after editing an All tasks item.
 
@@ -136,6 +141,16 @@ both themes and drawer scrolling without scrolling Home.
 
 Gate: every task previously reachable below Home is accessible in the drawer
 before the old groups are removed. History wording accurately describes the data.
+
+Phase 3 verification recorded in `HOME_TASK_DRAWER_VERIFICATION.md` (0.1.21,
+2026-10-03): production build, 164/164 Node tests and 288/288 task/Home browser
+invariants across six theme/size cases pass. Production preview verifies edit/save,
+completion/undo, persistence, focus restoration and normal data-preserving update.
+The selected-tab contrast was checked in both themes. History remains read-only;
+future/off-day tasks remain editable without recording a false completion today.
+The old below-Home groups and completion paragraph deliberately remain for Phase 4.
+No storage migration, shell-height change or eye animation changes. Physical
+drawer testing on the installed iPhone remains pending.
 
 ## Phase 4 · Turn Home into a fixed, stable dashboard
 

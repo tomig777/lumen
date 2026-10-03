@@ -16,7 +16,7 @@ new Function('require','module','exports',transformSync(await readFile(new URL('
 const daily = dailyModule.exports
 const { code } = transformSync(`import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Check, Circle, Plus, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { Check, Circle, Plus, ChevronLeft, ChevronRight, Pencil, RotateCcw } from 'lucide-react';
 import { classifyTasks, taskIsComplete } from './daily';
 import { HomeCharacter } from './HomeCharacter';
 ${helpers}\n${source}\nexport { HomeScreen };`, { loader: 'tsx', format: 'cjs', jsx: 'transform' })
@@ -26,7 +26,7 @@ const date = '2026-10-03'
 
 function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) {
   const old = globalThis.window
-  let nextId = 1, retries = 0, adds = 0
+  let nextId = 1, retries = 0, adds = 0, historyOpens = 0
   const timers = new Map(), frames = new Map(), toggles = [], edits = [], scrolls = []
   globalThis.window = { setTimeout: fn => { const id = nextId++; timers.set(id,fn); return id }, clearTimeout: id => timers.delete(id), requestAnimationFrame: fn => { const id = nextId++; frames.set(id,fn); return id }, cancelAnimationFrame: id => frames.delete(id) }
   const components = new Map()
@@ -37,14 +37,14 @@ function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) 
   const module = { exports: {} }
   new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './HomeCharacter' ? { HomeCharacter: () => React.createElement('div', { 'aria-hidden': true }) } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
   const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), scrollBy: options => scrolls.push(options) }
-  const props = { data: { tasks }, today, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
+  const props = { data: { tasks }, today, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onOpenTaskHistory: () => historyOpens++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
     toggles.push(id); props.data = { tasks: props.data.tasks.map(item => item.id === id ? daily.toggleTaskForDate(item,props.today,`${date}T12:00:00Z`) : item) }; render()
   } }
   let view
   const render = () => view.update(React.createElement(module.exports.HomeScreen,props))
   act(() => { view = create(React.createElement(module.exports.HomeScreen,props),{ createNodeMock: element => element.props.className?.includes('home-task-carousel') ? carousel : null }) })
   return { view,props,timers,frames,toggles,edits,scrolls,carousel,
-    get retries() { return retries }, get adds() { return adds },
+    get retries() { return retries }, get adds() { return adds }, get historyOpens() { return historyOpens },
     click(label) { const button = view.root.findAllByType('button').find(node => node.props['aria-label'] === label || text(node) === label); assert.ok(button,label); act(() => button.props.onClick()) },
     flushTimers() { act(() => { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn=>fn()) }) },
     flushFrames() { act(() => { const pending = [...frames.values()]; frames.clear(); pending.forEach(fn=>fn()) }) },
@@ -80,6 +80,7 @@ test('empty and all-done days remain explicit, accurate and reversible', () => {
     assert.ok(text(empty.view.toJSON()).includes('Nothing scheduled today.'))
     for (const label of ['Previous task','Next task']) assert.equal(empty.view.root.findByProps({'aria-label':label}).props.disabled,true)
     empty.click('Add task'); assert.equal(empty.adds,1)
+    empty.click('Yesterday and all tasks'); assert.equal(empty.historyOpens,1)
   } finally { empty.dispose() }
   const done = harness([task('one',{dueDate:date,completed:true})])
   try {
@@ -158,7 +159,7 @@ test('single/double-digit dates and long months share a dedicated control row, w
     try {
       const row = h.view.root.findByProps({className:'home-task-heading-row'})
       assert.equal(text(row.findByType('time')), expected); assert.equal(row.findByType('time').props.dateTime, today)
-      assert.equal(row.findAllByType('button').length, 3)
+      assert.equal(row.findAllByType('button').length, 4)
       assert.equal(row.findAllByProps({className:'home-task-summary'}).length, 0)
       assert.equal(text(h.view.root.findByProps({className:'home-task-summary'})), '0 open · 0 done')
     } finally { h.dispose() }

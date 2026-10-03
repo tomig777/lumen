@@ -114,6 +114,7 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading 
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading time { font: inherit; white-space: normal; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-summary { color: var(--lumen-text-muted); text-align: start; font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls { flex-shrink: 0; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls .home-task-control { min-width: 44px; min-height: 44px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { gap: 10px; margin-bottom: 0; padding-bottom: 8px; scroll-padding: 4px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-wrap {
   flex: 0 0 min(82%, 320px);

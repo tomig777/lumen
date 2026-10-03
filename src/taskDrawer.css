@@ -1,0 +1,40 @@
+/* Local overlay, not a new viewport/scroll owner. No glints or render loop. */
+.task-drawer-layer { position: absolute; z-index: 29; inset: 0; display: flex; align-items: flex-end; background: var(--lumen-scrim); padding: 12px; }
+.deployed-app-screen .task-drawer-layer { padding: max(12px, calc(env(safe-area-inset-top) + 8px)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.task-drawer { width: 100%; max-height: 100%; height: min(620px, 100%); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 20px; border: 1px solid var(--lumen-line); border-radius: 28px; color: var(--lumen-text); background: var(--lumen-surface-raised); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.task-drawer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-shrink: 0; }
+.task-drawer-heading .eyebrow { color: var(--lumen-text-muted); font: 500 10px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .12em; }
+.task-drawer-heading h2 { margin: 5px 0 0; font: 500 24px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: -.03em; outline: none; }
+.task-drawer button { color: inherit; font: inherit; }
+.task-drawer .icon-button { min-width: 44px; min-height: 44px; flex-shrink: 0; color: var(--lumen-text); background: var(--lumen-surface); }
+.task-drawer-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; flex-shrink: 0; background: var(--lumen-surface); border-radius: 18px; }
+html[data-lumen-theme] .phone-app .task-drawer-tabs button { min-height: 44px; border-radius: 14px; background: transparent; font-size: 14px; }
+html[data-lumen-theme] .phone-app .task-drawer-tabs button[aria-selected='true'] { color: var(--lumen-on-selection); background: var(--lumen-selection); }
+.task-drawer-description { flex-shrink: 0; padding: 16px 2px 12px; }
+.task-drawer-description time { font-size: 14px; font-weight: 500; }
+.task-drawer-description p { margin: 6px 0 0; color: var(--lumen-text-secondary); font-size: 12px; line-height: 1.5; }
+.task-drawer-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-padding-block: 12px; padding: 0 2px 8px; }
+.task-drawer-list ul { margin: 0; padding: 0; list-style: none; }
+.task-drawer-list li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--lumen-line); }
+.task-drawer-list li > div { flex: 1; min-width: 0; }
+.task-drawer-list strong { display: block; font-size: 15px; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+.task-drawer-list small { display: block; margin-top: 4px; color: var(--lumen-text-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.task-history-list li > svg { flex-shrink: 0; margin: 0 10px 0 3px; color: var(--lumen-text-secondary); }
+.task-index-group { margin: 0 0 16px; }
+.task-index-group h3 { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0 4px; color: var(--lumen-text-secondary); font-size: 12px; font-weight: 500; }
+.task-index-group h3 span { color: var(--lumen-text-muted); }
+.task-index-toggle, .task-index-pending { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; color: var(--lumen-text-secondary); background: transparent; border-radius: 50%; }
+.task-index-pending { opacity: .5; }
+html[data-lumen-theme] .phone-app .task-index-toggle { color: var(--lumen-text-secondary); background: transparent; }
+.task-index-group .is-complete strong { color: var(--lumen-text-secondary); text-decoration: line-through; }
+.task-drawer-empty { margin: 20px 0; color: var(--lumen-text-secondary); font-size: 14px; line-height: 1.5; }
+.task-drawer-save-error { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--lumen-danger); font-size: 13px; }
+html[data-lumen-theme] .phone-app .task-drawer-save-error button { min-height: 44px; padding: 0 12px; color: inherit; background: transparent; text-decoration: underline; }
+@media (max-height: 480px) {
+  .task-drawer { padding: 12px 16px; border-radius: 22px; }
+  .task-drawer-heading { margin-bottom: 8px; align-items: center; }
+  .task-drawer-heading .eyebrow { display: none; }
+  .task-drawer-heading h2 { margin: 0; font-size: 21px; }
+  .task-drawer-description { padding: 8px 2px; }
+  .task-drawer-description p { margin-top: 3px; }
+}

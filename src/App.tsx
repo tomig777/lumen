@@ -43,13 +43,14 @@ import { BrainMap, BottomNav, MusicPlayer, PhoneFrame, StatusBar, VisualArt, typ
 import { PeopleScreen } from './components/PeopleScreen'
 import { AppOverlay } from './components/AppOverlay'
 import { buildBrainGraph, isSampleGraphNote } from './brainGraph'
-import { classifyTasks, localDateKey, selectedDateAfterRollover, taskIsComplete, toggleTaskForDate } from './daily'
+import { classifyTasks, localDateKey, selectedDateAfterRollover, taskCanToggleOn, taskIsComplete, toggleTaskForDate } from './daily'
 import { advanceWorkoutSession, beginWorkoutSession, recordWorkoutSet } from './workoutSession'
 import { ExerciseIllustration, searchWorkoutGuideExercises, WorkoutGuideCredits } from './components/ExerciseIllustration'
 import { StoredImage } from './components/StoredImage'
 import { SettingsScreen } from './components/SettingsScreen'
 import { WelcomeGlass } from './components/WelcomeGlass'
 import { HomeCharacter } from './components/HomeCharacter'
+import { TaskDrawer, type TaskDrawerTab } from './components/TaskDrawer'
 import { createDemoState, createPinterestSample } from './data/demoData'
 import { createBackup, currentDataSummary, readBackup } from './backup'
 import type { BackupSummary } from './backup'
@@ -170,6 +171,7 @@ function App() {
   const [selectedPersonId, setSelectedPersonId] = useState('person-anna')
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<SheetState>({ kind: null })
+  const [taskDrawer, setTaskDrawer] = useState<TaskDrawerTab | null>(null)
   const [toast, setToast] = useState('')
   const [previewScale, setPreviewScale] = useState(1)
   const [today, setToday] = useState(localDateKey)
@@ -226,6 +228,7 @@ function App() {
   }
 
   const navigate = (nextScreen: Screen) => {
+    setTaskDrawer(null)
     if (nextScreen === 'home' || nextScreen === 'brain' || nextScreen === 'projects' || nextScreen === 'health') lastPrimaryScreen.current = nextScreen
     setScreen(nextScreen)
     if (nextScreen === 'home') setFocusRunning(false)
@@ -595,6 +598,12 @@ function App() {
     navigate('workout')
   }
 
+  const toggleTaskFromDrawer = (taskId: string) => {
+    const task = data.tasks.find(item => item.id === taskId)
+    // Guard the actual local day too, in case a tap lands just at midnight.
+    if (task && taskCanToggleOn(task, localDateKey())) toggleTask(taskId)
+  }
+
   const completeSet = () => {
     const plan = data.healthPlans.find((item) => item.date === workoutDate)
     const planned = plan?.exercises[workoutExerciseIndex]
@@ -670,7 +679,7 @@ function App() {
     switch (screen) {
       case 'welcome': return <WelcomeScreen onContinue={() => navigate('home')} theme={theme} />
       case 'login': return <LoginScreen onBack={() => navigate('welcome')} onLogin={() => navigate('home')} />
-      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} saveState={saveState} onRetrySave={retrySave} theme={theme} characterActive={screen === 'home' && !sheet.kind && !selectedImage} mirror={mirror} />
+      case 'home': return <HomeScreen data={data} today={today} onToggleTask={toggleTask} onEditTask={openTaskEditor} onOpenTaskHistory={() => setTaskDrawer('yesterday')} onAddTask={() => { setTaskDraft({ title: '', projectId: '', dueDate: today, recurrence: 'once' }); openSheet('task') }} saveState={saveState} onRetrySave={retrySave} theme={theme} characterActive={screen === 'home' && !sheet.kind && !selectedImage && !taskDrawer} mirror={mirror} />
       case 'settings': return <SettingsScreen onBack={returnToPrimaryScreen} onOpenBackup={() => navigate('backup')} saveState={saveState} offlineShell={offlineShell} />
       case 'backup': return <BackupScreen data={data} onBack={() => navigate('settings')} onRestore={restoreBackup} onPortableState={portableState} saveState={saveState} verification={backupVerification} onRecordVerification={recordBackupVerification} offlineShell={offlineShell} />
       case 'brain': return <BrainScreen data={data} onCapture={() => openSheet('capture')} onNewNote={(categoryId) => openNoteEditor(undefined, '', categoryId)} onOpenNote={openNoteEditor} onThought={openThought} onCategorizeThought={categorizeThought} onSaveCategory={saveBrainCategory} onStageImage={stageImage} />
@@ -691,6 +700,8 @@ function App() {
     }
   }
 
+  const renderTaskDrawer = (mirror = false) => taskDrawer && !mirror && <TaskDrawer tasks={data.tasks} projects={data.projects} today={today} tab={taskDrawer} suspended={!!sheet.kind} onTabChange={setTaskDrawer} onClose={() => setTaskDrawer(null)} onEdit={openTaskEditor} onToggle={toggleTaskFromDrawer} saveState={saveState} onRetrySave={retrySave} />
+
   const renderViewport = (viewportClass: string, motionId: string, mirror = false) => (
     <div className={viewportClass} aria-hidden={mirror ? true : undefined}>
       <StatusBar light={theme === 'dark'} />
@@ -700,6 +711,7 @@ function App() {
         </motion.div>
       </AnimatePresence>
       {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId={motionId} />}
+      {renderTaskDrawer(mirror)}
       {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
       {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
       {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
@@ -738,6 +750,7 @@ function App() {
               </motion.div>
             </AnimatePresence>
             {!hideNav && <BottomNav active={activeTab} onChange={handleTabChange} quickActions={quickActions} motionId="phone" />}
+            {renderTaskDrawer()}
             {saveState.kind === 'error' && <div className="storage-error-banner" role="alert"><span>Changes not saved on this device.</span><button type="button" onClick={retrySave}>Retry</button></div>}
             {sheet.kind && <RenderSheet sheet={sheet} setSheet={setSheet} captureText={captureText} setCaptureText={setCaptureText} saveCapture={saveCapture} noteDraft={noteDraft} setNoteDraft={setNoteDraft} saveNote={saveNote} taskDraft={taskDraft} setTaskDraft={setTaskDraft} saveTask={saveTask} onDeleteTask={deleteTask} projectDraft={projectDraft} setProjectDraft={setProjectDraft} saveProject={saveProject} personDraft={personDraft} setPersonDraft={setPersonDraft} savePerson={savePerson} healthDraft={healthDraft} setHealthDraft={setHealthDraft} saveHealth={saveHealth} journalDraft={journalDraft} setJournalDraft={setJournalDraft} journalMode={journalMode} setJournalMode={setJournalMode} saveJournal={saveJournal} data={data} onConvertThoughtToTask={(thought) => { setTaskDraft({ title: thought.text, projectId: thought.projectId ?? '', dueDate: today, recurrence: 'once' }); openSheet('task') }} onConvertThoughtToNote={(thought) => { setNoteDraft({ title: 'Captured thought', body: thought.text }); openSheet('note') }} onDeleteThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.filter((thought) => thought.id !== id) })); setSheet({ kind: null }); notify('Thought removed') }} onPinThought={(id) => { setData((current) => ({ ...current, thoughts: current.thoughts.map((thought) => thought.id === id ? { ...thought, pinned: !thought.pinned } : thought) })); setSheet({ kind: null }); notify('Thought updated') }} />}
             {selectedImage && <ImageViewer asset={selectedImage} projects={data.projects} collections={data.collections} onClose={() => setSelectedImageId(null)} onDelete={() => deleteImage(selectedImage.id)} onLinkProject={(id) => linkImageToProject(selectedImage.id, id)} onLinkCollection={(id) => linkImageToCollection(selectedImage.id, id)} />}
@@ -829,7 +842,7 @@ function LoginScreen({ onBack, onLogin }: { onBack: () => void; onLogin: () => v
   )
 }
 
-function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveState, onRetrySave, theme = 'dark', characterActive = true, mirror = false }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; saveState: SaveState; onRetrySave: () => void; theme?: 'dark' | 'light'; characterActive?: boolean; mirror?: boolean }) {
+function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTaskHistory, saveState, onRetrySave, theme = 'dark', characterActive = true, mirror = false }: { data: AppState; today: string; onToggleTask: (id: string) => void; onEditTask: (task: Task) => void; onAddTask: () => void; onOpenTaskHistory?: () => void; saveState: SaveState; onRetrySave: () => void; theme?: 'dark' | 'light'; characterActive?: boolean; mirror?: boolean }) {
   const groups = classifyTasks(data.tasks, today)
   const openTasks = groups.today.filter((task) => !taskIsComplete(task, today))
   const completedTaskItems = groups.doneToday
@@ -908,6 +921,7 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, saveStat
               <button type="button" className="home-task-control" onClick={onAddTask} aria-label="Add task"><Plus size={17} /></button>
               <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task" disabled={!tasks.length}><ChevronLeft size={17} /></button>
               <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task" disabled={!tasks.length}><ChevronRight size={17} /></button>
+              <button type="button" className="home-task-control" onClick={onOpenTaskHistory} aria-label="Yesterday and all tasks"><RotateCcw size={17} /></button>
             </div>
           </div>
           <span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span>

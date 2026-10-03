@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { spawnSync } from 'node:child_process'
-import { classifyTasks, localDateKey, previousLocalDate, selectedDateAfterRollover, taskIsComplete, taskScheduledOn, toggleTaskForDate } from '../src/daily.ts'
+import { classifyTasks, localDateKey, previousLocalDate, selectedDateAfterRollover, taskCanToggleOn, taskDrawerGroups, taskIsComplete, taskScheduledOn, toggleTaskForDate } from '../src/daily.ts'
 
 const task = (overrides = {}) => ({ id: 'one', title: 'A task', completed: false, priority: 'medium', ...overrides })
 
@@ -53,4 +53,28 @@ test('weekdays skip weekends and one-off tasks separate overdue and unscheduled'
   assert.deepEqual(grouped.overdue.map((value) => value.id), ['overdue'])
   assert.deepEqual(grouped.unscheduled.map((value) => value.id), ['loose'])
   assert.deepEqual(grouped.yesterdayDone, []) // Old boolean-only records have no trustworthy date.
+})
+
+test('drawer index includes every task once, including future, off-day recurrence and legacy completions', () => {
+  const items = [task({ id: 'today', dueDate: '2026-10-03' }), task({ id: 'late', dueDate: '2026-10-02' }),
+    task({ id: 'loose' }), task({ id: 'future', dueDate: '2026-10-04' }), task({ id: 'legacy', completed: true }),
+    task({ id: 'daily', recurrence: 'daily', completedOn: [{ date: '2026-10-02', at: 'noon' }] }),
+    task({ id: 'weekdays', recurrence: 'weekdays' }), task({ id: 'done', dueDate: '2026-10-03', completed: true })]
+  const groups = taskDrawerGroups(items, '2026-10-03')
+  assert.deepEqual(groups.map(group => [group.id, group.tasks.map(item => item.id)]), [
+    ['today', ['today', 'daily']], ['overdue', ['late']], ['unscheduled', ['loose']],
+    ['upcoming', ['future', 'weekdays']], ['completed', ['legacy', 'done']],
+  ])
+  assert.equal(new Set(groups.flatMap(group => group.tasks.map(item => item.id))).size, items.length)
+  assert.deepEqual(taskDrawerGroups([], '2026-10-03'), [])
+  assert.equal(classifyTasks(items, '2026-10-03').yesterdayDone[0].id, 'daily')
+})
+
+test('drawer completion actions cannot record future or off-day recurring tasks as today', () => {
+  for (const item of [task({ dueDate: '2026-10-04' }), task({ recurrence: 'daily', dueDate: '2026-10-04' }), task({ recurrence: 'weekdays' })])
+    assert.equal(taskCanToggleOn(item, '2026-10-03'), false)
+  for (const item of [task(), task({ dueDate: '2026-10-02' }), task({ completed: true }), task({ recurrence: 'daily' }),
+    task({ recurrence: 'weekdays', completedOn: [{ date: '2026-10-03', at: 'noon' }] })])
+    assert.equal(taskCanToggleOn(item, '2026-10-03'), true)
+  assert.equal(taskCanToggleOn(task({ recurrence: 'weekdays' }), '2026-10-05'), true)
 })

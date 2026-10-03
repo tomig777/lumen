@@ -45,6 +45,32 @@ export function classifyTasks(tasks: Task[], date: string) {
   return { today, overdue, unscheduled, yesterdayDone, doneToday, completedElsewhereToday }
 }
 
+/** A complete, non-overlapping index; history remains a separate read-only view. */
+export function taskDrawerGroups(tasks: Task[], date: string) {
+  const groups: { id: string; label: string; tasks: Task[] }[] = [
+    { id: 'today', label: 'Today', tasks: [] },
+    { id: 'overdue', label: 'Overdue', tasks: [] },
+    { id: 'unscheduled', label: 'Unscheduled', tasks: [] },
+    { id: 'upcoming', label: 'Upcoming', tasks: [] },
+    { id: 'completed', label: 'Completed', tasks: [] },
+  ]
+  for (const task of tasks) {
+    const complete = taskIsComplete(task, date)
+    const recurring = task.recurrence === 'daily' || task.recurrence === 'weekdays'
+    const group = complete ? 'completed' : taskScheduledOn(task, date) ? 'today'
+      : !recurring && task.dueDate && task.dueDate < date ? 'overdue'
+      : !recurring && !task.dueDate ? 'unscheduled' : 'upcoming'
+    groups.find(item => item.id === group)!.tasks.push(task)
+  }
+  return groups.filter(group => group.tasks.length)
+}
+
+/** Future/off-day recurring occurrences can be edited, not completed as today. */
+export function taskCanToggleOn(task: Task, date: string): boolean {
+  if (task.recurrence === 'daily' || task.recurrence === 'weekdays') return taskCompletedOn(task, date) || taskScheduledOn(task, date)
+  return taskIsComplete(task, date) || !task.dueDate || task.dueDate <= date
+}
+
 export function toggleTaskForDate(task: Task, date: string, at: string): Task {
   const done = taskIsComplete(task, date)
   const previous = task.completedOn ?? []

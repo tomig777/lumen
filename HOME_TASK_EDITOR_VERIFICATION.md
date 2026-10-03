@@ -58,7 +58,12 @@ unchanged. The completion paragraph and scrolling Home remain Phase 4 work.
 No installed-phone data, cache, saved records or service worker was cleared.
 Fixture measurement code is not included in the production app shell.
 
-## Physical iPhone acceptance · pending
+## Physical iPhone acceptance · main fix confirmed, edge cases pending
+
+On 2026-10-03 the user reported “okay it works, you can continue” after trying
+Phase 2 on their iPhone. Treat the primary keyboard placement/return fix as
+confirmed. The following detailed native-control and lifecycle checks were not
+individually reported and remain pending where applicable.
 
 Use the installed Home Screen app, not the desktop preview. Update through
 **+ → Settings → App & updates**, and confirm version **0.1.20**.
@@ -73,4 +78,5 @@ Use the installed Home Screen app, not the desktop preview. Update through
    task and verify after reopening the app. Confirm no pale bottom strip returns.
 
 Browser simulation cannot establish native iOS 17.3 keyboard delivery, animation
-feel or system paint. Those checks remain pending until user confirmation.
+feel or system paint. The detailed checks remain pending unless individually
+confirmed; this does not revoke the user's acceptance of the main fix.

@@ -362,7 +362,7 @@ test('actual animated scene updates mesh refs, then cancels on pause, Reduce Mot
 
 test('Home wiring excludes mirrors/overlays and the scene chunk is part of the offline shell', async () => {
   assert.match(app, /renderScreen\(mirror\)/)
-  assert.match(app, /characterActive=\{screen === 'home' && !sheet.kind && !selectedImage\} mirror=\{mirror\}/)
+  assert.match(app, /characterActive=\{screen === 'home' && !sheet.kind && !selectedImage && !taskDrawer\} mirror=\{mirror\}/)
   assert.match(css, /home-character\[data-ready="true"\] .home-character-fallback \{ visibility: hidden/)
   assert.match(css, /pointer-events: none/)
   assert.match(css, /#fff1dc, #e8d9c7 45%, #b59f87 82%/)

@@ -5,6 +5,7 @@ import { MotionConfig } from 'framer-motion'
 import { HomeScreen, RenderSheet } from 'lumen-home-baseline'
 import { BottomNav } from '../../src/components/VisualComponents'
 import { observeEditorViewport } from '../../src/mobileViewport'
+import { TaskDrawer } from '../../src/components/TaskDrawer'
 import { baselineData, baselineDate } from './home-baseline-data.mjs'
 
 const profiles = [
@@ -17,7 +18,7 @@ const profile = profiles[Number(query.get('profile')) || 0]
 const theme = query.get('theme') === 'light' ? 'light' : 'dark'
 document.documentElement.setAttribute('data-lumen-theme', theme)
 
-const styles = await Promise.all(['styles', 'polish', 'mobile', 'welcome', 'theme', 'settings', 'glass', 'home'].map(async name => {
+const styles = await Promise.all(['styles', 'polish', 'mobile', 'welcome', 'theme', 'settings', 'glass', 'home', 'taskDrawer'].map(async name => {
   const response = await fetch(`/src/${name}.css?direct`)
   if (!response.ok) throw new Error(`Missing ${name}.css`)
   return response.text()
@@ -32,18 +33,22 @@ document.head.appendChild(style)
 const viewport = Object.assign(new EventTarget(), { height: profile.height, offsetTop: 0, scale: 1 })
 Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
 
-let setCase: (kind: string) => void, setEditor: (open: boolean) => void
+let setCase: (kind: string) => void, setEditor: (open: boolean) => void, setDrawer: (tab: 'yesterday' | 'all' | null) => void
 function Fixture() {
   const [kind, updateCase] = useState('open')
   const [open, updateEditor] = useState(false)
+  const [drawer, updateDrawer] = useState<'yesterday' | 'all' | null>(null)
   const [draft, setDraft] = useState({ title: 'Fixture retained draft', projectId: '', dueDate: baselineDate, recurrence: 'once' })
-  setCase = updateCase; setEditor = updateEditor
+  setCase = updateCase; setEditor = updateEditor; setDrawer = updateDrawer
   const data = baselineData(kind)
   return <div className="deployed-app-root"><div className="phone-app deployed-app-screen">
     <div className="screen-layer"><HomeScreen data={data} today={baselineDate} saveState={{ kind: 'saved' }}
-      onRetrySave={() => {}} onAddTask={() => updateEditor(true)} onEditTask={() => updateEditor(true)}
+      onRetrySave={() => {}} onAddTask={() => updateEditor(true)} onEditTask={() => updateEditor(true)} onOpenTaskHistory={() => updateDrawer('yesterday')}
       onToggleTask={() => updateCase(kind === 'done' ? 'open' : 'done')} theme={theme} characterActive={false} mirror /></div>
     <BottomNav active="home" onChange={() => {}} quickActions={[]} motionId="home-baseline" />
+    {drawer && <TaskDrawer tasks={data.tasks} projects={data.projects} today={baselineDate} tab={drawer} suspended={open}
+      onTabChange={updateDrawer} onClose={() => updateDrawer(null)} onEdit={() => updateEditor(true)} onToggle={() => {}}
+      saveState={{ kind: 'saved' }} onRetrySave={() => {}} />}
     {open && <RenderSheet sheet={{ kind: 'task' }} setSheet={() => updateEditor(false)} data={data}
       taskDraft={draft} setTaskDraft={setDraft} saveTask={event => event.preventDefault()} onDeleteTask={() => {}} />}
   </div></div>
@@ -131,6 +136,34 @@ try {
     check(states.dismissedStillFocused.draftValue === 'Fixture retained draft', `${kind}: dismissal retains draft`)
   }
   check(report.homes.open.character.width === 216 && report.homes.open.character.height === 216, '216px character retained')
+  // Exercise the actual drawer, including suspension for the same task editor.
+  flushSync(() => { setCase('mixed'); setDrawer('yesterday') }); await settle()
+  report.drawer = { history: box('.task-drawer-list'), heading: box('.task-drawer-heading'), dialog: box('.task-drawer') }
+  check(document.querySelectorAll('.task-history-list li').length === 1, 'history contains only the recorded yesterday task')
+  check(document.querySelectorAll('.task-history-list button').length === 0, 'history is read-only')
+  check(report.drawer.dialog.y >= profile.safeTop && report.drawer.dialog.bottom <= profile.height - Math.max(12, profile.safeBottom), 'drawer fits safe drawing area')
+  flushSync(() => setDrawer('all')); await settle()
+  const selectedTab = getComputedStyle(document.querySelector('[data-task-tab="all"]')!)
+  const otherTab = getComputedStyle(document.querySelector('[data-task-tab="yesterday"]')!)
+  check(selectedTab.backgroundColor !== otherTab.backgroundColor, 'selected tab has a distinct themed surface')
+  check(selectedTab.color !== otherTab.color, 'selected tab has matching contrasting text')
+  const taskList = document.querySelector<HTMLElement>('.task-drawer-list')!
+  const home = document.querySelector<HTMLElement>('.home-screen')!
+  const homeScroll = home.scrollTop
+  check(document.querySelectorAll('.task-index-group li').length === 8, 'All tasks exposes every fixture task exactly once')
+  check(!document.querySelector('button[aria-label="Complete Fixture future"]') && !document.querySelector('button[aria-label="Complete Fixture weekdays"]'), 'future/off-day completion unavailable')
+  taskList.scrollTop = taskList.scrollHeight; taskList.dispatchEvent(new Event('scroll')); await settle()
+  const drawerScroll = taskList.scrollTop
+  check(drawerScroll > 0 && home.scrollTop === homeScroll, 'long drawer scroll stays internal')
+  const edit = document.querySelector<HTMLButtonElement>('button[aria-label="Edit Fixture future"]')!
+  edit.focus({ preventScroll: true }); edit.click(); await settle()
+  check(getComputedStyle(document.querySelector('.task-drawer-layer')!).display === 'none' && !!document.querySelector('.task-editor-sheet'), 'one active dialog during editing')
+  flushSync(() => setEditor(false)); await settle()
+  check(taskList.scrollTop === drawerScroll && document.querySelector('[data-task-tab="all"]')?.getAttribute('aria-selected') === 'true', 'editor returns to same tab and scroll')
+  check(document.activeElement === edit, 'editor return restores row focus')
+  check(document.querySelector('.bottom-nav')?.hasAttribute('inert') && document.querySelector('.screen-layer')?.hasAttribute('inert'), 'drawer keeps underlying Home/nav inert')
+  flushSync(() => setDrawer(null)); await settle()
+  check(!document.querySelector('.bottom-nav')?.hasAttribute('inert') && !document.querySelector('.screen-layer')?.hasAttribute('inert'), 'drawer close unlocks background')
   flushSync(() => setCase('open')); await settle()
   const node = document.querySelector('#case-report')!
   node.textContent = JSON.stringify(report, null, 2)
@@ -139,6 +172,9 @@ try {
   if (query.get('view') === 'keyboard') {
     flushSync(() => setEditor(true)); await settle()
     viewport.height = profile.keyboard; viewport.dispatchEvent(new Event('resize')); await settle()
+  }
+  if (query.get('view') === 'history' || query.get('view') === 'all') {
+    flushSync(() => { setCase('mixed'); setDrawer(query.get('view') === 'all' ? 'all' : 'yesterday') }); await settle()
   }
 } catch (error) {
   document.querySelector('#case-report')!.textContent = String(error)
