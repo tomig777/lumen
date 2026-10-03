@@ -59,7 +59,11 @@ no shared editor geometry. All Node editor regressions and 210 keyboard/Home
 browser checks were rerun. Desktop simulated safe areas/keyboard bounds do not
 prove native iOS painting or keyboard event delivery.
 
-## Physical acceptance · pending
+## Physical acceptance · main drawer accepted, edge cases unreported
+
+On 2026-10-03 the user said the popup and functionality are great. They requested
+moving Replay between Add and Previous, implemented in Phase 4. Treat the main
+drawer experience as accepted, not as proof of every rollover/rotation edge case.
 
 Update the installed app through + → Settings → App & updates; confirm 0.1.21.
 
@@ -73,6 +77,6 @@ Update the installed app through + → Settings → App & updates; confirm 0.1.2
    or keyboard regression. The main Phase 2 keyboard fix is already user-confirmed;
    unreported edge cases are not assumed tested.
 
-The completion paragraph, below-Home task groups and vertical Home scrolling are
-intentionally unchanged until Phase 4. The drawer supplies replacement access
-first, so the next phase can remove those sections without hiding any tasks.
+At the Phase 3 release the completion paragraph, below-Home groups and vertical
+Home scrolling were intentionally unchanged. Phase 4 (0.1.22) subsequently removes
+them after the user accepted this replacement task access.

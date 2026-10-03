@@ -1,12 +1,25 @@
 /* Home: quiet surfaces, local typography and the measured character slot.
    No shell height/inset changes, blur renderer, font download or storage owner. */
+html[data-lumen-theme] .phone-app .screen-layer:has(> .home-fixed) { container: lumen-home-layout / size; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  scroll-padding-bottom: var(--lumen-scroll-clearance, 104px);
+  container: lumen-home / size;
+  --home-card-height: 196px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  padding-bottom: var(--lumen-scroll-clearance, 104px);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pinch-zoom;
   outline: none;
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .minimal-home-top {
-  min-height: 16px;
+  min-height: 44px;
+  flex-shrink: 0;
   justify-content: flex-start;
   flex-wrap: wrap;
   gap: 8px;
@@ -22,7 +35,8 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state {
   color: var(--lumen-text-muted);
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state.is-error { color: var(--lumen-danger); }
-.home-redesigned .home-save-announcement {
+.home-redesigned .home-save-announcement,
+.home-redesigned .home-completion-announcement {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -32,16 +46,19 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-save-state.is
   white-space: nowrap;
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus {
-  /* Deliberate hero spacing replaces the former visible 16px save-status row. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
   padding-top: 24px;
-  margin-bottom: 24px;
+  padding-bottom: 0;
+  margin: 0;
   overflow: visible;
   transition: none;
 }
-/* At normal text size this remains the baseline 49.39px heading, leaving the
-   stage at y=145.4 in the 390/320/844-wide browser baselines. Larger text is
-   allowed to expand naturally rather than clipping or overlaying the hero. */
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { margin: 0 5px; min-height: 49.4px; align-items: flex-start; flex-wrap: wrap; }
+/* Preserve the portrait heading/stage origin; spare space belongs to the stage,
+   not to growing cards. Text/errors can expand while the decorative stage yields. */
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { margin: 0 5px; min-height: 49.4px; flex-shrink: 0; align-items: flex-start; flex-wrap: wrap; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading > div { gap: 2px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading h1 {
   margin: 0;
@@ -64,7 +81,7 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-state 
   letter-spacing: .08em;
   white-space: normal;
 }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-stage { height: 270px; margin-top: 20px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-stage { container: lumen-stage / size; flex: 1; min-height: 0; height: auto; max-height: 270px; margin-top: 20px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb {
   flex: 0 0 216px;
   width: 216px;
@@ -81,6 +98,9 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-o
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb::before,
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-placeholder-orb::after { display: none; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character {
+  flex: 0 0 auto;
+  width: min(216px, 100cqw, max(0px, calc(100cqh - 26px)));
+  height: min(216px, 100cqw, max(0px, calc(100cqh - 26px)));
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -89,9 +109,9 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character {
   background: radial-gradient(ellipse at 28% 22%, #fff1dc, #e8d9c7 45%, #b59f87 82%);
 }
 .home-character-fallback { position: absolute; inset: 0; }
-.home-character-fallback i { position: absolute; top: 32%; width: 16px; height: 38px; border-radius: 999px; background: #302b26; }
-.home-character-fallback i:first-child { left: calc(50% - 34px); transform: rotate(-3deg); }
-.home-character-fallback i:last-child { right: calc(50% - 34px); transform: rotate(3deg); }
+.home-character-fallback i { position: absolute; top: 32%; width: 7.4074%; height: 17.5926%; border-radius: 999px; background: #302b26; }
+.home-character-fallback i:first-child { left: 34.2593%; transform: rotate(-3deg); }
+.home-character-fallback i:last-child { right: 34.2593%; transform: rotate(3deg); }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-character[data-ready="true"] { background: transparent; }
 .home-character[data-ready="true"] .home-character-fallback { visibility: hidden; }
 .home-character > div { position: absolute !important; inset: 0; }
@@ -102,34 +122,40 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-shadow
   filter: none;
   opacity: 1;
   transform: translateX(-50%);
+  width: min(156px, 75cqh);
+  height: min(25px, 14cqh);
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-caption {
   color: var(--lumen-text-secondary);
-  margin-top: 7px;
+  flex-shrink: 0;
+  margin: 7px 0 0;
   font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading { margin-bottom: 16px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-section { min-height: 0; min-width: 0; margin: 0; display: grid; grid-template-rows: auto var(--home-card-height); gap: 12px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading { margin: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading h2 { margin: 0; max-width: 100%; overflow-wrap: anywhere; color: var(--lumen-text); font: 500 26px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -.035em; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-heading time { font: inherit; white-space: normal; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-summary { color: var(--lumen-text-muted); text-align: start; font: 400 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls { flex-shrink: 0; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-controls .home-task-control { min-width: 44px; min-height: 44px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { gap: 10px; margin-bottom: 0; padding-bottom: 8px; scroll-padding: 4px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-slot { min-height: 0; min-width: 0; height: 100%; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-carousel { position: relative; width: 100%; height: 100%; gap: 10px; margin: 0; padding: 0 2px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; scroll-padding: 2px; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-wrap {
   flex: 0 0 min(82%, 320px);
   display: grid;
-  min-height: 192px;
+  min-height: 0;
+  height: 100%;
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card {
-  height: auto;
-  min-height: 192px;
+  height: 100%;
+  min-height: 0;
   padding: 20px;
   border: 1px solid var(--lumen-line);
   border-radius: 24px;
   background: var(--lumen-surface);
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
   transition: opacity 180ms ease;
 }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card strong {
@@ -138,16 +164,22 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card str
   color: var(--lumen-text);
   overflow-wrap: anywhere;
   white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  max-height: 100%;
 }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-title-block { padding: 16px 0 24px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-title-block { flex: 1; min-height: 0; overflow: hidden; padding: 8px 0; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned :is(.home-task-card-top, .home-task-card-foot) { flex-shrink: 0; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-index,
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-foot span { color: var(--lumen-text-muted); font: 500 11px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .1em; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-check { width: 22px; height: 22px; border-color: var(--lumen-control-edge); }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-complete { opacity: 1; }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-complete strong { text-decoration: line-through; color: var(--lumen-text-secondary); }
 html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card.is-departing { opacity: 0; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-edit.icon-button { position: absolute; right: 12px; bottom: 12px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned :is(.home-task-empty,.home-day-complete) {
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card-edit.icon-button { position: absolute; right: 12px; bottom: 12px; min-width: 44px; min-height: 44px; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-empty {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -155,15 +187,38 @@ html[data-lumen-theme] .phone-app.phone-app .home-redesigned :is(.home-task-empt
   font-size: 14px;
   line-height: 1.5;
 }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-empty { padding: 20px 0; border-color: var(--lumen-line); }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-day-complete { margin: 0 0 16px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group { margin-top: 20px; padding: 16px; border-radius: 24px; background: var(--lumen-surface); border-color: var(--lumen-line); box-shadow: none; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > .eyebrow { color: var(--lumen-text-muted); margin-bottom: 12px; font: 500 11px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .12em; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > div { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 10px; padding: 8px 0; min-height: 44px; border-color: var(--lumen-line); color: var(--lumen-text-secondary); font-size: 15px; line-height: 1.5; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group .daily-task-row { grid-template-columns: 44px minmax(0,1fr); gap: 4px 10px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-row > button { min-width: 44px; min-height: 44px; padding: 4px 0; color: var(--lumen-text); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-row > small { grid-column: 2; color: var(--lumen-text-muted); margin: 0; font-size: 12px; }
-html[data-lumen-theme] .phone-app.phone-app .home-redesigned .daily-task-group > div > span { overflow-wrap: anywhere; }
+html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-empty { height: 100%; min-height: 0; margin: 0; padding: 20px; border: 1px solid var(--lumen-line); border-radius: 24px; }
+html[data-lumen-theme] .phone-app.deployed-app-screen .home-fixed { padding-top: max(32px, calc(env(safe-area-inset-top) + 8px)); }
+/* Size queries use the actual Home content box (including the handset preview),
+   never window height or the keyboard. Only the decorative stage contracts. */
+@container lumen-home (max-height: 580px) {
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus { padding-top: 0; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { min-height: 42px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading strong { font-size: 30px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .liquid-bowl-stage { margin-top: 8px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-caption { margin-top: 4px; font-size: 12px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card { padding: 14px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card strong { font-size: 16px; line-height: 1.35; -webkit-line-clamp: 2; }
+}
+@container lumen-home (max-width: 400px) and (max-height: 500px) {
+  /* On very short/narrow screens let optional copy yield to readable controls
+     and larger text, instead of shrinking fields or losing the character. */
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .7fr); }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-state { min-width: 0; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-caption { display: none; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card strong { -webkit-line-clamp: 1; }
+}
+/* The route's existing full-height box supplies these size queries, including
+   desktop handset previews. No shell, nav or editor height is changed. */
+@container lumen-home-layout (max-height: 700px) {
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned { --home-card-height: 132px; gap: 12px; }
+}
+@container lumen-home-layout (min-width: 600px) and (max-height: 500px) {
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); grid-template-rows: minmax(0, 1fr); gap: 24px; }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-section { grid-template-rows: auto minmax(0, 1fr); }
+  html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-liquid-focus { padding-top: 0; }
+  html[data-lumen-theme] .phone-app.deployed-app-screen .home-fixed { padding-top: max(16px, calc(env(safe-area-inset-top) + 8px)); }
+}
 @media (hover: hover) and (pointer: fine) {
   html[data-lumen-theme] .phone-app.phone-app .home-redesigned .home-task-card:hover { background: var(--lumen-surface-raised); border-color: var(--lumen-control-edge); }
 }

@@ -34,9 +34,11 @@ test('local harness uses production Home and real SheetFrame/RenderSheet, not le
   assert.doesNotThrow(()=>transformSync(source,{loader:'tsx',format:'esm'}))
 })
 
-test('baseline retains completion evidence while using the corrected task form', async () => {
+test('fixed Home removes shifting groups while retaining editor and baseline regression coverage', async () => {
   const source=extractHomeBaseline(app)
-  assert.ok(source.indexOf('home-day-complete') < source.indexOf('<motion.div layoutScroll'))
+  assert.doesNotMatch(source,/home-day-complete|daily-task-group/)
+  assert.match(source,/home-completion-announcement/)
+  assert.match(source,/home-task-slot/)
   assert.match(source,/focus\(\{ preventScroll: true \}\)/)
   assert.match(source,/className="task-editor-content"/)
   assert.doesNotMatch(source,/autoFocus value=\{taskDraft.title\}/)

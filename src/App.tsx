@@ -851,12 +851,20 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
   const totalTasks = groups.today.length
   const taskCarouselRef = useRef<HTMLDivElement>(null)
   const carouselScrollLeftRef = useRef<number | null>(null)
+  const carouselAnchorRef = useRef<{ id: string; offset: number } | null>(null)
   const completionTimerRef = useRef<number | undefined>(undefined)
   const completionFrameRef = useRef<number | undefined>(undefined)
   const pendingTaskRef = useRef<string | null>(null)
   const reducedMotion = useReducedMotion()
   const [departingTaskId, setDepartingTaskId] = useState<string | null>(null)
   const performance = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const rememberCarousel = () => {
+    const carousel = taskCarouselRef.current
+    const cards = Array.from(carousel?.querySelectorAll<HTMLElement>('[data-home-task-id]') ?? [])
+    if (!carousel || !cards.length) { carouselAnchorRef.current = null; return }
+    const nearest = cards.reduce((best, card) => Math.abs(card.offsetLeft - carousel.scrollLeft) < Math.abs(best.offsetLeft - carousel.scrollLeft) ? card : best)
+    carouselAnchorRef.current = { id: nearest.dataset.homeTaskId!, offset: carousel.scrollLeft - nearest.offsetLeft }
+  }
   const moveTaskCarousel = (direction: number) => {
     const carousel = taskCarouselRef.current
     const firstCard = carousel?.querySelector<HTMLElement>('.home-task-card')
@@ -868,14 +876,21 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     if (completionFrameRef.current) window.cancelAnimationFrame(completionFrameRef.current)
   }, [])
   useLayoutEffect(() => {
-    if (carouselScrollLeftRef.current === null) return
     const carousel = taskCarouselRef.current
-    if (carousel) carousel.scrollLeft = carouselScrollLeftRef.current
+    if (!carousel) return
+    if (carouselScrollLeftRef.current !== null) carousel.scrollLeft = carouselScrollLeftRef.current
+    else if (carouselAnchorRef.current) {
+      const anchor = carouselAnchorRef.current
+      const card = Array.from(carousel.querySelectorAll<HTMLElement>('[data-home-task-id]')).find(item => item.dataset.homeTaskId === anchor.id)
+      if (card) carousel.scrollLeft = card.offsetLeft + anchor.offset
+    }
     if (departingTaskId === null) carouselScrollLeftRef.current = null
-  }, [data.tasks, departingTaskId])
+    rememberCarousel()
+  }, [data.tasks, today, departingTaskId])
   const toggleTaskFromHome = (task: Task) => {
     if (pendingTaskRef.current) return
     if (taskIsComplete(task, today) || reducedMotion) {
+      carouselScrollLeftRef.current = taskCarouselRef.current?.scrollLeft ?? 0
       onToggleTask(task.id)
       return
     }
@@ -894,9 +909,9 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
     }, 300)
   }
   return (
-    <div className="screen-scroll home-screen home-minimal-screen home-theme-preview home-redesigned" aria-label="Home" tabIndex={-1}>
+    <div className="screen-scroll home-screen home-minimal-screen home-theme-preview home-redesigned home-fixed" aria-label="Home" tabIndex={-1}>
       <span className="home-save-announcement" role="status" aria-live="polite">{saveState.kind === 'saved' ? 'Saved on this device' : saveState.kind === 'saving' ? 'Saving…' : saveState.kind === 'loading' ? 'Checking device storage…' : ''}</span>
-      {saveState.kind === 'error' && <div className="minimal-home-top"><span className="home-save-state is-error" role="status">Not saved</span><button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button></div>}
+      <span className="home-completion-announcement" role="status" aria-live="polite" aria-atomic="true">{totalTasks > 0 && openTasks.length === 0 ? 'All scheduled tasks complete.' : ''}</span>
 
       <section className="home-liquid-focus" aria-label="Your day">
         <div className="home-liquid-heading">
@@ -906,6 +921,7 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
           </div>
           <span className="home-liquid-state">{totalTasks && performance === 100 ? 'COMPLETE' : performance > 0 ? 'IN MOTION' : 'A FRESH START'}</span>
         </div>
+        {saveState.kind === 'error' && <div className="minimal-home-top"><span className="home-save-state is-error" role="status">Not saved</span><button className="home-save-retry" type="button" onClick={onRetrySave}>Retry</button></div>}
         <div className="liquid-bowl-stage">
           <HomeCharacter theme={theme} active={characterActive} mirror={mirror} />
           <span className="liquid-bowl-shadow" aria-hidden="true" />
@@ -919,27 +935,24 @@ function HomeScreen({ data, today, onToggleTask, onEditTask, onAddTask, onOpenTa
             <h2><time dateTime={today}>{formatLongDate(today)}</time></h2>
             <div className="home-task-controls">
               <button type="button" className="home-task-control" onClick={onAddTask} aria-label="Add task"><Plus size={17} /></button>
+              <button type="button" className="home-task-control" onClick={onOpenTaskHistory} aria-label="Yesterday and all tasks"><RotateCcw size={17} /></button>
               <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(-1)} aria-label="Previous task" disabled={!tasks.length}><ChevronLeft size={17} /></button>
               <button type="button" className="home-task-control" onClick={() => moveTaskCarousel(1)} aria-label="Next task" disabled={!tasks.length}><ChevronRight size={17} /></button>
-              <button type="button" className="home-task-control" onClick={onOpenTaskHistory} aria-label="Yesterday and all tasks"><RotateCcw size={17} /></button>
             </div>
           </div>
           <span className="home-task-summary">{openTasks.length} open · {completedTasks} done</span>
         </div>
-        {totalTasks > 0 && openTasks.length === 0 && <p className="home-day-complete" role="status"><Check size={15} aria-hidden="true" /> Everything is complete for today.</p>}
-        {tasks.length ? <motion.div layoutScroll className={`home-task-carousel ${departingTaskId ? 'is-reordering' : ''}`} ref={taskCarouselRef} role="group" aria-label="Today's tasks">
+        <div className="home-task-slot">
+        {tasks.length ? <motion.div layoutScroll className={`home-task-carousel ${departingTaskId ? 'is-reordering' : ''}`} ref={taskCarouselRef} onScroll={rememberCarousel} role="group" aria-label="Today's tasks">
           {tasks.map((task, index) => {
             const complete = taskIsComplete(task, today)
-            return <div className="home-task-card-wrap" key={task.id}>
+            return <div className="home-task-card-wrap" key={task.id} data-home-task-id={task.id}>
               <motion.button type="button" layout={reducedMotion ? false : 'position'} transition={{ layout: { duration: reducedMotion ? 0 : 0.36, ease: [0.22, 1, 0.36, 1] } }} className={`home-task-card priority-${task.priority} ${complete ? 'is-complete' : ''} ${departingTaskId === task.id ? 'is-departing' : ''}`} onClick={() => toggleTaskFromHome(task)} aria-label={`Mark ${task.title} ${complete ? 'incomplete' : 'complete'}`} aria-pressed={complete}><span className="home-task-card-top"><span className="home-task-index">{String(index + 1).padStart(2, '0')}</span><span className={`home-task-check ${complete ? 'is-done' : ''}`} aria-hidden="true">{complete && <Check size={13} />}</span></span><span className="home-task-card-title-block"><strong>{task.title}</strong></span><span className="home-task-card-foot"><span>{complete ? 'DONE' : 'OPEN'}</span></span></motion.button>
               <button type="button" className="home-task-card-edit icon-button" onClick={() => onEditTask(task)} aria-label={`Edit ${task.title}`}><Pencil size={16} /></button>
             </div>
           })}
-        </motion.div> : <div className="home-task-empty"><Check size={15} /><span>{totalTasks ? 'Everything is complete for today.' : 'Nothing scheduled today.'}</span></div>}
-        {groups.overdue.length > 0 && <div className="daily-task-group"><span className="eyebrow">OVERDUE · {groups.overdue.length}</span>{groups.overdue.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Complete ${task.title}`}><Circle size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button><small>{task.dueDate}</small></div>)}</div>}
-        {groups.unscheduled.length > 0 && <div className="daily-task-group"><span className="eyebrow">UNSCHEDULED · {groups.unscheduled.length}</span>{groups.unscheduled.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Complete ${task.title}`}><Circle size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button></div>)}</div>}
-        {groups.completedElsewhereToday.length > 0 && <div className="daily-task-group is-history"><span className="eyebrow">FINISHED TODAY</span>{groups.completedElsewhereToday.map((task) => <div className="daily-task-row" key={task.id}><button type="button" onClick={() => onToggleTask(task.id)} aria-label={`Undo ${task.title}`}><Check size={15} /></button><button type="button" onClick={() => onEditTask(task)}>{task.title}</button></div>)}</div>}
-        {groups.yesterdayDone.length > 0 && <div className="daily-task-group is-history"><span className="eyebrow">YESTERDAY · FINISHED</span>{groups.yesterdayDone.map((task) => <div key={task.id}><Check size={15} /><span>{task.title}</span></div>)}</div>}
+        </motion.div> : <div className="home-task-empty"><Check size={15} aria-hidden="true" /><span>Nothing scheduled today.</span></div>}
+        </div>
       </section>
     </div>
   )

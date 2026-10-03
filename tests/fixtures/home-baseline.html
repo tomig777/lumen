@@ -37,7 +37,7 @@ run.addEventListener('click',async()=>{
     `  Completion shifts cards ${report.homes.done.carousel.y-report.homes.open.carousel.y}px\n`+
     `  Open Home content height ${report.homes.open.home.scrollHeight}px\n`+
     `  Keyboard area ends at ${editor.layer.bottom}px; Save ends at ${editor.save.bottom}px\n`;
-  }).join('\n')+(failed.length?'\nFAILED: '+JSON.stringify(failed):'\nHome shift/overflow remain baseline defects for later phases. Keyboard measurements verify the updated task dialog in simulated viewports only.');
+  }).join('\n')+(failed.length?'\nFAILED: '+JSON.stringify(failed):'\nFixed Home, task drawer and keyboard regressions pass in simulated viewports only. Physical iPhone paint/gesture acceptance is separate.');
  }catch(error){status.textContent='Capture failed';results.textContent+='\n'+String(error)}
  finally{run.disabled=false}
 });

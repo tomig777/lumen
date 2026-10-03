@@ -366,7 +366,7 @@ test('Home wiring excludes mirrors/overlays and the scene chunk is part of the o
   assert.match(css, /home-character\[data-ready="true"\] .home-character-fallback \{ visibility: hidden/)
   assert.match(css, /pointer-events: none/)
   assert.match(css, /#fff1dc, #e8d9c7 45%, #b59f87 82%/)
-  assert.match(css, /home-character-fallback i \{[^}]*width: 16px; height: 38px;[^}]*background: #302b26/)
+  assert.match(css, /home-character-fallback i \{[^}]*width: 7.4074%; height: 17.5926%;[^}]*background: #302b26/)
   const worker = await readFile(new URL('../dist/sw.js', import.meta.url), 'utf8')
   assert.match(worker, /assets\/HomeCharacterScene-[^" ]+\.js/)
   assert.doesNotMatch(source, /localStorage|indexedDB|onClick|setInterval/)

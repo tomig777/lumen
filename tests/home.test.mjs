@@ -36,7 +36,7 @@ function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) 
   } })
   const module = { exports: {} }
   new Function('require','module','exports',code)(name => name === './daily' ? daily : name === './HomeCharacter' ? { HomeCharacter: () => React.createElement('div', { 'aria-hidden': true }) } : name === 'framer-motion' ? { motion,useReducedMotion:()=>reduced } : require(name),module,module.exports)
-  const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), scrollBy: options => scrolls.push(options) }
+  const carousel = { scrollLeft: 123, querySelector: () => ({ offsetWidth: 244 }), querySelectorAll: () => [...props.data.tasks.filter(item=>daily.taskScheduledOn(item,props.today)&&!daily.taskIsComplete(item,props.today)),...props.data.tasks.filter(item=>daily.taskScheduledOn(item,props.today)&&daily.taskIsComplete(item,props.today))].map((item,index)=>({dataset:{homeTaskId:item.id},offsetLeft:index*254})), scrollBy: options => scrolls.push(options) }
   const props = { data: { tasks }, today, saveState: { kind: save }, onRetrySave: () => retries++, onAddTask: () => adds++, onOpenTaskHistory: () => historyOpens++, onEditTask: item => edits.push(item.id), onToggleTask(id) {
     toggles.push(id); props.data = { tasks: props.data.tasks.map(item => item.id === id ? daily.toggleTaskForDate(item,props.today,`${date}T12:00:00Z`) : item) }; render()
   } }
@@ -52,7 +52,7 @@ function harness(tasks, { reduced = false, save = 'saved', today = date } = {}) 
   }
 }
 
-test('Home keeps date-derived progress/order and separates scheduled, overdue, unscheduled and history', () => {
+test('Home keeps real progress/order but delegates non-daily groups to the approved drawer', () => {
   const h = harness([
     task('done',{ dueDate:date,completed:true,completedOn:[{date,at:'noon'}] }), task('open',{dueDate:date}),
     task('late',{dueDate:'2026-10-02'}), task('loose'), task('elsewhere',{completed:true,completedOn:[{date,at:'noon'}]}),
@@ -65,10 +65,11 @@ test('Home keeps date-derived progress/order and separates scheduled, overdue, u
     const cards = h.view.root.findAllByType('button').filter(node=>node.props.className?.startsWith('home-task-card priority'))
     assert.deepEqual(cards.map(node=>node.props['aria-label']),['Mark Task open complete','Mark Task done incomplete'])
     assert.deepEqual(cards.map(node=>node.props['aria-pressed']),[false,true])
-    for (const label of ['OVERDUE · 1','UNSCHEDULED · 1','FINISHED TODAY','YESTERDAY · FINISHED']) assert.ok(text(h.view.toJSON()).includes(label))
+    for (const label of ['OVERDUE','UNSCHEDULED','FINISHED TODAY','YESTERDAY · FINISHED']) assert.equal(text(h.view.toJSON()).includes(label),false)
     assert.equal(text(h.view.toJSON()).includes('Task future'),false)
-    h.click('Complete Task late'); h.click('Complete Task loose'); h.click('Undo Task elsewhere')
-    assert.deepEqual(h.toggles,['late','loose','elsewhere'])
+    h.click('Yesterday and all tasks'); assert.equal(h.historyOpens,1)
+    assert.deepEqual(h.props.data.tasks.map(item=>item.id),['done','open','late','loose','elsewhere','yesterday','future'])
+    assert.deepEqual(h.toggles,[])
     h.click('Edit Task done'); assert.deepEqual(h.edits,['done'])
   } finally { h.dispose() }
 })
@@ -85,9 +86,14 @@ test('empty and all-done days remain explicit, accurate and reversible', () => {
   const done = harness([task('one',{dueDate:date,completed:true})])
   try {
     assert.equal(done.view.root.findByProps({role:'meter'}).props['aria-valuenow'],100)
-    assert.ok(text(done.view.toJSON()).includes('Everything is complete for today.'))
+    const announcement = done.view.root.findByProps({className:'home-completion-announcement'})
+    assert.equal(text(announcement),'All scheduled tasks complete.')
+    assert.equal(announcement.props['aria-live'],'polite')
+    assert.equal(done.view.root.findAllByProps({className:'home-day-complete'}).length,0)
+    assert.equal(done.view.root.findAllByProps({className:'home-task-slot'}).length,1)
     done.click('Mark Task one incomplete'); assert.equal(done.view.root.findByProps({role:'meter'}).props['aria-valuenow'],0)
     assert.deepEqual(done.toggles,['one'])
+    assert.equal(text(done.view.root.findByProps({className:'home-completion-announcement'})),'')
   } finally { done.dispose() }
 })
 
@@ -160,6 +166,7 @@ test('single/double-digit dates and long months share a dedicated control row, w
       const row = h.view.root.findByProps({className:'home-task-heading-row'})
       assert.equal(text(row.findByType('time')), expected); assert.equal(row.findByType('time').props.dateTime, today)
       assert.equal(row.findAllByType('button').length, 4)
+      assert.deepEqual(row.findAllByType('button').map(button=>button.props['aria-label']),['Add task','Yesterday and all tasks','Previous task','Next task'])
       assert.equal(row.findAllByProps({className:'home-task-summary'}).length, 0)
       assert.equal(text(h.view.root.findByProps({className:'home-task-summary'})), '0 open · 0 done')
     } finally { h.dispose() }
@@ -173,14 +180,35 @@ test('single/double-digit dates and long months share a dedicated control row, w
   assert.doesNotMatch(css, /Georgia|Times New Roman/)
 })
 
-test('Home material preserves static 216px/270px stage, unbounded title wrapping, quiet cards and nav-safe scrolling', () => {
-  assert.match(css,/height: 270px; margin-top: 20px/)
+test('fixed Home allocates a bounded task slot and yielding character stage without changing other routes', () => {
+  assert.match(css,/container: lumen-home \/ size/)
+  assert.match(css,/grid-template-rows: minmax\(0, 1fr\) auto/)
+  assert.match(css,/grid-template-rows: auto var\(--home-card-height\)/)
   assert.match(css,/width: 216px;\s*height: 216px/)
   assert.match(css,/home-placeholder-orb[\s\S]*animation: none;\s*transform: none/)
-  assert.match(css,/scroll-padding-bottom: var\(--lumen-scroll-clearance/)
+  assert.match(css,/padding-bottom: var\(--lumen-scroll-clearance/)
+  assert.match(css,/overflow: hidden;\s*overscroll-behavior: none;\s*touch-action: pan-x pinch-zoom/)
+  assert.match(css,/home-task-carousel[^}]*overflow-x: auto; overflow-y: hidden/)
+  assert.match(css,/-webkit-line-clamp: 3/)
+  assert.match(css,/@container lumen-home-layout \(min-width: 600px\) and \(max-height: 500px\)/)
   assert.match(css,/overflow-wrap: anywhere;\s*white-space: normal/)
   assert.match(css,/home-task-card-edit\.icon-button \{ position: absolute/)
-  assert.doesNotMatch(css,/line-clamp|100(?:d|l)?vh|safe-area-inset|blur\(|backdrop-filter/)
+  assert.doesNotMatch(css,/100(?:d|l)?vh|blur\(|backdrop-filter/)
+  assert.doesNotMatch(source,/home-day-complete|daily-task-group|onTouchMove|preventDefault/)
   assert.doesNotMatch(source,/liquid-field|liquid-blob|liquidHue|GREEN ZONE|shifts the color|Canvas|WebGL|localStorage|indexedDB/)
   assert.match(source,/Your day, a little clearer/)
+})
+
+test('edits and other task updates anchor the currently visible card, without redefining completion order',()=>{
+  const h=harness([task('one',{dueDate:date}),task('two',{dueDate:date})])
+  try{
+    h.carousel.scrollLeft=270
+    act(()=>h.view.root.findByProps({role:'group'}).props.onScroll())
+    h.props.data={tasks:[task('new',{dueDate:date}),...h.props.data.tasks]}
+    act(()=>h.view.update(React.createElement(h.view.root.type,h.props)))
+    assert.equal(h.carousel.scrollLeft,524,'same task and relative offset after insertion')
+    h.click('Mark Task two complete');h.flushTimers();h.flushFrames()
+    assert.equal(h.carousel.scrollLeft,524,'completion retains existing visual slot behavior')
+    assert.deepEqual(h.props.data.tasks.map(item=>item.id),['new','one','two'])
+  }finally{h.dispose()}
 })

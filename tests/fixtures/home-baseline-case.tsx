@@ -9,9 +9,9 @@ import { TaskDrawer } from '../../src/components/TaskDrawer'
 import { baselineData, baselineDate } from './home-baseline-data.mjs'
 
 const profiles = [
-  { width: 390, height: 844, safeTop: 47, safeBottom: 34, keyboard: 500 },
-  { width: 320, height: 568, safeTop: 20, safeBottom: 0, keyboard: 300 },
-  { width: 844, height: 390, safeTop: 0, safeBottom: 21, keyboard: 228 },
+  { width: 390, height: 844, safeTop: 47, safeBottom: 34, safeLeft: 0, safeRight: 0, keyboard: 500 },
+  { width: 320, height: 568, safeTop: 20, safeBottom: 0, safeLeft: 0, safeRight: 0, keyboard: 300 },
+  { width: 844, height: 390, safeTop: 0, safeBottom: 21, safeLeft: 47, safeRight: 47, keyboard: 228 },
 ]
 const query = new URLSearchParams(location.search)
 const profile = profiles[Number(query.get('profile')) || 0]
@@ -28,8 +28,17 @@ style.textContent = styles.join('\n')
   .replace(/\b100(?:dvh|lvh|vh)\b/g, `${profile.height}px`)
   .replace(/\(display-mode: standalone\)/g, 'all')
   .replace(/env\(safe-area-inset-(top|right|bottom|left)(?:,\s*0px)?\)/g,
-    (_, side) => `${side === 'top' ? profile.safeTop : side === 'bottom' ? profile.safeBottom : 0}px`)
+    (_, side) => `${side === 'top' ? profile.safeTop : side === 'bottom' ? profile.safeBottom : side === 'left' ? profile.safeLeft : profile.safeRight}px`)
 document.head.appendChild(style)
+const largerTextStyle = document.createElement('style')
+const largeScope = 'html[data-lumen-theme] [data-large-text="true"] .phone-app.phone-app .home-redesigned'
+largerTextStyle.textContent = `${largeScope} .home-liquid-heading h1 {font-size:15px;line-height:18px}
+  ${largeScope} .home-liquid-heading strong {font-size:53px}
+  ${largeScope} .home-liquid-state {font-size:15px}
+  ${largeScope} .home-task-heading h2 {font-size:36px}
+  ${largeScope} .home-task-card strong {font-size:25px}
+  ${largeScope} .home-task-summary {font-size:17px}`
+document.head.appendChild(largerTextStyle)
 const viewport = Object.assign(new EventTarget(), { height: profile.height, offsetTop: 0, scale: 1 })
 Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
 
@@ -40,9 +49,9 @@ function Fixture() {
   const [drawer, updateDrawer] = useState<'yesterday' | 'all' | null>(null)
   const [draft, setDraft] = useState({ title: 'Fixture retained draft', projectId: '', dueDate: baselineDate, recurrence: 'once' })
   setCase = updateCase; setEditor = updateEditor; setDrawer = updateDrawer
-  const data = baselineData(kind)
-  return <div className="deployed-app-root"><div className="phone-app deployed-app-screen">
-    <div className="screen-layer"><HomeScreen data={data} today={baselineDate} saveState={{ kind: 'saved' }}
+  const data = baselineData(kind === 'large' ? 'long' : kind)
+  return <div className="deployed-app-root" data-large-text={kind === 'large'}><div className="phone-app deployed-app-screen">
+    <div className="screen-layer"><HomeScreen data={data} today={kind === 'long-date' ? '2026-09-30' : baselineDate} saveState={{ kind: kind === 'error' ? 'error' : 'saved' }}
       onRetrySave={() => {}} onAddTask={() => updateEditor(true)} onEditTask={() => updateEditor(true)} onOpenTaskHistory={() => updateDrawer('yesterday')}
       onToggleTask={() => updateCase(kind === 'done' ? 'open' : 'done')} theme={theme} characterActive={false} mirror /></div>
     <BottomNav active="home" onChange={() => {}} quickActions={[]} motionId="home-baseline" />
@@ -68,11 +77,14 @@ const box = (selector: string) => {
   return { x: round(rect.x), y: round(rect.y), width: round(rect.width), height: round(rect.height), bottom: round(rect.bottom),
     scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, scrollTop: node.scrollTop,
     scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
-    overflowY: css.overflowY, position: css.position, transform: css.transform }
+    overflowY: css.overflowY, position: css.position, transform: css.transform, fontSize: css.fontSize, lineHeight: css.lineHeight,
+    paddingTop: parseFloat(css.paddingTop), paddingBottom: parseFloat(css.paddingBottom) }
 }
 const homeSnapshot = () => Object.fromEntries([
   ['app', '.deployed-app-root'], ['page', '.screen-layer'], ['home', '.home-screen'], ['heading', '.home-liquid-heading'],
   ['character', '.home-character'], ['dateControls', '.home-task-heading'], ['carousel', '.home-task-carousel'],
+  ['stage', '.liquid-bowl-stage'], ['titleBlock', '.home-task-card-title-block'], ['taskTitle', '.home-task-card strong'],
+  ['slot', '.home-task-slot'], ['card', '.home-task-card'], ['edit', '.home-task-card-edit'], ['retry', '.home-save-retry'],
   ['empty', '.home-task-empty'], ['completion', '.home-day-complete'], ['nav', '.bottom-nav'], ['plus', '.nav-capture'],
 ].map(([name, selector]) => [name, box(selector)]))
 const editorSnapshot = () => ({ ...homeSnapshot(), layer: box('.sheet-layer'), dialog: box('.bottom-sheet'),
@@ -87,7 +99,7 @@ const editorSnapshot = () => ({ ...homeSnapshot(), layer: box('.sheet-layer'), d
 
 try {
   const report: any = { profile, theme, simulation: 'Desktop layout fixture, NOT native iOS evidence; mirror/static character for geometry', homes: {}, editors: {} }
-  for (const kind of ['open', 'done', 'empty', 'mixed', 'long']) {
+  for (const kind of ['open', 'done', 'empty', 'mixed', 'long', 'long-date', 'large', 'error']) {
     flushSync(() => setCase(kind)); await settle()
     report.homes[kind] = homeSnapshot()
   }
@@ -135,7 +147,36 @@ try {
     }
     check(states.dismissedStillFocused.draftValue === 'Fixture retained draft', `${kind}: dismissal retains draft`)
   }
-  check(report.homes.open.character.width === 216 && report.homes.open.character.height === 216, '216px character retained')
+  for (const [kind, snapshot] of Object.entries(report.homes) as [string, any][]) {
+    check(snapshot.home.overflowY === 'hidden' && snapshot.home.scrollHeight <= snapshot.home.clientHeight + 1, `${kind}: Home has no vertical overflow`)
+    check(snapshot.slot.bottom <= snapshot.nav.y - 20 && snapshot.slot.y >= snapshot.dateControls.bottom, `${kind}: task slot clears controls and nav`)
+    check(snapshot.character.width > 0 && snapshot.character.y >= snapshot.heading.bottom && snapshot.character.bottom <= snapshot.stage.bottom, `${kind}: character remains within its stage`)
+    check(snapshot.carousel ? snapshot.carousel.y === snapshot.slot.y && Math.abs(snapshot.carousel.height - snapshot.slot.height) < 1 : snapshot.empty.y === snapshot.slot.y && Math.abs(snapshot.empty.height - snapshot.slot.height) < 1, `${kind}: cards/empty occupy the allocated slot`)
+    check(!snapshot.completion, `${kind}: no visible completion paragraph`)
+    check(!snapshot.edit || snapshot.edit.y >= snapshot.slot.y && snapshot.edit.bottom <= snapshot.slot.bottom, `${kind}: edit action is not clipped`)
+    check(!snapshot.retry || snapshot.retry.height >= 44 && snapshot.retry.bottom <= snapshot.nav.y - 20, `${kind}: error Retry remains reachable`)
+    check(snapshot.heading.x >= profile.safeLeft && snapshot.slot.x + snapshot.slot.width <= profile.width - profile.safeRight, `${kind}: content respects horizontal safe areas`)
+    check(!snapshot.taskTitle || Math.min(snapshot.taskTitle.bottom, snapshot.titleBlock.bottom - snapshot.titleBlock.paddingBottom)
+      - Math.max(snapshot.taskTitle.y, snapshot.titleBlock.y + snapshot.titleBlock.paddingTop) >= parseFloat(snapshot.taskTitle.lineHeight) - 1, `${kind}: at least one full task-title line remains readable`)
+  }
+  check(parseFloat(report.homes.large.taskTitle.fontSize) > parseFloat(report.homes.open.taskTitle.fontSize), 'larger-text fixture is actually enlarged')
+  check(report.homes.open.slot.y === report.homes.done.slot.y && report.homes.open.slot.height === report.homes.done.slot.height
+    && report.homes.open.slot.y === report.homes.empty.slot.y && report.homes.open.slot.height === report.homes.empty.slot.height, 'empty/open/all-done slot geometry identical')
+  if (profile.width === 390) {
+    check(report.homes.open.character.width === 216 && report.homes.open.character.height === 216, 'normal portrait 216px character retained')
+    check(Math.abs(report.homes.open.character.y - 148.39) < 1, 'normal portrait character origin retained')
+  }
+  flushSync(() => setCase('mixed')); await settle()
+  const fixedHome = document.querySelector<HTMLElement>('.home-screen')!
+  fixedHome.scrollTop = 100; await settle()
+  check(fixedHome.scrollTop === 0, 'Home cannot be vertically scrolled')
+  check(!document.querySelector('.daily-task-group'), 'lower Home groups removed without removing drawer access')
+  const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('.home-task-controls button'))
+  check(controls.map(button=>button.getAttribute('aria-label')).join('|') === 'Add task|Yesterday and all tasks|Previous task|Next task', 'Replay between Add and Previous')
+  check(controls.every(button=>button.getBoundingClientRect().width >= 44 && button.getBoundingClientRect().height >= 44), 'all Home controls retain touch targets')
+  const carousel = document.querySelector<HTMLElement>('.home-task-carousel')!
+  controls[3].click(); await new Promise(resolve => setTimeout(resolve, 450)); await settle()
+  check(carousel.scrollLeft > 0 && fixedHome.scrollTop === 0, 'horizontal task navigation works without moving Home')
   // Exercise the actual drawer, including suspension for the same task editor.
   flushSync(() => { setCase('mixed'); setDrawer('yesterday') }); await settle()
   report.drawer = { history: box('.task-drawer-list'), heading: box('.task-drawer-heading'), dialog: box('.task-drawer') }
@@ -175,6 +216,9 @@ try {
   }
   if (query.get('view') === 'history' || query.get('view') === 'all') {
     flushSync(() => { setCase('mixed'); setDrawer(query.get('view') === 'all' ? 'all' : 'yesterday') }); await settle()
+  }
+  if (query.get('view') === 'home' || query.get('view') === 'large' || query.get('view') === 'error') {
+    flushSync(() => setCase(query.get('view') === 'home' ? 'mixed' : query.get('view')!)); await settle()
   }
 } catch (error) {
   document.querySelector('#case-report')!.textContent = String(error)

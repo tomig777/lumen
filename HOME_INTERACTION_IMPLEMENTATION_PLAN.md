@@ -1,9 +1,10 @@
 # Lumen · fixed Home, task dialogs and character interactions
 
 Planning baseline: 0.1.19 / 99a866a, 2026-10-03.
-Status: Phases 1–3 implementation/local verification complete.
-The user confirmed the Phase 2 keyboard fix works on their iPhone. Phase 3 phone
-acceptance and detailed keyboard edge cases remain pending; Phases 4–8 untouched.
+Status: Phases 1–4 implementation/local verification complete.
+The user confirmed the Phase 2 keyboard fix and Phase 3 drawer work on their
+iPhone. Phase 4 physical layout acceptance and detailed device edge cases remain
+pending; Phases 5–8 untouched.
 
 This plan extends the completed theme/Home/idle-eye work in
 `LUMEN_REDESIGN_IMPLEMENTATION_PLAN.md`. Later user-approved appearance changes
@@ -120,7 +121,8 @@ Primary areas: Home callbacks/overlay state in `src/App.tsx`, `src/daily.ts`,
 theme-aware dialog styles and Home/daily tests.
 
 - [x] Add a fourth task-control button, using a circular-arrow/history icon with
-  an accessible Yesterday label. Order: Add, Previous, Next, History.
+  an accessible Yesterday label. Updated user-approved order: Add, History,
+  Previous, Next (Phase 4 follow-up).
 - [x] Preserve heading/date/control alignment and touch sizes. Where four controls
   cannot fit beside the full date, give the control row its own predictable space.
 - [x] Open a task drawer on Yesterday, showing the full local date, recorded
@@ -150,29 +152,33 @@ The selected-tab contrast was checked in both themes. History remains read-only;
 future/off-day tasks remain editable without recording a false completion today.
 The old below-Home groups and completion paragraph deliberately remain for Phase 4.
 No storage migration, shell-height change or eye animation changes. Physical
-drawer testing on the installed iPhone remains pending.
+drawer testing on the installed iPhone was subsequently accepted by the user;
+unreported rollover/rotation edge cases are not assumed tested.
+
+Physical follow-up (2026-10-03): the user said the popup and functionality are
+great, and requested Replay between Add and Previous alongside Phase 4.
 
 ## Phase 4 · Turn Home into a fixed, stable dashboard
 
 Primary areas: `HomeScreen` in `src/App.tsx`, `src/home.css` and Home tests.
 
-- [ ] Remove the all-complete paragraph. Keep actual progress/badge and a concise
+- [x] Remove the all-complete paragraph. Keep actual progress/badge and a concise
   non-layout-changing accessible completion announcement; no replacement banner.
-- [ ] Remove all task groups beneath today's carousel; do not change their data.
-- [ ] Allocate available Home height between progress header, character/caption,
+- [x] Remove all task groups beneath today's carousel; do not change their data.
+- [x] Allocate available Home height between progress header, character/caption,
   date/controls and one task-card region, reserving the existing nav/safe clearance.
-- [ ] Disable vertical scrolling on Home only, including background rubber-band
+- [x] Disable vertical scrolling on Home only, including background rubber-band
   gestures where feasible. Preserve task swipes, native system gestures and zoom;
   do not install a global touch-prevention handler.
-- [ ] Preserve the approved sphere diameter/placement on the normal iPhone portrait
+- [x] Preserve the approved sphere diameter/placement on the normal iPhone portrait
   layout where space allows. Use compact gaps/stage/card variants for short screens
   and a deliberate landscape arrangement, not clipped content.
-- [ ] Keep cards and the empty state in the same allocated slot. Counts, all-done
+- [x] Keep cards and the empty state in the same allocated slot. Counts, all-done
   state and completion undo must not shift the header, sphere, controls or card frame.
-- [ ] Preserve existing horizontal open/done ordering unless testing reveals a
+- [x] Preserve existing horizontal open/done ordering unless testing reveals a
   separate unwanted jump; anchor the active task through updates. Do not silently
   redefine scheduling/order as part of removing the paragraph.
-- [ ] Handle long titles and large text with readable summaries plus accessible
+- [x] Handle long titles and large text with readable summaries plus accessible
   full details in the task dialog. Never hide Save errors/Retry to make Home fit.
 
 Tests: no vertical Home overflow, horizontal carousel still works, first/last task,
@@ -181,6 +187,18 @@ all-task access. Compare before/after geometry on the target portrait size.
 
 Gate: Home is genuinely usable without vertical scrolling; nothing important
 is merely hidden by overflow. Other routes/dialogs retain their normal scrolling.
+
+Phase 4 verification recorded in `HOME_FIXED_DASHBOARD_VERIFICATION.md` (0.1.22,
+2026-10-03): production build, 165/165 Node tests and 760/760 browser invariants
+pass. Includes all earlier editor/drawer regression coverage, both themes, short
+portrait, landscape notch padding, enlarged text, long dates/titles and save error.
+The normal standalone portrait character remains 216 × 216 at y=148.39. Empty,
+open and all-done task slots match; real production completion/undo does not move
+the character, card slot or nav. Home alone cannot scroll vertically. Short-screen
+copy/stage yields to readable controls; landscape uses two columns. Full titles
+remain accessible in labels and the existing task editor. No records, shell,
+keyboard, storage or animation-controller changes. Physical Home acceptance is
+pending; finger gaze and personality remain later phases.
 
 ## Phase 5 · Add finger-following eyes
 
